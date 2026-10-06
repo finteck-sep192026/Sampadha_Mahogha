@@ -1,0 +1,200 @@
+[
+  {
+    "role": "admin",
+    "loginId": "ADM-001",
+    "email": "admin@sampadha.demo",
+    "fullName": "Aditi Menon",
+    "initials": "AM",
+    "mobile": "+91 98200 11001",
+    "pan": null,
+    "risk": null,
+    "kyc": "Internal account"
+  },
+  {
+    "role": "ra",
+    "loginId": "RA-024",
+    "email": "ra@sampadha.demo",
+    "fullName": "Rahul Arora",
+    "initials": "RA",
+    "mobile": "+91 98200 11024",
+    "pan": null,
+    "risk": null,
+    "kyc": "Internal account"
+  },
+  {
+    "role": "sales",
+    "loginId": "SAL-011",
+    "email": "sales@sampadha.demo",
+    "fullName": "Sneha Kapoor",
+    "initials": "SK",
+    "mobile": "+91 98765 41011",
+    "pan": null,
+    "risk": null,
+    "kyc": "Employee verified"
+  },
+  {
+    "role": "sales",
+    "loginId": "SAL-018",
+    "email": "arjun.sales@sampadha.demo",
+    "fullName": "Arjun Mehta",
+    "initials": "AM",
+    "mobile": "+91 98765 41018",
+    "pan": null,
+    "risk": null,
+    "kyc": "Employee verified"
+  },
+  {
+    "role": "sales",
+    "loginId": "SAL-026",
+    "email": "nisha.sales@sampadha.demo",
+    "fullName": "Nisha Rao",
+    "initials": "NR",
+    "mobile": "+91 98765 41026",
+    "pan": null,
+    "risk": null,
+    "kyc": "Employee verified"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1001",
+    "email": "client@sampadha.demo",
+    "fullName": "Priya Sharma",
+    "initials": "PS",
+    "mobile": "+91 98765 43210",
+    "pan": "ABCDE1234F",
+    "risk": "Moderate Growth",
+    "kyc": "Verified • 12 Jul 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1002",
+    "email": "arun.client@sampadha.demo",
+    "fullName": "Arun Nair",
+    "initials": "AN",
+    "mobile": "+91 98765 43211",
+    "pan": "BCDEF2345G",
+    "risk": "Growth",
+    "kyc": "Verified • 18 Jul 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1003",
+    "email": "meera.client@sampadha.demo",
+    "fullName": "Meera Shah",
+    "initials": "MS",
+    "mobile": "+91 98765 43212",
+    "pan": "CDEFG3456H",
+    "risk": "Conservative",
+    "kyc": "Verified • 23 Jul 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1004",
+    "email": "vikram.client@sampadha.demo",
+    "fullName": "Vikram Reddy",
+    "initials": "VR",
+    "mobile": "+91 98765 43213",
+    "pan": "DEFGH4567J",
+    "risk": "Aggressive",
+    "kyc": "Verified • 02 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1005",
+    "email": "kavya.client@sampadha.demo",
+    "fullName": "Kavya Iyer",
+    "initials": "KI",
+    "mobile": "+91 98765 43214",
+    "pan": "EFGHJ5678K",
+    "risk": "Moderate",
+    "kyc": "Verified • 09 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1006",
+    "email": "rohan.client@sampadha.demo",
+    "fullName": "Rohan Desai",
+    "initials": "RD",
+    "mobile": "+91 98765 43215",
+    "pan": "FGHJK6789L",
+    "risk": "Growth",
+    "kyc": "Verified • 12 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1007",
+    "email": "ananya.client@sampadha.demo",
+    "fullName": "Ananya Gupta",
+    "initials": "AG",
+    "mobile": "+91 98765 43216",
+    "pan": "GHJKL7890M",
+    "risk": "Moderate",
+    "kyc": "Verified • 15 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1008",
+    "email": "suresh.client@sampadha.demo",
+    "fullName": "Suresh Patel",
+    "initials": "SP",
+    "mobile": "+91 98765 43217",
+    "pan": "HJKLM8901N",
+    "risk": "Conservative",
+    "kyc": "Verified • 18 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1009",
+    "email": "divya.client@sampadha.demo",
+    "fullName": "Divya Menon",
+    "initials": "DM",
+    "mobile": "+91 98765 43218",
+    "pan": "JKLMN9012P",
+    "risk": "Growth",
+    "kyc": "Verified • 21 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1010",
+    "email": "karan.client@sampadha.demo",
+    "fullName": "Karan Malhotra",
+    "initials": "KM",
+    "mobile": "+91 98765 43219",
+    "pan": "KLMNP0123Q",
+    "risk": "Aggressive",
+    "kyc": "Verified • 24 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1011",
+    "email": "pooja.client@sampadha.demo",
+    "fullName": "Pooja Joshi",
+    "initials": "PJ",
+    "mobile": "+91 98765 43220",
+    "pan": "LMNPQ1234R",
+    "risk": "Moderate",
+    "kyc": "Verified • 27 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1012",
+    "email": "nikhil.client@sampadha.demo",
+    "fullName": "Nikhil Verma",
+    "initials": "NV",
+    "mobile": "+91 98765 43221",
+    "pan": "MNPQR2345S",
+    "risk": "Growth",
+    "kyc": "Verified • 30 Aug 2026"
+  },
+  {
+    "role": "client",
+    "loginId": "CL-1013",
+    "email": "shreya.client@sampadha.demo",
+    "fullName": "Shreya Rao",
+    "initials": "SR",
+    "mobile": "+91 98765 43222",
+    "pan": "NPQRS3456T",
+    "risk": "Conservative",
+    "kyc": "Verified • 02 Sep 2026"
+  }
+]

@@ -1,6 +1,6 @@
 # Sampadha Four-Role Wealth Portal Prototype
 
-Interactive responsive front-end prototype with role-based navigation and fictional Indian wealth-management data.
+Responsive portal with role-based navigation, backed by a Supabase (PostgreSQL) database, using fictional Indian wealth-management data.
 
 The supplied Sampadha logo is packaged at `assets/sampadha-logo.png` and used on both the branded login screen and portal sidebar. Premium presentation overrides are maintained in `brand-premium.css`.
 
@@ -15,32 +15,12 @@ Use the floating color button on the login screen or **Theme** in the portal too
 
 The selected theme is stored locally in the browser.
 
-## Demo logins
+## Accounts and sign-in
 
-| Role | Email | Password | Access |
-|---|---|---|---|
-| Admin | `admin@sampadha.demo` | `Admin@123` | Full platform access |
-| Research Analyst | `ra@sampadha.demo` | `RA@123` | Strategies and single/multiple reports |
-| Sales — Sneha Kapoor | `sales@sampadha.demo` | `Sales@123` | Profile, clients, KYC and subscriptions |
-| Sales — Arjun Mehta | `arjun.sales@sampadha.demo` | `Sales@456` | Profile, clients, KYC and subscriptions |
-| Sales — Nisha Rao | `nisha.sales@sampadha.demo` | `Sales@789` | Profile, clients, KYC and subscriptions |
-| Client — Priya Sharma | `client@sampadha.demo` | `Client@123` | View-only profile, products, payments and recommendations |
-| Client — Arun Nair | `arun.client@sampadha.demo` | `Client@456` | View-only profile, products, payments and recommendations |
-| Client — Meera Shah | `meera.client@sampadha.demo` | `Client@789` | View-only profile, products, payments and recommendations |
-| Client — Vikram Reddy | `vikram.client@sampadha.demo` | `Client@321` | View-only profile, products, payments and recommendations |
-| Client — Kavya Iyer | `kavya.client@sampadha.demo` | `Client@654` | View-only profile, products, payments and recommendations |
-| Client — Rohan Desai | `rohan.client@sampadha.demo` | `Client@1006` | View-only client access |
-| Client — Ananya Gupta | `ananya.client@sampadha.demo` | `Client@1007` | View-only client access |
-| Client — Suresh Patel | `suresh.client@sampadha.demo` | `Client@1008` | View-only client access |
-| Client — Divya Menon | `divya.client@sampadha.demo` | `Client@1009` | View-only client access |
-| Client — Karan Malhotra | `karan.client@sampadha.demo` | `Client@1010` | View-only client access |
-| Client — Pooja Joshi | `pooja.client@sampadha.demo` | `Client@1011` | View-only client access |
-| Client — Nikhil Verma | `nikhil.client@sampadha.demo` | `Client@1012` | View-only client access |
-| Client — Shreya Rao | `shreya.client@sampadha.demo` | `Client@1013` | View-only client access |
+Sign-in is verified by Supabase Auth on the server — there are no passwords in this repository or in the browser code. Enter a staff/client ID (for example `CL-1001`) or an email address plus the password.
 
-Includes 3 Sales accounts and 13 Client accounts. Enter your account ID or email and password directly. The portal automatically opens the matching role. IDs and emails are case-insensitive; passwords are case-sensitive. There is no account dropdown or role selector.
+The 18 fictional accounts (1 Admin `ADM-001`, 1 Research Analyst `RA-024`, 3 Sales `SAL-011/018/026`, 13 Clients `CL-1001`–`CL-1013`) are created by `npm run seed:demo` with random passwords written to `demo-credentials.local.txt` (git-ignored). See the root `README.md` for setup.
 
-Client IDs CL-1001 through CL-1013 correspond to the clients listed above in order. Sales IDs: Sneha SAL-011, Arjun SAL-018, Nisha SAL-026. Admin: ADM-001. Research Analyst: RA-024. These are front-end demo logins; sample research and financial tables are shared demo data.
 
 ## Included modules
 
@@ -68,7 +48,7 @@ Client IDs CL-1001 through CL-1013 correspond to the clients listed above in ord
 - Create and preview Multi reports with repeatable MULTI RECOMMENDATIONS entries. Add recommendation appends another complete set of input fields; no stock dropdown is used.
 - Entry fields: Product, Symbol, Expiry date, Strike price, Option type, Buy/Sell, No. of lots, Lot size, Quantity, Initiation price, Published date, Delivered date and Status. Quantity is calculated; delivered date is filled after sending; status starts Active.
 - Four required research text boxes: Technical, Derivatives, Quantitative and Risks.
-- Client selection appears only AFTER report preview and demo Aadhaar OTP verification. Tick consent, request OTP, enter 123456, then verify. Verification is tied to the report and signed-in user, expires after five minutes, and resets on navigation, sign-out or sending. No real Aadhaar data or SMS is used; this is not a legally valid Aadhaar eSign.
+- Client selection appears only AFTER the report is previewed and you verify a 6-digit code from your authenticator app (set up once with a QR code). The code is checked by the server; it must be entered after the draft was created, within 5 minutes, and authorises exactly one send. This is not an Aadhaar eSign.
 - Nano, Micro, Mini, Mega and Giga checkboxes filter clients by sample subscription. Multiple types show the union of matching clients. Deselecting a type removes hidden client selections. Select visible clients and Clear checkboxes affect client selections; typed IDs/emails must also match the selected types.
 - Sample subscriptions: Nano — CL-1001, CL-1006, CL-1011; Micro — CL-1002, CL-1007, CL-1012; Mini — CL-1003, CL-1008, CL-1013; Mega — CL-1004, CL-1009; Giga — CL-1005, CL-1010.
 - **Add leg** duplicates the complete previous leg so the analyst can change only the required fields. All entered leg details are shown in a table in the report and on the separate Orders page.
@@ -76,7 +56,7 @@ Client IDs CL-1001 through CL-1013 correspond to the clients listed above in ord
 - Select recipients using client checkboxes or comma/space-separated client IDs and emails
 - Unknown recipients are rejected and duplicate delivery is skipped
 - Selected clients can open Reports received and download reports as a landscape PDF. Every duplicated Add leg entry is shown as one row in a full-column recommendation table, followed by the four research sections and signing details.
-- Reports and simulated delivery records exist only in the current browser session; refreshing clears them. No external email is sent. Sign out and sign in as a selected client in the same tab to view a delivered report.
+- Reports, deliveries, orders and exits are stored in the database. Mail records are logged in the portal only (status "Simulated"); no external email is sent yet.
 
 - Research dashboard
 - Strategy register
@@ -125,10 +105,9 @@ The prototype simulates these messages locally. Real delivery requires a transac
 
 ## Technology used
 
-- HTML5
-- Responsive CSS3
-- Vanilla JavaScript
-- Browser-session dummy data; no database or external API
+- HTML5, responsive CSS3, vanilla JavaScript (no build step)
+- Supabase (PostgreSQL, Auth, Row Level Security) — see `supabase/` and the root `README.md`
+
 
 ## Main source files
 
@@ -137,7 +116,10 @@ The prototype simulates these messages locally. Real delivery requires a transac
 - `brand-premium.css` — Sampadha navy, blue and gold brand finish
 - `theme-toolbar.css` — theme chooser interface
 - `client-onboarding.css` — onboarding, approval and email-delivery screens
-- `role-app.js` — roles, permissions, screens, filters and dummy data
+- `role-app.js` — roles, screens, filters, session handling
+- `research-reports.js` — research reports, authenticator signing, orders and PDF export
+- `api.js` — the only file that talks to the database
+- `config.js` — public Supabase URL and publishable key
 
 ## Production integrations recommended
 

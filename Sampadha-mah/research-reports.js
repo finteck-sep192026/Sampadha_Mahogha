@@ -135,7 +135,7 @@ function downloadResearchPdf(report) {
   };
   begin();
   write(report.title, { font: 'bold 30px Arial', gap: 40 });
-  write(report.id + ' · ' + report.created, { font: '18px Arial', color: '#5b6d82', gap: 32 });
+  write(report.ref + ' · ' + report.created, { font: '18px Arial', color: '#5b6d82', gap: 32 });
   write('MULTI RECOMMENDATIONS', { font: 'bold 20px Arial', color: '#a06b12', gap: 34 });
   tableHeader();
   report.rows.forEach(tableRow);
@@ -149,17 +149,24 @@ function downloadResearchPdf(report) {
     write(report.sections[name], { font: '19px Arial', gap: 27 });
     y += 12;
   }
-  if (report.demoSign) {
+  if (report.status === 'Sent') {
     if (y > bottom - 100) {
       finish();
       begin();
     }
-    write('DEMO OTP SIGNING SIMULATION', { font: 'bold 19px Arial', color: '#a06b12', gap: 28 });
-    write('Not a valid Aadhaar eSign · ' + report.demoSign.at + ' · ' + report.demoSign.reference, {
-      font: '17px Arial',
-      color: '#5b6d82',
-      gap: 26,
+    write('AUTHORISED WITH A ONE-TIME CODE', {
+      font: 'bold 19px Arial',
+      color: '#a06b12',
+      gap: 28,
     });
+    write(
+      'Authenticator-app code verified by the server · ' + report.sent + ' · not an Aadhaar eSign',
+      {
+        font: '17px Arial',
+        color: '#5b6d82',
+        gap: 26,
+      },
+    );
   }
   finish();
   const encoder = new TextEncoder(),
@@ -215,7 +222,7 @@ function downloadResearchPdf(report) {
   const url = URL.createObjectURL(new Blob(chunks, { type: 'application/pdf' })),
     link = document.createElement('a');
   link.href = url;
-  link.download = report.id + '.pdf';
+  link.download = report.ref + '.pdf';
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -244,13 +251,16 @@ const RESEARCH_COLUMNS = [
   ['delivered', 'Delivered date'],
   ['status', 'Status'],
 ];
-const researchSubscriptions = Object.fromEntries(
-  accounts.client.map((c, i) => [c.id, [MULTI_TYPES[i % MULTI_TYPES.length]]]),
-);
-const researchOrders = [];
-let researchOrderFilter = 'Open',
-  researchOtp = null,
-  researchOtpTimer = null;
+let researchClients = [],
+  researchOrderFilter = 'Open',
+  researchSign = null,
+  researchSignTimer = null;
+// Called by role-app.js whenever the workspace is (re)loaded from the database.
+function researchApplyWorkspace(ws) {
+  researchReports.splice(0, researchReports.length, ...(ws ? ws.reports : []));
+  researchClients = ws ? ws.researchClients : [];
+}
+if (typeof state !== 'undefined' && state.ws) researchApplyWorkspace(state.ws);
 const researchStyle = document.createElement('link');
 researchStyle.rel = 'stylesheet';
 researchStyle.href = 'research-workflow.css';
@@ -269,15 +279,20 @@ function researchValue(row, key) {
   return row[key] || '—';
 }
 function researchOwner(r) {
-  return reportAllowed() && (state.role === 'admin' || r.authorId === state.user.id);
+  return reportAllowed() && (state.role === 'admin' || r.authorId === state.user.uid);
 }
 function researchCanView(r) {
-  return researchOwner(r) || (state.role === 'client' && r.recipients.includes(state.user.id));
+  return researchOwner(r) || (state.role === 'client' && r.recipients.includes(state.user.uid));
 }
+const researchClientRows = () =>
+  researchClients.map((c) => ({
+    id: c.login_id,
+    person: c.full_name,
+    email: c.email,
+    tier: c.multi_tier,
+  }));
 function researchEligible(types) {
-  return accounts.client.filter((c) =>
-    researchSubscriptions[c.id].some((type) => types.includes(type)),
-  );
+  return researchClientRows().filter((c) => types.includes(c.tier));
 }
 function researchRecipients(text, checked) {
   const tokens = String(text || '')
@@ -286,7 +301,7 @@ function researchRecipients(text, checked) {
     ids = new Set(checked),
     invalid = [];
   for (const token of tokens) {
-    const client = accounts.client.find(
+    const client = researchClientRows().find(
       (x) =>
         x.id.toLowerCase() === token.toLowerCase() || x.email.toLowerCase() === token.toLowerCase(),
     );
@@ -318,7 +333,7 @@ function researchDocument(r) {
     '<article class="card panel research-section"><p class="overline">SAMPADHA RESEARCH</p><h3>' +
     reportEscape(r.title) +
     '</h3><p>' +
-    reportEscape(r.id) +
+    reportEscape(r.ref) +
     ' · ' +
     reportEscape(r.created) +
     '</p><h4>MULTI RECOMMENDATIONS</h4>' +
@@ -331,10 +346,10 @@ function researchDocument(r) {
         reportEscape(r.sections[name]) +
         '</pre></section>',
     ).join('') +
-    (r.demoSign
-      ? '<p class="research-notice">Demo OTP signing simulation · ' +
-        reportEscape(r.demoSign.at) +
-        '<br>Not a valid Aadhaar eSign.</p>'
+    (r.status === 'Sent'
+      ? '<p class="research-notice">Authorised with a one-time code · ' +
+        reportEscape(r.sent) +
+        '<br>Not a legally valid Aadhaar eSign.</p>'
       : '') +
     '</article>'
   );
@@ -353,13 +368,15 @@ function researchHistory() {
           '<small>' +
           r.rows.length +
           ' recommendations · ' +
-          reportEscape(r.id) +
+          reportEscape(r.ref) +
           '</small></td><td>' +
           reportEscape(r.created) +
           '</td><td>' +
-          (r.recipients.length
-            ? r.recipients.length + ' clients · ' + reportEscape(r.sent)
-            : 'Not sent') +
+          (state.role === 'client'
+            ? 'Delivered · ' + reportEscape(r.sent)
+            : r.recipients.length
+              ? r.recipients.length + ' clients · ' + reportEscape(r.sent)
+              : 'Not sent') +
           '</td><td><button type="button" class="btn secondary" data-research-view="' +
           r.id +
           '">View</button> <button type="button" class="btn secondary" data-research-pdf="' +
@@ -426,7 +443,7 @@ function researchNumberRows() {
 }
 function researchPage() {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><h3>Create Multi research report</h3><span class="badge">Multi</span></div><div class="research-steps"><span>1. Legs & research</span><span>2. Preview & demo Aadhaar OTP</span><span>3. Select product clients & send</span><span>4. Manage orders</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><h3>MULTI RECOMMENDATIONS</h3><p class="research-notice">Enter the first leg, then use Add leg to duplicate it and modify only the required fields. Published date uses IST; quantity is calculated automatically.</p><div id="researchEntries">' +
+    '<article class="card panel"><div class="research-workflow-header"><h3>Create Multi research report</h3><span class="badge">Multi</span></div><div class="research-steps"><span>1. Legs & research</span><span>2. Preview & authenticator code</span><span>3. Select product clients & send</span><span>4. Manage orders</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><h3>MULTI RECOMMENDATIONS</h3><p class="research-notice">Enter the first leg, then use Add leg to duplicate it and modify only the required fields. Published date uses IST; quantity is calculated automatically.</p><div id="researchEntries">' +
     researchEntry() +
     '</div><button type="button" class="btn secondary" id="researchAddRow">+ Add leg</button><div class="form-grid research-section">' +
     RESEARCH_SECTIONS.map(
@@ -508,91 +525,79 @@ function researchReadRows(form) {
     };
   });
 }
-function researchOtpFingerprint(r) {
-  return JSON.stringify({
-    user: state.user.id,
-    id: r.id,
-    title: r.title,
-    sections: r.sections,
-    rows: r.rows.map(
-      ({
-        delivered,
-        status,
-        closedQty,
-        remainingQty,
-        closingPrice,
-        lastExit,
-        closedAt,
-        exits,
-        ...row
-      }) => row,
-    ),
-  });
-}
-function researchOtpValid(r) {
-  return (
-    !!researchOtp &&
-    researchOwner(r) &&
-    researchOtp.reportId === r.id &&
-    researchOtp.verified &&
-    Date.now() < researchOtp.expires &&
-    researchOtp.fingerprint === researchOtpFingerprint(r)
-  );
-}
 function invalidateResearchOtp() {
-  researchOtp = null;
-  clearTimeout(researchOtpTimer);
-  researchOtpTimer = null;
+  researchSign = null;
+  clearTimeout(researchSignTimer);
+  researchSignTimer = null;
   const target = $('#researchClientSection');
   if (target)
     target.innerHTML =
-      '<p class="research-lock">Client selection appears after demo Aadhaar OTP verification.</p>';
+      '<p class="research-lock">Client selection appears after you verify an authenticator code.</p>';
   const status = $('#researchOtpStatus');
-  if (status) status.textContent = 'Request and verify a demo OTP before selecting clients.';
+  if (status)
+    status.textContent = 'Enter the 6-digit code from your authenticator app to continue.';
 }
-function researchOtpPanel(r) {
+function researchCodeForm(reportId, factorId, label) {
   return (
-    '<article class="card panel research-section"><h3>Demo Aadhaar OTP signing</h3><p class="research-notice">Simulation only: no real Aadhaar, SMS or legally valid eSign. Demo identity: XXXX XXXX 0000.</p><form id="researchOtpForm" data-report="' +
-    r.id +
-    '" class="research-signing"><label class="research-check"><input type="checkbox" name="consent">I agree to simulate signing this report.</label><div class="research-filter-bar"><button type="button" class="btn secondary" id="requestResearchOtp">Request demo OTP</button></div><label class="field">Demo OTP<input name="otp" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Enter 6-digit demo OTP"></label><button class="btn primary">Verify & continue to clients</button><p id="researchOtpStatus" class="research-message" role="status">OTP verification required.</p></form></article><section id="researchClientSection" class="research-section"><p class="research-lock">Client selection appears after demo Aadhaar OTP verification.</p></section>'
+    '<form id="researchOtpForm" data-report="' +
+    reportAttr(reportId) +
+    '" data-factor="' +
+    reportAttr(factorId) +
+    '" class="research-signing"><label class="research-check"><input type="checkbox" name="consent">I have reviewed this report and authorise sending it.</label><label class="field">Authenticator code<input name="otp" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="6-digit code"></label><button class="btn primary">' +
+    label +
+    '</button><p id="researchOtpStatus" class="research-message" role="status">Enter the 6-digit code from your authenticator app to continue.</p></form>'
   );
+}
+const reportAttr = (v) => reportEscape(v);
+function researchSignPanel(r) {
+  return (
+    '<article class="card panel research-section"><h3>Sign with your authenticator app</h3><p class="research-notice">Sending needs a fresh code from your authenticator app. The server checks it, each code authorises one send, and it is valid for 5 minutes. This is not an Aadhaar eSign.</p><div id="researchSignBody" data-report="' +
+    reportAttr(r.id) +
+    '"><p>Checking authenticator status…</p></div></article><section id="researchClientSection" class="research-section"><p class="research-lock">Client selection appears after you verify an authenticator code.</p></section>'
+  );
+}
+async function researchRenderSign(r) {
+  try {
+    const factor = await Api.mfa.factor(),
+      body = $('#researchSignBody');
+    if (!body || body.dataset.report !== r.id) return;
+    body.innerHTML = factor
+      ? researchCodeForm(r.id, factor.id, 'Verify & continue to clients')
+      : '<p>Link an authenticator app once (Google Authenticator, Microsoft Authenticator, Authy…). Then every report you send is signed with a code from it.</p><button type="button" class="btn secondary" id="researchEnroll">Set up authenticator app</button><div id="researchEnrollArea"></div>';
+  } catch (error) {
+    const body = $('#researchSignBody');
+    if (body) body.textContent = error.message;
+  }
+}
+async function researchStartEnroll(button) {
+  const area = $('#researchEnrollArea'),
+    reportId = $('#researchSignBody').dataset.report;
+  button.disabled = true;
+  try {
+    const factor = await Api.mfa.enroll();
+    area.innerHTML =
+      '<div class="research-qr"><img id="researchQr" alt="Authenticator QR code" width="180" height="180"><p>Scan this with your app, or type the key: <code id="researchSecret"></code></p></div>' +
+      researchCodeForm(reportId, factor.factorId, 'Confirm app & continue to clients');
+    $('#researchQr').src = factor.qr;
+    $('#researchSecret').textContent = factor.secret;
+    button.remove();
+  } catch (error) {
+    area.textContent = error.message;
+    button.disabled = false;
+  }
 }
 function researchShow(ids) {
   invalidateResearchOtp();
   const r = researchReports.find((r) => ids.includes(r.id) && researchCanView(r));
   if (!r) return;
   $('#researchPreview').innerHTML =
-    researchDocument(r) + (researchOwner(r) ? researchOtpPanel(r) : '');
-  if (researchOwner(r)) {
-    $('#requestResearchOtp').onclick = () => {
-      const form = $('#researchOtpForm');
-      invalidateResearchOtp();
-      if (!form.elements.consent.checked) {
-        $('#researchOtpStatus').textContent = 'Tick the simulation consent to request an OTP.';
-        return;
-      }
-      researchOtp = {
-        reportId: r.id,
-        fingerprint: researchOtpFingerprint(r),
-        verified: false,
-        attempts: 0,
-        expires: Date.now() + 300000,
-      };
-      form.elements.otp.value = '';
-      $('#researchOtpStatus').textContent = 'Demo OTP: 123456. Valid for 5 minutes. No SMS sent.';
-      researchOtpTimer = setTimeout(() => {
-        invalidateResearchOtp();
-        if ($('#researchOtpStatus'))
-          $('#researchOtpStatus').textContent = 'Demo OTP expired. Request a new code.';
-      }, 300000);
-    };
-    $('#researchOtpForm').elements.consent.onchange = invalidateResearchOtp;
-  }
+    researchDocument(r) + (researchOwner(r) ? researchSignPanel(r) : '');
+  if (researchOwner(r)) researchRenderSign(r);
 }
 function researchClientSection(r) {
   return (
-    '<article class="card panel"><h3>Select clients & send</h3><p class="research-notice">Demo OTP verified. Select product types to show their subscribed clients. These are sample subscriptions.</p><form id="researchSend" data-report="' +
-    r.id +
+    '<article class="card panel"><h3>Select clients & send</h3><p class="research-notice">Code verified. Select product types to show their subscribed clients. These are sample subscriptions.</p><form id="researchSend" data-report="' +
+    reportAttr(r.id) +
     '"><div class="research-filter-bar"><button type="button" class="btn secondary" id="researchSelectAll">Select visible clients</button><button type="button" class="btn secondary" id="researchClearAll">Clear checkboxes</button>' +
     MULTI_TYPES.map(
       (name) =>
@@ -602,7 +607,7 @@ function researchClientSection(r) {
         name +
         '</label>',
     ).join('') +
-    '</div><p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p><button class="btn primary">Send to selected clients (demo)</button></form></article>'
+    '</div><p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p><button class="btn primary">Send to selected clients</button></form></article>'
   );
 }
 function researchFilterClients() {
@@ -615,7 +620,7 @@ function researchFilterClients() {
     .map(
       (c) =>
         '<label class="research-check research-client"><input type="checkbox" name="client" value="' +
-        c.id +
+        reportAttr(c.id) +
         '" ' +
         (selected.has(c.id) ? 'checked' : '') +
         '><span>' +
@@ -625,7 +630,7 @@ function researchFilterClients() {
         ' · ' +
         reportEscape(c.email) +
         '</small><small>Subscribed: ' +
-        researchSubscriptions[c.id].join(', ') +
+        reportEscape(c.tier) +
         '</small></span></label>',
     )
     .join('');
@@ -648,66 +653,36 @@ function researchOpenClients(r) {
   };
   researchFilterClients();
 }
-function researchSendReport(r, selected) {
-  if (!researchOtpValid(r)) throw new Error('Verify a fresh demo OTP before sending.');
-  const fresh = selected.filter((id) => !r.recipients.includes(id));
-  if (!fresh.length) return 0;
-  const now = reportTime();
-  if (!r.demoSign) r.demoSign = { at: now, reference: 'DEMO-' + crypto.randomUUID() };
-  r.sent = now;
-  for (const clientId of fresh) {
-    const c = accounts.client.find((x) => x.id === clientId);
-    r.recipients.push(clientId);
-    state.emails.unshift({
-      id: 'MAIL-' + crypto.randomUUID(),
-      application: r.id,
-      to: c.email,
-      name: c.person,
-      subject: r.title,
-      type: 'Research report',
-      status: 'Simulated',
-      sent: now,
-      body: 'Your Multi research report ' + r.title + ' is available under Reports received.',
-    });
-  }
-  for (const row of r.rows) {
-    if (!row.delivered) row.delivered = now;
-    if (!researchOrders.some((o) => o.row.id === row.id))
-      researchOrders.push({ reportId: r.id, authorId: r.authorId, row });
-  }
-  return fresh.length;
+async function researchSendReport(r, selected, types) {
+  if (!researchSign || researchSign.reportId !== r.id || Date.now() >= researchSign.expires)
+    throw new Error('Verify a fresh authenticator code before sending.');
+  const result = await Api.sendReport(r.id, selected, types);
+  await refreshWorkspace();
+  return result.delivered;
 }
 function researchVisibleOrders() {
-  return researchOrders.filter(
-    (o) => state.role === 'admin' || (state.role === 'ra' && o.authorId === state.user.id),
-  );
+  return researchReports
+    .filter(researchOwner)
+    .flatMap((r) =>
+      r.rows
+        .filter((row) => row.delivered)
+        .map((row) => ({ reportId: r.id, authorId: r.authorId, row })),
+    );
 }
-function researchCloseOrder(id, quantity, price) {
+async function researchCloseOrder(id, quantity, price) {
   if (!reportAllowed()) throw new Error('Research workspace access required.');
   const order = researchVisibleOrders().find((o) => o.row.id === id);
   if (!order || order.row.status === 'Closed')
     throw new Error('This order is already closed or unavailable.');
-  const row = order.row,
-    qty = Number(quantity),
-    exitPrice = Number(price),
-    remaining = Number(row.remainingQty ?? row.quantity);
+  const qty = Number(quantity),
+    exitPrice = Number(price);
   if (!Number.isSafeInteger(qty) || qty < 1)
     throw new Error('Closing quantity must be a positive whole number.');
-  if (qty > remaining)
-    throw new Error('Closing quantity cannot exceed the remaining quantity of ' + remaining + '.');
   if (!Number.isFinite(exitPrice) || exitPrice <= 0)
     throw new Error('Enter a valid closing price.');
-  const previousClosed = Number(row.closedQty || 0),
-    newClosed = previousClosed + qty,
-    now = reportTime();
-  row.closingPrice = (Number(row.closingPrice || 0) * previousClosed + exitPrice * qty) / newClosed;
-  row.closedQty = newClosed;
-  row.remainingQty = row.quantity - newClosed;
-  row.lastExit = now;
-  row.exits = (row.exits || []).concat({ quantity: qty, price: exitPrice, at: now });
-  row.status = row.remainingQty === 0 ? 'Closed' : 'Partially Closed';
-  row.closedAt = row.remainingQty === 0 ? now : '';
-  return row;
+  await Api.closeLeg(id, qty, exitPrice);
+  await refreshWorkspace();
+  return researchVisibleOrders().find((o) => o.row.id === id).row;
 }
 function researchOrdersPage() {
   if (!reportAllowed())
@@ -761,7 +736,7 @@ function researchOrdersPage() {
           (o.row.status === 'Closed'
             ? '<span class="badge">Fully closed</span>'
             : '<form class="research-exit-form" data-close-order-form="' +
-              o.row.id +
+              reportAttr(o.row.id) +
               '"><label>Closing price<input name="closingPrice" type="number" min="0.01" step="0.01" required placeholder="Price"></label><label>Closing quantity<input name="closingQty" type="number" min="1" max="' +
               (o.row.remainingQty ?? o.row.quantity) +
               '" step="1" required placeholder="Max ' +
@@ -814,13 +789,15 @@ $('#content').addEventListener('input', (e) => {
       ? lots * size
       : '';
 });
-$('#content').addEventListener('submit', (e) => {
+$('#content').addEventListener('submit', async (e) => {
   if (e.target.matches('[data-close-order-form]')) {
     e.preventDefault();
     const form = e.target,
-      message = form.querySelector('.research-exit-error');
+      message = form.querySelector('.research-exit-error'),
+      button = form.querySelector('button');
+    button.disabled = true;
     try {
-      const row = researchCloseOrder(
+      const row = await researchCloseOrder(
           form.dataset.closeOrderForm,
           form.elements.closingQty.value,
           form.elements.closingPrice.value,
@@ -837,6 +814,7 @@ $('#content').addEventListener('submit', (e) => {
       );
     } catch (error) {
       message.textContent = error.message;
+      button.disabled = false;
     }
     return;
   }
@@ -845,7 +823,8 @@ $('#content').addEventListener('submit', (e) => {
     if (!reportAllowed()) return;
     const form = e.target,
       d = new FormData(form),
-      message = $('#researchCreateMessage');
+      message = $('#researchCreateMessage'),
+      button = form.querySelector('button:not([type=button])');
     try {
       const title = String(d.get('title') || '').trim(),
         sections = Object.fromEntries(
@@ -854,67 +833,76 @@ $('#content').addEventListener('submit', (e) => {
       if (!title || Object.values(sections).some((x) => !x))
         throw new Error('Enter a title and all four research sections.');
       const rows = researchReadRows(form),
-        body = RESEARCH_SECTIONS.map((name) => name + '\n' + sections[name]).join('\n\n');
-      const report = {
-        id: 'RPT-' + crypto.randomUUID(),
-        title,
-        rows,
-        sections,
-        body,
-        product: 'Multi',
-        authorId: state.user.id,
-        created: reportTime(),
-        recipients: [],
-        sent: '',
-      };
-      researchReports.unshift(report);
+        legs = rows.map((r) => ({
+          product: r.product,
+          symbol: r.symbol,
+          expiry: r.expiry,
+          strike: String(r.strike),
+          option: r.option,
+          side: r.side,
+          lots: String(r.lots),
+          lotSize: String(r.lotSize),
+          price: String(r.price),
+          published: r.published,
+        }));
+      button.disabled = true;
+      const created = await Api.createDraft(title, sections, legs);
+      await refreshWorkspace();
       message.classList.remove('research-error');
-      message.textContent = 'Report created. Review it below, then verify the demo OTP.';
-      researchShow([report.id]);
+      message.textContent = 'Report created. Review it below, then verify your authenticator code.';
+      researchShow([created.id]);
       $('#researchHistory').innerHTML = researchHistory();
       $('#researchPreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
       message.classList.add('research-error');
       message.textContent = error.message;
+    } finally {
+      button.disabled = false;
     }
   }
   if (e.target.id === 'researchOtpForm') {
     e.preventDefault();
     const form = e.target,
       r = researchReports.find((r) => r.id === form.dataset.report),
-      status = $('#researchOtpStatus');
-    if (
-      !r ||
-      !researchOwner(r) ||
-      !form.elements.consent.checked ||
-      !researchOtp ||
-      researchOtp.reportId !== r.id ||
-      Date.now() >= researchOtp.expires ||
-      researchOtp.fingerprint !== researchOtpFingerprint(r)
-    ) {
-      invalidateResearchOtp();
-      status.textContent = 'Request a new demo OTP for this report.';
+      status = $('#researchOtpStatus'),
+      button = form.querySelector('button'),
+      code = form.elements.otp.value.trim();
+    if (!r || !researchOwner(r)) return;
+    if (!form.elements.consent.checked) {
+      status.textContent = 'Tick the confirmation to continue.';
       return;
     }
-    if (form.elements.otp.value.trim() !== '123456') {
-      researchOtp.attempts++;
-      if (researchOtp.attempts >= 3) {
+    if (!/^[0-9]{6,8}$/.test(code)) {
+      status.textContent = 'Enter the 6-digit code from your authenticator app.';
+      return;
+    }
+    button.disabled = true;
+    try {
+      await Api.mfa.verify(form.dataset.factor, code);
+      clearTimeout(researchSignTimer);
+      researchSign = { reportId: r.id, expires: Date.now() + 300000 };
+      researchSignTimer = setTimeout(() => {
         invalidateResearchOtp();
-        status.textContent = 'Three incorrect attempts. Request a new demo OTP.';
-      } else status.textContent = 'Incorrect demo OTP. Use 123456.';
-      return;
+        const st = $('#researchOtpStatus');
+        if (st) st.textContent = 'Code expired. Enter a new code from your app.';
+      }, 300000);
+      status.textContent = 'Code verified. Select product types and clients below.';
+      researchOpenClients(r);
+      $('#researchClientSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      status.textContent = error.message;
+      form.elements.otp.value = '';
+    } finally {
+      button.disabled = false;
     }
-    researchOtp.verified = true;
-    status.textContent = 'Demo OTP verified. Select product types and clients below.';
-    researchOpenClients(r);
-    $('#researchClientSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   if (e.target.id === 'researchSend') {
     e.preventDefault();
     const form = e.target,
       r = researchReports.find((r) => r.id === form.dataset.report),
-      message = $('#researchSendMessage');
-    if (!r || !researchOtpValid(r)) {
+      message = $('#researchSendMessage'),
+      button = form.querySelector('button:not([type=button])');
+    if (!r || !researchOwner(r) || !researchSign || researchSign.reportId !== r.id) {
       invalidateResearchOtp();
       return;
     }
@@ -938,22 +926,29 @@ $('#content').addEventListener('submit', (e) => {
       message.textContent = 'Choose only clients subscribed to the selected product types.';
       return;
     }
-    const sent = researchSendReport(r, selected.ids);
-    if (!sent) {
-      message.textContent = 'These clients have already received this report.';
-      return;
+    button.disabled = true;
+    try {
+      const sent = await researchSendReport(r, selected.ids, types);
+      invalidateResearchOtp();
+      $('#researchClientSection').innerHTML =
+        '<article class="card panel"><h3>Report sent</h3><p>' +
+        sent +
+        ' client deliveries recorded. ' +
+        r.rows.length +
+        ' recommendation positions are available in Orders.</p><button class="btn primary" data-go="researchOrders">Open Orders</button> <button class="btn secondary" data-research-view="' +
+        reportAttr(r.id) +
+        '">View report</button></article>';
+      $('#researchHistory').innerHTML = researchHistory();
+    } catch (error) {
+      message.textContent = error.message;
+      button.disabled = false;
+      if (/one-time code|authenticator code/i.test(error.message)) invalidateResearchOtp();
     }
-    invalidateResearchOtp();
-    $('#researchClientSection').innerHTML =
-      '<article class="card panel"><h3>Report sent (demo)</h3><p>' +
-      sent +
-      ' client deliveries recorded. ' +
-      r.rows.length +
-      ' recommendation positions are available in Orders.</p><button class="btn primary" data-go="researchOrders">Open Orders</button> <button class="btn secondary" data-research-view="' +
-      r.id +
-      '">View report</button></article>';
-    $('#researchHistory').innerHTML = researchHistory();
   }
+});
+$('#content').addEventListener('click', (e) => {
+  const enroll = e.target.closest('#researchEnroll');
+  if (enroll) researchStartEnroll(enroll);
 });
 $('#content').addEventListener('click', (e) => {
   const add = e.target.closest('#researchAddRow');

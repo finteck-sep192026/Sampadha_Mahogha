@@ -1,246 +1,15 @@
 const $ = (s) => document.querySelector(s),
   $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (v) =>
+  String(v ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 const roles = {
-  admin: {
-    name: 'Admin',
-    person: 'Aditi Menon',
-    email: 'admin@sampadha.demo',
-    pass: 'Admin@123',
-    initials: 'AM',
-    desc: 'Full platform access',
-  },
-  ra: {
-    name: 'Research Analyst',
-    person: 'Rahul Arora',
-    email: 'ra@sampadha.demo',
-    pass: 'RA@123',
-    initials: 'RA',
-    desc: 'Strategies and reports',
-  },
-  sales: {
-    name: 'Sales',
-    person: 'Sneha Kapoor',
-    email: 'sales@sampadha.demo',
-    pass: 'Sales@123',
-    initials: 'SK',
-    desc: 'Clients, KYC and plans',
-  },
-  client: {
-    name: 'Client',
-    person: 'Priya Sharma',
-    email: 'client@sampadha.demo',
-    pass: 'Client@123',
-    initials: 'PS',
-    desc: 'View-only investor access',
-  },
-};
-const accounts = {
-  admin: [
-    {
-      person: 'Aditi Menon',
-      email: 'admin@sampadha.demo',
-      pass: 'Admin@123',
-      initials: 'AM',
-      id: 'ADM-001',
-      mobile: '+91 98200 11001',
-      pan: '—',
-      risk: 'Not applicable',
-      kyc: 'Internal account',
-    },
-  ],
-  ra: [
-    {
-      person: 'Rahul Arora',
-      email: 'ra@sampadha.demo',
-      pass: 'RA@123',
-      initials: 'RA',
-      id: 'RA-024',
-      mobile: '+91 98200 11024',
-      pan: '—',
-      risk: 'Not applicable',
-      kyc: 'Internal account',
-    },
-  ],
-  sales: [
-    {
-      person: 'Sneha Kapoor',
-      email: 'sales@sampadha.demo',
-      pass: 'Sales@123',
-      initials: 'SK',
-      id: 'SAL-011',
-      mobile: '+91 98765 41011',
-      pan: '—',
-      risk: 'Not applicable',
-      kyc: 'Employee verified',
-    },
-    {
-      person: 'Arjun Mehta',
-      email: 'arjun.sales@sampadha.demo',
-      pass: 'Sales@456',
-      initials: 'AM',
-      id: 'SAL-018',
-      mobile: '+91 98765 41018',
-      pan: '—',
-      risk: 'Not applicable',
-      kyc: 'Employee verified',
-    },
-    {
-      person: 'Nisha Rao',
-      email: 'nisha.sales@sampadha.demo',
-      pass: 'Sales@789',
-      initials: 'NR',
-      id: 'SAL-026',
-      mobile: '+91 98765 41026',
-      pan: '—',
-      risk: 'Not applicable',
-      kyc: 'Employee verified',
-    },
-  ],
-  client: [
-    {
-      person: 'Priya Sharma',
-      email: 'client@sampadha.demo',
-      pass: 'Client@123',
-      initials: 'PS',
-      id: 'CL-1001',
-      mobile: '+91 98765 43210',
-      pan: 'ABCDE1234F',
-      risk: 'Moderate Growth',
-      kyc: 'Verified • 12 Jul 2026',
-    },
-    {
-      person: 'Arun Nair',
-      email: 'arun.client@sampadha.demo',
-      pass: 'Client@456',
-      initials: 'AN',
-      id: 'CL-1002',
-      mobile: '+91 98765 43211',
-      pan: 'BCDEF2345G',
-      risk: 'Growth',
-      kyc: 'Verified • 18 Jul 2026',
-    },
-    {
-      person: 'Meera Shah',
-      email: 'meera.client@sampadha.demo',
-      pass: 'Client@789',
-      initials: 'MS',
-      id: 'CL-1003',
-      mobile: '+91 98765 43212',
-      pan: 'CDEFG3456H',
-      risk: 'Conservative',
-      kyc: 'Verified • 23 Jul 2026',
-    },
-    {
-      person: 'Vikram Reddy',
-      email: 'vikram.client@sampadha.demo',
-      pass: 'Client@321',
-      initials: 'VR',
-      id: 'CL-1004',
-      mobile: '+91 98765 43213',
-      pan: 'DEFGH4567J',
-      risk: 'Aggressive',
-      kyc: 'Verified • 02 Aug 2026',
-    },
-    {
-      person: 'Kavya Iyer',
-      email: 'kavya.client@sampadha.demo',
-      pass: 'Client@654',
-      initials: 'KI',
-      id: 'CL-1005',
-      mobile: '+91 98765 43214',
-      pan: 'EFGHJ5678K',
-      risk: 'Moderate',
-      kyc: 'Verified • 09 Aug 2026',
-    },
-    {
-      person: 'Rohan Desai',
-      email: 'rohan.client@sampadha.demo',
-      pass: 'Client@1006',
-      initials: 'RD',
-      id: 'CL-1006',
-      mobile: '+91 98765 43215',
-      pan: 'FGHJK6789L',
-      risk: 'Growth',
-      kyc: 'Verified • 12 Aug 2026',
-    },
-    {
-      person: 'Ananya Gupta',
-      email: 'ananya.client@sampadha.demo',
-      pass: 'Client@1007',
-      initials: 'AG',
-      id: 'CL-1007',
-      mobile: '+91 98765 43216',
-      pan: 'GHJKL7890M',
-      risk: 'Moderate',
-      kyc: 'Verified • 15 Aug 2026',
-    },
-    {
-      person: 'Suresh Patel',
-      email: 'suresh.client@sampadha.demo',
-      pass: 'Client@1008',
-      initials: 'SP',
-      id: 'CL-1008',
-      mobile: '+91 98765 43217',
-      pan: 'HJKLM8901N',
-      risk: 'Conservative',
-      kyc: 'Verified • 18 Aug 2026',
-    },
-    {
-      person: 'Divya Menon',
-      email: 'divya.client@sampadha.demo',
-      pass: 'Client@1009',
-      initials: 'DM',
-      id: 'CL-1009',
-      mobile: '+91 98765 43218',
-      pan: 'JKLMN9012P',
-      risk: 'Growth',
-      kyc: 'Verified • 21 Aug 2026',
-    },
-    {
-      person: 'Karan Malhotra',
-      email: 'karan.client@sampadha.demo',
-      pass: 'Client@1010',
-      initials: 'KM',
-      id: 'CL-1010',
-      mobile: '+91 98765 43219',
-      pan: 'KLMNP0123Q',
-      risk: 'Aggressive',
-      kyc: 'Verified • 24 Aug 2026',
-    },
-    {
-      person: 'Pooja Joshi',
-      email: 'pooja.client@sampadha.demo',
-      pass: 'Client@1011',
-      initials: 'PJ',
-      id: 'CL-1011',
-      mobile: '+91 98765 43220',
-      pan: 'LMNPQ1234R',
-      risk: 'Moderate',
-      kyc: 'Verified • 27 Aug 2026',
-    },
-    {
-      person: 'Nikhil Verma',
-      email: 'nikhil.client@sampadha.demo',
-      pass: 'Client@1012',
-      initials: 'NV',
-      id: 'CL-1012',
-      mobile: '+91 98765 43221',
-      pan: 'MNPQR2345S',
-      risk: 'Growth',
-      kyc: 'Verified • 30 Aug 2026',
-    },
-    {
-      person: 'Shreya Rao',
-      email: 'shreya.client@sampadha.demo',
-      pass: 'Client@1013',
-      initials: 'SR',
-      id: 'CL-1013',
-      mobile: '+91 98765 43222',
-      pan: 'NPQRS3456T',
-      risk: 'Conservative',
-      kyc: 'Verified • 02 Sep 2026',
-    },
-  ],
+  admin: { name: 'Admin', desc: 'Full platform access' },
+  ra: { name: 'Research Analyst', desc: 'Strategies and reports' },
+  sales: { name: 'Sales', desc: 'Clients, KYC and plans' },
+  client: { name: 'Client', desc: 'View-only investor access' },
 };
 const nav = {
   admin: [
@@ -286,13 +55,7 @@ const nav = {
     ['recommendations', '↗', 'All recommendations'],
   ],
 };
-const clients = [
-  ['Priya Sharma', 'CL-1001', 'Moderate', 'KYC verified', 'Premium'],
-  ['Arun Nair', 'CL-1002', 'Growth', 'In review', 'Growth'],
-  ['Meera Shah', 'CL-1003', 'Conservative', 'KYC verified', 'Essential'],
-  ['Vikram Reddy', 'CL-1004', 'Aggressive', 'Action required', 'Premium'],
-  ['Kavya Iyer', 'CL-1005', 'Moderate', 'KYC verified', 'Growth'],
-];
+const clients = []; // [name, id, risk, kyc, plan] — loaded from the database
 const recs = [
   {
     product: 'Cash',
@@ -375,232 +138,17 @@ const recs = [
     status: 'Active',
   },
 ];
-const cashRecommendations = [
-  {
-    id: 'CASH-26041',
-    product: 'LC',
-    stock: 'TCS',
-    price: '₹3,412',
-    qty: 20,
-    published: '12 Aug 2026 • 09:24',
-    delivered: '12 Aug 2026 • 09:26',
-    status: 'Active',
-  },
-  {
-    id: 'CASH-26052',
-    product: 'MC',
-    stock: 'KOTAK',
-    price: '₹1,942',
-    qty: 35,
-    published: '18 Aug 2026 • 11:06',
-    delivered: '18 Aug 2026 • 11:08',
-    status: 'Active',
-  },
-  {
-    id: 'CASH-26063',
-    product: 'LC',
-    stock: 'INFY',
-    price: '₹1,528',
-    qty: 40,
-    published: '22 Aug 2026 • 10:18',
-    delivered: '22 Aug 2026 • 10:20',
-    status: 'Active',
-  },
-  {
-    id: 'CASH-26071',
-    product: 'SC',
-    stock: 'HERO',
-    price: '₹5,224',
-    qty: 10,
-    published: '03 Sep 2026 • 15:11',
-    delivered: '03 Sep 2026 • 15:14',
-    status: 'Closed',
-  },
-  {
-    id: 'CASH-26082',
-    product: 'All',
-    stock: 'SBI',
-    price: '₹812',
-    qty: 75,
-    published: '08 Sep 2026 • 10:02',
-    delivered: '08 Sep 2026 • 10:04',
-    status: 'Active',
-  },
-];
-const multiRecommendations = [
-  {
-    id: 'MULTI-26101',
-    product: 'Nano',
-    symbol: 'NIFTY',
-    expiry: '24 Sep 2026',
-    strike: '25,200',
-    option: 'CE',
-    side: 'BUY',
-    lots: 1,
-    lotSize: 75,
-    qty: 75,
-    price: '₹186.40',
-    published: '10 Sep 2026 • 09:35',
-    delivered: '10 Sep 2026 • 09:36',
-    status: 'Active',
-  },
-  {
-    id: 'MULTI-26108',
-    product: 'Mini',
-    symbol: 'SENSEX',
-    expiry: '25 Sep 2026',
-    strike: '82,000',
-    option: 'PE',
-    side: 'BUY',
-    lots: 2,
-    lotSize: 20,
-    qty: 40,
-    price: '₹428.15',
-    published: '11 Sep 2026 • 10:12',
-    delivered: '11 Sep 2026 • 10:14',
-    status: 'Active',
-  },
-  {
-    id: 'MULTI-26114',
-    product: 'Micro',
-    symbol: 'NIFTY',
-    expiry: '01 Oct 2026',
-    strike: '25,500',
-    option: 'CE',
-    side: 'SELL',
-    lots: 3,
-    lotSize: 75,
-    qty: 225,
-    price: '₹122.60',
-    published: '12 Sep 2026 • 13:05',
-    delivered: '12 Sep 2026 • 13:07',
-    status: 'Review',
-  },
-  {
-    id: 'MULTI-26119',
-    product: 'Mega',
-    symbol: 'SENSEX',
-    expiry: '29 Oct 2026',
-    strike: '83,000',
-    option: 'CE',
-    side: 'BUY',
-    lots: 4,
-    lotSize: 20,
-    qty: 80,
-    price: '₹562.00',
-    published: '14 Sep 2026 • 11:28',
-    delivered: '14 Sep 2026 • 11:30',
-    status: 'Active',
-  },
-  {
-    id: 'MULTI-26127',
-    product: 'Giga',
-    symbol: 'NIFTY',
-    expiry: '29 Oct 2026',
-    strike: '25,000',
-    option: 'PE',
-    side: 'SELL',
-    lots: 6,
-    lotSize: 75,
-    qty: 450,
-    price: '₹214.75',
-    published: '16 Sep 2026 • 14:42',
-    delivered: '16 Sep 2026 • 14:44',
-    status: 'Active',
-  },
-];
-const clientAlerts = [
-  {
-    id: 'ALT-1048',
-    channel: 'Email',
-    icon: '✉',
-    title: 'Cash recommendation published',
-    detail: 'TCS BUY view is now available in your Cash segment.',
-    time: '16 Sep 2026 • 09:24 IST',
-    unread: true,
-  },
-  {
-    id: 'ALT-1047',
-    channel: 'WhatsApp',
-    icon: '◉',
-    title: 'Multi portfolio update',
-    detail: 'The Multi portfolio allocation has been refreshed.',
-    time: '15 Sep 2026 • 16:40 IST',
-    unread: true,
-  },
-  {
-    id: 'ALT-1046',
-    channel: 'In-app',
-    icon: '🔔',
-    title: 'Quarterly review reminder',
-    detail: 'Your advisor review is scheduled for 30 September.',
-    time: '15 Sep 2026 • 11:05 IST',
-    unread: true,
-  },
-  {
-    id: 'ALT-1045',
-    channel: 'Email',
-    icon: '✉',
-    title: 'Payment receipt available',
-    detail: 'Your Jul–Sep quarterly payment receipt is ready.',
-    time: '14 Sep 2026 • 14:18 IST',
-    unread: false,
-  },
-  {
-    id: 'ALT-1044',
-    channel: 'WhatsApp',
-    icon: '◉',
-    title: 'Profile verification complete',
-    detail: 'Your KYC and communication preferences are verified.',
-    time: '12 Sep 2026 • 10:12 IST',
-    unread: false,
-  },
-];
+const cashRecommendations = [];
+const multiRecommendations = [];
+const clientAlerts = [];
 let state = {
   role: 'admin',
-  user: accounts.admin[0],
+  user: null,
   page: 'dashboard',
   filtered: recs,
-  submissions: [
-    {
-      id: 'APP-26091',
-      name: 'Ritesh Malhotra',
-      pan: 'FGHPM4821K',
-      mobile: '+91 98200 44219',
-      email: 'ritesh@demo.in',
-      broker: 'Zerodha',
-      demat: '12081600-00984217',
-      segments: 'Cash, F&O',
-      risk: 'Growth',
-      amount: '₹12,00,000',
-      submitted: '09 Sep 2026 • 10:18 IST',
-      status: 'Pending',
-    },
-  ],
-  emails: [
-    {
-      id: 'MAIL-26091',
-      application: 'APP-26091',
-      to: 'ritesh@demo.in',
-      name: 'Ritesh Malhotra',
-      subject: 'We received your Sampadha client application',
-      type: 'Submission confirmation',
-      status: 'Delivered',
-      sent: '09 Sep 2026 • 10:18:04 IST',
-      body: 'Your client onboarding application APP-26091 has been received and is pending Admin review. We will notify you after a decision.',
-    },
-    {
-      id: 'MAIL-26072',
-      application: 'APP-26072',
-      to: 'client@sampadha.demo',
-      name: 'Priya Sharma',
-      subject: 'Your Sampadha client account is approved',
-      type: 'Approval confirmation',
-      status: 'Delivered',
-      sent: '08 Sep 2026 • 16:42:19 IST',
-      body: 'Your client account has been approved. You may now sign in to view subscribed products, payment details and research recommendations.',
-    },
-  ],
+  submissions: [],
+  emails: [],
+  ws: null,
 };
 const statCards = (arr) =>
   `<section class="cards">${arr.map((x) => `<article class="card stat"><div class="label"><span>${x[0]}</span><b>${x[3] || '◫'}</b></div><strong>${x[1]}</strong><span class="positive">${x[2]}</span></article>`).join('')}</section>`;
@@ -633,34 +181,31 @@ const dashboard = () =>
         ],
   )}<section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Platform activity</h3><p>Monthly actions across all workspaces</p></div><span class="badge">Last 8 months</span></div><div class="chart">${[42, 65, 54, 81, 72, 93, 78, 100].map((h) => `<i class="bar" style="height:${h}%"></i>`).join('')}</div></article><article class="card panel"><div class="panel-head"><div><h3>Recent activity</h3><p>Latest recorded events</p></div></div>${activity()}</article></section>`;
 const users = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Users and access</h3><p>Admin can review all roles and account states.</p></div><button class="btn primary action">＋ Add user</button></div><div class="table-wrap"><table class="table"><thead><tr><th>User</th><th>Role</th><th>Last login</th><th>Access</th><th>Status</th></tr></thead><tbody>${Object.values(
-    roles,
+  `<article class="card panel"><div class="panel-head"><div><h3>Users and access</h3><p>Admin can review all roles and account states.</p></div><button class="btn primary action">＋ Add user</button></div><div class="table-wrap"><table class="table"><thead><tr><th>User</th><th>Role</th><th>Account ID</th><th>Access</th><th>Status</th></tr></thead><tbody>${(
+    state.ws?.directory || []
   )
     .map(
-      (r, i) =>
-        `<tr><td><b>${r.person}</b><small>${r.email}</small></td><td>${r.name}</td><td class="stamp">09 Sep 2026 • ${['09:12', '08:46', '08:31', '07:58'][i]} IST</td><td>${r.desc}</td><td><span class="status green">Active</span></td></tr>`,
+      (p) =>
+        `<tr><td><b>${esc(p.full_name)}</b><small>${esc(p.email)}</small></td><td>${roles[p.role].name}</td><td class="stamp">${esc(p.login_id)}</td><td>${roles[p.role].desc}</td><td><span class="status ${p.is_active ? 'green' : 'red'}">${p.is_active ? 'Active' : 'Disabled'}</span></td></tr>`,
     )
     .join('')}</tbody></table></div></article>`;
 const strategies = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Research strategies</h3><p>Create, review and publish investment strategies.</p></div><button class="btn primary action">＋ New strategy</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Strategy</th><th>Universe</th><th>Risk</th><th>Analyst</th><th>Updated</th><th>Status</th></tr></thead><tbody>${[
-    ['Momentum Select', 'Large & Mid Cap', 'High', 'Rahul Arora', '09 Sep • 09:18', 'Published'],
-    ['Quality Compounders', 'Large Cap', 'Moderate', 'Neha Singh', '08 Sep • 15:42', 'Published'],
-    ['India Value 20', 'All Cap', 'Moderate–High', 'Rahul Arora', '07 Sep • 11:08', 'Draft'],
-    ['Stable Income', 'Debt + Equity', 'Low–Moderate', 'Aman Jain', '05 Sep • 16:21', 'Review'],
-  ]
+  `<article class="card panel"><div class="panel-head"><div><h3>Research strategies</h3><p>Create, review and publish investment strategies.</p></div><button class="btn primary action">＋ New strategy</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Strategy</th><th>Universe</th><th>Risk</th><th>Analyst</th><th>Updated</th><th>Status</th></tr></thead><tbody>${(
+    state.ws?.strategies || []
+  )
     .map(
       (x) =>
-        `<tr><td><b>${x[0]}</b></td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td><td class="stamp">${x[4]}</td><td><span class="status ${x[5] === 'Published' ? 'green' : 'gold'}">${x[5]}</span></td></tr>`,
+        `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.universe)}</td><td>${esc(x.risk)}</td><td>${esc(x.analyst_name)}</td><td class="stamp">${Api.fmt.stamp(x.updated_at)}</td><td><span class="status ${x.status === 'Published' ? 'green' : 'gold'}">${esc(x.status)}</span></td></tr>`,
     )
     .join('')}</tbody></table></div></article>`;
 const reportForm = (multi) =>
   `<article class="card panel"><div class="panel-head"><div><h3>${multi ? 'Generate multiple reports' : 'Generate single report'}</h3><p>Every generated report receives an immutable date and time stamp.</p></div><span class="badge">IST timestamps</span></div><form id="reportForm"><div class="form-grid"><label class="field">${multi ? 'Select stocks' : 'Stock'}<select id="reportStock" ${multi ? 'multiple size="5"' : ''}>${['TCS', 'KOTAK', 'INFY', 'SBI', 'ICICI', 'HERO', 'JIO', 'LALITHA'].map((x) => `<option>${x}</option>`).join('')}</select></label><label class="field">Product<select><option>Cash</option><option>Multi</option><option>All</option></select></label><label class="field">From date<input type="date" value="2026-09-01"></label><label class="field">To date<input type="date" value="2026-09-09"></label></div><div class="actions"><button type="button" class="btn secondary action">Save draft</button><button class="btn primary">Generate ${multi ? 'batch' : 'report'} →</button></div></form><div id="reportResult"></div></article>`;
 const clientTable = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div><button class="btn primary" data-go="addClient">＋ Add client</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>KYC</th><th>Plan</th><th>Last contact</th></tr></thead><tbody>${clients.map((x, i) => `<tr><td><b>${x[0]}</b><small>${x[1]} • ${x[0].toLowerCase().replace(' ', '.')}@demo.in</small></td><td>${x[2]}</td><td><span class="status ${x[3] === 'KYC verified' ? 'green' : x[3] === 'In review' ? 'gold' : 'red'}">${x[3]}</span></td><td>${x[4]}</td><td class="stamp">0${9 - i} Sep 2026 • ${10 + i}:20</td></tr>`).join('')}${state.submissions.map((x) => `<tr><td><b>${x.name}</b><small>${x.id} • ${x.email}</small></td><td>${x.risk}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td class="stamp">${x.submitted}</td></tr>`).join('')}</tbody></table></div></article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div><button class="btn primary" data-go="addClient">＋ Add client</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>KYC</th><th>Plan</th><th>Mobile</th></tr></thead><tbody>${clients.map((x) => `<tr><td><b>${esc(x[0])}</b><small>${esc(x[1])} • ${esc(x[5])}</small></td><td>${esc(x[2])}</td><td><span class="status ${/verified/i.test(x[3]) ? 'green' : /review/i.test(x[3]) ? 'gold' : 'red'}">${esc(x[3])}</span></td><td>${esc(x[4])}</td><td class="stamp">${esc(x[6])}</td></tr>`).join('')}${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.id)} • ${esc(x.email)}</small></td><td>${esc(x.risk)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td class="stamp">${esc(x.submitted)}</td></tr>`).join('')}</tbody></table></div></article>`;
 const addClient = () =>
   `<form id="addClientForm"><section class="form-section card panel"><div class="panel-head"><div><h3>Personal and KYC details</h3><p>Fields marked required must be completed before submission.</p></div><span class="badge">Step 1 of 3</span></div><div class="form-grid three"><label class="field">Full legal name *<input name="name" required placeholder="As per PAN"></label><label class="field">PAN number *<input name="pan" required pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" placeholder="ABCDE1234F"></label><label class="field">Date of birth *<input name="dob" type="date" required></label><label class="field">Email address *<input name="email" type="email" required></label><label class="field">Mobile number *<input name="mobile" required placeholder="+91 98765 43210"></label><label class="field">Occupation *<select name="occupation" required><option value="">Select</option><option>Salaried</option><option>Business</option><option>Professional</option><option>Retired</option></select></label><label class="field">Annual income *<select name="income" required><option>₹5–10 lakh</option><option>₹10–25 lakh</option><option>₹25–50 lakh</option><option>Above ₹50 lakh</option></select></label><label class="field">Tax residency *<select name="residency"><option>Resident Indian</option><option>NRI</option></select></label><label class="field">City *<input name="city" required value="Mumbai"></label></div></section><section class="form-section card panel"><div class="panel-head"><div><h3>Trading and demat details</h3><p>Share-market account, segment and experience information.</p></div><span class="badge">Step 2 of 3</span></div><div class="form-grid three"><label class="field">Broker name *<select name="broker" required><option>Zerodha</option><option>ICICI Direct</option><option>Kotak Securities</option><option>HDFC Securities</option><option>Other</option></select></label><label class="field">Depository *<select name="depository"><option>CDSL</option><option>NSDL</option></select></label><label class="field">Demat / BO ID *<input name="demat" required placeholder="16-digit beneficiary ID"></label><label class="field">Trading client ID *<input name="tradingId" required placeholder="Broker client code"></label><label class="field">Primary bank *<input name="bank" required placeholder="Bank name"></label><label class="field">Investment experience *<select name="experience"><option>New investor</option><option>1–3 years</option><option>3–5 years</option><option>More than 5 years</option></select></label></div><fieldset><legend>Required market segments *</legend><div class="checks"><label><input type="checkbox" name="segments" value="Cash" checked> Cash equity</label><label><input type="checkbox" name="segments" value="F&O"> Futures & Options</label><label><input type="checkbox" name="segments" value="Currency"> Currency</label><label><input type="checkbox" name="segments" value="Commodity"> Commodity</label></div></fieldset><fieldset><legend>Interested products</legend><div class="checks"><label><input type="checkbox" name="products" value="Cash" checked> Cash</label><label><input type="checkbox" name="products" value="Multi"> Multi</label><label><input type="checkbox" name="products" value="All"> All products</label></div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Suitability and consent</h3><p>Investment capacity, objective and declarations.</p></div><span class="badge">Step 3 of 3</span></div><div class="form-grid three"><label class="field">Risk profile *<select name="risk"><option>Conservative</option><option selected>Moderate</option><option>Growth</option><option>Aggressive</option></select></label><label class="field">Investment horizon *<select name="horizon"><option>Under 1 year</option><option>1–3 years</option><option selected>3–5 years</option><option>More than 5 years</option></select></label><label class="field">Investment objective *<select name="objective"><option>Capital preservation</option><option selected>Long-term wealth</option><option>Income</option><option>Trading</option></select></label><label class="field">Proposed investment amount *<input name="amount" type="number" min="10000" value="500000" required></label><label class="field">Maximum loss tolerance *<select name="loss"><option>Up to 5%</option><option selected>Up to 15%</option><option>Up to 25%</option><option>Above 25%</option></select></label><label class="field">Preferred plan<select name="plan"><option>Essential</option><option>Growth</option><option>Premium</option></select></label></div><label class="consent"><input name="consent" type="checkbox" required><span><b>Client consent confirmed *</b><small>The client has reviewed the risk disclosure and authorized collection of these onboarding details.</small></span></label><div class="notice">Submitting creates a pending record. Only an Admin login can approve or reject the client.</div><div class="actions"><button type="button" class="btn secondary" data-go="clients">Cancel</button><button class="btn primary">Submit for Admin approval →</button></div></section></form>`;
 const approvals = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Client approval queue</h3><p>Only Admin can approve or reject submitted onboarding records.</p></div><span class="badge">${state.submissions.filter((x) => x.status === 'Pending').length} pending</span></div><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Applicant</th><th>Market account</th><th>Segments</th><th>Risk / Amount</th><th>Submitted</th><th>Status</th><th>Admin action</th></tr></thead><tbody>${state.submissions.map((x, i) => `<tr><td><b>${x.name}</b><small>${x.pan} • ${x.mobile}<br>${x.email}</small></td><td>${x.broker}<small>${x.demat}</small></td><td>${x.segments}</td><td>${x.risk}<small>${x.amount}</small></td><td class="stamp">${x.submitted}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status}</span></td><td>${x.status === 'Pending' ? `<div class="approval-actions"><button class="btn primary approve" data-index="${i}">Approve</button><button class="btn secondary reject" data-index="${i}">Reject</button></div>` : `<small>Completed by ${roles.admin.person}</small>`}</td></tr>`).join('')}</tbody></table></div></article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Client approval queue</h3><p>Only Admin can approve or reject submitted onboarding records.</p></div><span class="badge">${state.submissions.filter((x) => x.status === 'Pending').length} pending</span></div><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Applicant</th><th>Market account</th><th>Segments</th><th>Risk / Amount</th><th>Submitted</th><th>Status</th><th>Admin action</th></tr></thead><tbody>${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.pan)} • ${esc(x.mobile)}<br>${esc(x.email)}</small></td><td>${esc(x.broker)}<small>${esc(x.demat)}</small></td><td>${esc(x.segments)}</td><td>${esc(x.risk)}<small>${esc(x.amount)}</small></td><td class="stamp">${esc(x.submitted)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status}</span></td><td>${x.status === 'Pending' ? `<div class="approval-actions"><button class="btn primary approve" data-app="${esc(x.id)}">Approve</button><button class="btn secondary reject" data-app="${esc(x.id)}">Reject</button></div>` : '<small>Decision recorded</small>'}</td></tr>`).join('')}</tbody></table></div></article>`;
 const kyc = () =>
   `<section class="grid-2" style="margin-top:0"><article class="card panel"><div class="panel-head"><div><h3>KYC onboarding</h3><p>Create a client profile and collect required details.</p></div><span class="status gold">Draft</span></div><form id="kycForm"><div class="form-grid"><label class="field">Full name<input value="Nikhil Verma"></label><label class="field">PAN<input value="ABCDE1234F"></label><label class="field">Mobile<input value="+91 98765 43210"></label><label class="field">Email<input value="nikhil.verma@demo.in"></label><label class="field">Risk profile<select><option>Moderate</option><option>Conservative</option><option>Growth</option></select></label><label class="field">Document status<select><option>Received</option><option>Pending</option></select></label></div><div class="actions"><button class="btn primary">Submit for review →</button></div></form></article><article class="card panel"><h3>Onboarding progress</h3><p class="muted">Identity and contact details</p><div class="progress"><span style="width:75%"></span></div><div class="activity">${[
     ['✓', 'Profile created', 'Completed'],
@@ -674,55 +219,61 @@ const kyc = () =>
     )
     .join('')}</div></article></section>`;
 const plans = () =>
-  `<section class="plan-grid">${[
-    ['Essential', '₹12,000', 'Quarterly research updates'],
-    ['Growth', '₹32,000', 'Cash + Multi strategies'],
-    ['Premium', '₹96,000', 'All products and priority reviews'],
-  ]
+  `<section class="plan-grid">${(state.ws?.plans || [])
     .map(
-      (x, i) =>
-        `<article class="card plan ${i === 2 ? 'featured' : ''}"><span class="badge">${i === 2 ? 'MOST COMPLETE' : 'SUBSCRIPTION'}</span><h3>${x[0]}</h3><div class="price">${x[1]}<small>/ annum</small></div><p class="muted">${x[2]}</p><ul><li>Advisor research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul><button class="btn ${i === 2 ? 'primary' : 'secondary'} wide action">Select plan</button></article>`,
+      (p, i, all) =>
+        `<article class="card plan ${i === all.length - 1 ? 'featured' : ''}"><span class="badge">${i === all.length - 1 ? 'MOST COMPLETE' : 'SUBSCRIPTION'}</span><h3>${esc(p.name)}</h3><div class="price">${Api.fmt.rupee(p.price_annual)}<small>/ annum</small></div><p class="muted">${esc(p.summary)}</p><ul><li>Advisor research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul><button class="btn ${i === all.length - 1 ? 'primary' : 'secondary'} wide action">Select plan</button></article>`,
     )
     .join('')}</section>`;
 const profile = () =>
-  `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${state.user.initials}</div><h3>${state.user.person}</h3><p class="muted">${roles[state.role].name} account</p><span class="status green">Verified</span></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div><button class="btn secondary action">Edit profile</button></div><div class="detail-grid">${[
-    ['Email', state.user.email],
-    ['Mobile', state.user.mobile],
-    ['Account ID', state.user.id],
-    ['PAN', state.user.pan],
-    ['Risk profile', state.user.risk],
-    ['KYC status', state.user.kyc],
+  `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${esc(state.user.initials)}</div><h3>${esc(state.user.person)}</h3><p class="muted">${roles[state.role].name} account</p><span class="status green">Verified</span></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div><button class="btn secondary action">Edit profile</button></div><div class="detail-grid">${[
+    ['Email', esc(state.user.email)],
+    ['Mobile', esc(state.user.mobile)],
+    ['Account ID', esc(state.user.id)],
+    ['PAN', esc(state.user.pan)],
+    ['Risk profile', esc(state.user.risk)],
+    ['KYC status', esc(state.user.kyc)],
   ]
     .map((x) => `<div class="detail"><small>${x[0]}</small><b>${x[1]}</b></div>`)
     .join('')}</div></article></section>`;
-const products = () =>
-  `${statCards([
-    ['Active products', '3', 'Cash, Multi and All'],
-    ['Current plan', 'Premium', 'Valid until 31 Mar 2027'],
-    ['Next review', '30 Sep', 'Quarterly review'],
-    ['Risk profile', 'Moderate', 'Updated 12 Jul 2026'],
-  ])}<article class="card panel" style="margin-top:17px"><div class="panel-head"><div><h3>Subscribed products</h3><p>Your currently active research access.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Coverage</th><th>Frequency</th><th>Started</th><th>Status</th></tr></thead><tbody>${[
-    ['Cash', 'Direct equity ideas', 'As published', '01 Apr 2026'],
-    ['Multi', 'Model portfolios', 'Weekly', '01 Apr 2026'],
-    ['All', 'Complete research access', 'Ongoing', '01 Jul 2026'],
-  ]
-    .map(
-      (x) =>
-        `<tr><td><b>${x[0]}</b></td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td><td><span class="status green">Active</span></td></tr>`,
-    )
-    .join('')}</tbody></table></div></article>`;
-const payments = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Payment details</h3><p>Quarterly and annual subscription transactions.</p></div><span class="badge">FY 2026–27</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Invoice</th><th>Plan</th><th>Period</th><th>Billing</th><th>Amount</th><th>Paid on</th><th>Status</th></tr></thead><tbody>${[
-    ['INV-26041', 'Premium', 'Apr–Jun 2026', 'Quarterly', '₹24,000', '01 Apr 2026'],
-    ['INV-26088', 'Premium', 'Jul–Sep 2026', 'Quarterly', '₹24,000', '01 Jul 2026'],
-    ['INV-26142', 'Premium', 'Oct–Dec 2026', 'Quarterly', '₹24,000', 'Scheduled 01 Oct'],
-    ['INV-AN-027', 'Premium', 'FY 2026–27', 'Annual option', '₹96,000', '—'],
-  ]
-    .map(
-      (x, i) =>
-        `<tr>${x.map((v) => `<td>${v}</td>`).join('')}<td><span class="status ${i < 2 ? 'green' : 'gold'}">${i < 2 ? 'Paid' : 'Upcoming'}</span></td></tr>`,
-    )
-    .join('')}</tbody></table></div></article>`;
+const PRODUCT_INFO = {
+  Cash: ['Direct equity ideas', 'As published'],
+  Multi: ['Derivatives research', 'As published'],
+  All: ['Complete research access', 'Ongoing'],
+};
+const products = () => {
+  const sub = state.ws?.subscriptions?.find((x) => x.client_id === state.user.uid) || {},
+    plan = state.ws?.plans?.find((p) => p.code === sub.plan_code),
+    items = sub.products || [];
+  return `${statCards([
+    ['Active products', items.length, items.join(', ') || 'No active subscription'],
+    [
+      'Current plan',
+      esc(plan?.name || '—'),
+      sub.ends_on ? 'Valid until ' + Api.fmt.dateOnly(sub.ends_on) : 'No end date',
+    ],
+    ['Research tier', esc(sub.multi_tier || '—'), 'Multi derivatives access'],
+    ['Risk profile', esc(state.user.risk), 'KYC: ' + esc(state.user.kyc)],
+  ])}<article class="card panel" style="margin-top:17px"><div class="panel-head"><div><h3>Subscribed products</h3><p>Your currently active research access.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Coverage</th><th>Frequency</th><th>Started</th><th>Status</th></tr></thead><tbody>${
+    items
+      .map(
+        (name) =>
+          `<tr><td><b>${esc(name)}</b></td><td>${esc((PRODUCT_INFO[name] || ['—', '—'])[0])}</td><td>${esc((PRODUCT_INFO[name] || ['—', '—'])[1])}</td><td>${Api.fmt.dateOnly(sub.starts_on)}</td><td><span class="status ${sub.status === 'Active' ? 'green' : 'gold'}">${esc(sub.status)}</span></td></tr>`,
+      )
+      .join('') || '<tr><td colspan="5" class="empty">No subscribed products.</td></tr>'
+  }</tbody></table></div></article>`;
+};
+const payments = () => {
+  const plan = (code) => state.ws?.plans?.find((p) => p.code === code)?.name || code;
+  return `<article class="card panel"><div class="panel-head"><div><h3>Payment details</h3><p>Quarterly and annual subscription transactions.</p></div><span class="badge">FY 2026–27</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Invoice</th><th>Plan</th><th>Period</th><th>Billing</th><th>Amount</th><th>Paid on</th><th>Status</th></tr></thead><tbody>${
+    (state.ws?.payments || [])
+      .map(
+        (p) =>
+          `<tr><td>${esc(p.invoice_no)}</td><td>${esc(plan(p.plan_code))}</td><td>${esc(p.period_label)}</td><td>${esc(p.billing)}</td><td>${Api.fmt.rupee(p.amount)}</td><td>${p.paid_on ? Api.fmt.dateOnly(p.paid_on) : p.due_on ? 'Scheduled ' + Api.fmt.dateOnly(p.due_on) : '—'}</td><td><span class="status ${p.status === 'Paid' ? 'green' : p.status === 'Overdue' ? 'red' : 'gold'}">${esc(p.status)}</span></td></tr>`,
+      )
+      .join('') || '<tr><td colspan="7" class="empty">No payments recorded.</td></tr>'
+  }</tbody></table></div></article>`;
+};
 const cashRecommendationTable = (data) =>
   `<div class="table-wrap recommendation-table"><table class="table"><thead><tr><th>Product</th><th>Stock</th><th>Initiation price</th><th>Initiation quantity</th><th>Published date</th><th>Delivered date</th><th>Status</th><th>Report</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.stock}</b><small>${x.id}</small></td><td>${x.price}</td><td>${x.qty}</td><td class="stamp">${x.published} IST</td><td class="stamp">${x.delivered} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : 'red'}">${x.status}</span></td><td><button class="pdf-btn" data-report="${x.id}" data-segment="Cash">▤ View PDF</button></td></tr>`).join('') : '<tr><td colspan="8" class="empty">No Cash recommendations match these filters.</td></tr>'}</tbody></table></div>`;
 const multiRecommendationTable = (data) =>
@@ -739,7 +290,7 @@ function recommendationPage() {
 const recTable = (data) =>
   `<div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Stock</th><th>View</th><th>Reference price</th><th>Target</th><th>Published timestamp</th><th>Status</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.stock}</b></td><td>${x.action}</td><td>${x.price}</td><td>${x.target}</td><td class="stamp">${x.date} • ${x.time} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : x.status === 'Closed' ? 'red' : 'gold'}">${x.status}</span></td></tr>`).join('') : `<tr><td class="empty" colspan="7">No recommendations match these filters.</td></tr>`}</tbody></table></div>`;
 const alertRows = (data) =>
-  `<div class="notification-list">${data.map((x) => `<article class="notification-row ${x.unread ? 'unread' : ''}"><span class="channel-icon">${x.icon}</span><div><b>${x.title}</b><small>${x.detail}</small><small>${x.channel} • ${x.id}</small></div><time>${x.time}</time></article>`).join('') || '<div class="empty">No notifications in this channel.</div>'}</div>`;
+  `<div class="notification-list">${data.map((x) => `<article class="notification-row ${x.unread ? 'unread' : ''}"><span class="channel-icon">${x.icon}</span><div><b>${esc(x.title)}</b><small>${esc(x.detail)}</small><small>${esc(x.channel)} • ${esc(x.id)}</small></div><time>${esc(x.time)}</time></article>`).join('') || '<div class="empty">No notifications in this channel.</div>'}</div>`;
 const clientDashboard = () => {
   const unread = clientAlerts.filter((x) => x.unread).length;
   return `<section class="client-welcome card"><div><p class="overline">CLIENT OVERVIEW</p><h3>Good morning, ${state.user.person.split(' ')[0]}</h3><p>Your research, alerts and account updates are together here.</p></div><button class="btn primary" data-go="notifications">View ${unread} new alerts →</button></section>${statCards(
@@ -813,12 +364,20 @@ const workflowMap = () =>
 const emails = () => {
   const list =
     state.role === 'client' ? state.emails.filter((x) => x.to === state.user.email) : state.emails;
-  return `<article class="card panel"><div class="panel-head"><div><h3>${state.role === 'client' ? 'My notifications' : 'Client confirmation emails'}</h3><p>Automatic messages created after submission and Admin decisions.</p></div><span class="badge">${list.length} messages</span></div><div class="email-layout"><div class="email-list">${list.map((x, i) => `<button class="email-item ${i === 0 ? 'active' : ''}" data-mail="${x.id}"><span class="mail-dot"></span><div><b>${x.subject}</b><small>To: ${x.to}</small><small class="stamp">${x.sent}</small></div><span class="status green">${x.status}</span></button>`).join('') || '<div class="empty">No confirmation emails available.</div>'}</div><div id="emailPreview" class="email-preview">${list[0] ? emailBody(list[0]) : '<div class="empty">Select an email to preview.</div>'}</div></div></article>`;
+  return `<article class="card panel"><div class="panel-head"><div><h3>${state.role === 'client' ? 'My notifications' : 'Client confirmation emails'}</h3><p>Automatic messages created after submission and Admin decisions.</p></div><span class="badge">${list.length} messages</span></div><div class="email-layout"><div class="email-list">${list.map((x, i) => `<button class="email-item ${i === 0 ? 'active' : ''}" data-mail="${x.id}"><span class="mail-dot"></span><div><b>${esc(x.subject)}</b><small>To: ${esc(x.to)}</small><small class="stamp">${esc(x.sent)}</small></div><span class="status green">${esc(x.status)}</span></button>`).join('') || '<div class="empty">No confirmation emails available.</div>'}</div><div id="emailPreview" class="email-preview">${list[0] ? emailBody(list[0]) : '<div class="empty">Select an email to preview.</div>'}</div></div></article>`;
 };
 const emailBody = (x) =>
-  `<div class="email-preview-head"><span class="activity-icon">✉</span><div><h3>${x.subject}</h3><p>From: onboarding@sampadha.demo<br>To: ${x.to}</p></div><span class="status green">${x.status}</span></div><div class="email-copy"><p>Hello ${x.name},</p><p>${x.body}</p><div class="notice"><b>Application reference</b><br><span class="stamp">${x.application} • ${x.sent}</span></div><p>Regards,<br><b>Sampadha Client Services</b></p><small>This is a simulated prototype email. No external email was sent.</small></div>`;
+  `<div class="email-preview-head"><span class="activity-icon">✉</span><div><h3>${esc(x.subject)}</h3><p>From: onboarding@sampadha.demo<br>To: ${esc(x.to)}</p></div><span class="status green">${esc(x.status)}</span></div><div class="email-copy"><p>Hello ${esc(x.name)},</p><p>${esc(x.body)}</p><div class="notice"><b>Application reference</b><br><span class="stamp">${esc(x.application)} • ${esc(x.sent)}</span></div><p>Regards,<br><b>Sampadha Client Services</b></p><small>Simulated message: it is logged in the portal only. No external email was sent.</small></div>`;
+const AUDIT_ICON = { client: '✓', research: '▤' };
 const audit = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Audit trail</h3><p>Immutable sample events across the platform.</p></div><span class="badge">IST</span></div>${activity()}${activity()}</article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Audit trail</h3><p>Append-only record of changes made through the portal.</p></div><span class="badge">IST</span></div><div class="activity">${
+    (state.ws?.audit || [])
+      .map(
+        (a) =>
+          `<div class="activity-row"><span class="activity-icon">${AUDIT_ICON[a.entity.split('_')[0]] || '•'}</span><div><b>${esc(a.action)}</b><small>${esc(a.entity_ref || '')} • ${esc(a.actor_login || 'system')}</small></div><time>${Api.fmt.stamp(a.at)} IST</time></div>`,
+      )
+      .join('') || '<div class="empty">No audit events yet.</div>'
+  }</div></article>`;
 const pages = {
   dashboard,
   clientDashboard,
@@ -1010,11 +569,16 @@ function bind() {
   );
   const mark = $('#markRead');
   if (mark)
-    mark.onclick = () => {
-      clientAlerts.forEach((x) => (x.unread = false));
-      updateAlertBadge();
-      $('#notificationResults').innerHTML = alertRows(clientAlerts);
-      toast('All notifications marked as read');
+    mark.onclick = async () => {
+      try {
+        await Api.markNotificationsRead();
+        clientAlerts.forEach((x) => (x.unread = false));
+        updateAlertBadge();
+        $('#notificationResults').innerHTML = alertRows(clientAlerts);
+        toast('All notifications marked as read');
+      } catch (err) {
+        toast(err.message);
+      }
     };
   $$('.action').forEach(
     (x) =>
@@ -1087,42 +651,94 @@ function toast(m) {
   $('#toast').classList.add('show');
   setTimeout(() => $('#toast').classList.remove('show'), 2200);
 }
-function findLogin(identifier, password) {
-  const value = identifier.trim().toLowerCase();
-  for (const [role, list] of Object.entries(accounts)) {
-    const user = list.find(
-      (x) =>
-        (x.email.toLowerCase() === value || x.id.toLowerCase() === value) && x.pass === password,
-    );
-    if (user) return { role, user };
-  }
-  return null;
+function applyWorkspace(ws) {
+  state.ws = ws;
+  const fill = (target, rows) => target.splice(0, target.length, ...rows);
+  fill(cashRecommendations, ws ? ws.cash : []);
+  fill(multiRecommendations, ws ? ws.multi : []);
+  fill(clientAlerts, ws ? ws.alerts : []);
+  fill(clients, ws ? ws.clientRows : []);
+  state.submissions = ws ? ws.applications : [];
+  state.emails = ws ? ws.mails : [];
+  if (typeof researchApplyWorkspace === 'function') researchApplyWorkspace(ws);
 }
-$('#loginForm').onsubmit = (e) => {
-  e.preventDefault();
-  const match = findLogin($('#email').value, $('#password').value);
-  if (!match)
-    return ($('#loginError').textContent = 'Incorrect ID/email or password. Please try again.');
-  $('#loginError').textContent = '';
-  state.role = match.role;
-  state.user = match.user;
+async function refreshWorkspace() {
+  applyWorkspace(await Api.loadWorkspace({ role: state.role }));
+}
+async function enterPortal(profile) {
+  state.role = profile.role;
+  state.user = {
+    uid: profile.id,
+    person: profile.full_name,
+    initials: profile.initials,
+    email: profile.email,
+    mobile: profile.mobile || '—',
+    id: profile.login_id,
+    pan: profile.pan || '—',
+    risk: profile.risk_profile || 'Not applicable',
+    kyc: profile.kyc_status || '—',
+  };
+  await refreshWorkspace();
   state.page = nav[state.role][0][0];
   $('#login').classList.add('hidden');
   $('#portal').classList.remove('hidden');
   $('#roleBadge').innerHTML =
-    `<b>${state.user.person}</b><small>${roles[state.role].name} • ${roles[state.role].desc}</small>`;
+    `<b>${esc(state.user.person)}</b><small>${roles[state.role].name} • ${roles[state.role].desc}</small>`;
   $('#avatar').textContent = state.user.initials;
-  $('#password').value = '';
   show(state.page);
+}
+function leavePortal(message = '') {
+  state.user = null;
+  applyWorkspace(null);
+  $('#portal').classList.add('hidden');
+  $('#login').classList.remove('hidden');
+  $('#loginError').textContent = message;
+}
+$('#loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const submit = e.target.querySelector('button'),
+    error = $('#loginError');
+  submit.disabled = true;
+  error.textContent = '';
+  try {
+    await Api.login($('#email').value, $('#password').value);
+    const profile = await Api.currentProfile();
+    if (!profile) {
+      await Api.logout();
+      throw new Error('This account has no portal access. Contact an administrator.');
+    }
+    $('#password').value = '';
+    await enterPortal(profile);
+  } catch (err) {
+    error.textContent = err.message;
+  } finally {
+    submit.disabled = false;
+  }
 };
+// Restore an existing session after a refresh, and drop to the login screen if it expires.
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const profile = await Api.currentProfile();
+    if (profile) await enterPortal(profile);
+  } catch {
+    /* stay on the login screen */
+  }
+});
+Api.sb.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT' && state.user)
+    leavePortal('Your session ended. Please sign in again.');
+});
 $('#nav').onclick = (e) => {
   const b = e.target.closest('[data-page]');
   if (b) show(b.dataset.page);
 };
-$('#logout').onclick = () => {
-  $('#portal').classList.add('hidden');
-  $('#login').classList.remove('hidden');
-  $('#loginError').textContent = '';
+$('#logout').onclick = async () => {
+  try {
+    await Api.logout();
+  } catch {
+    /* local sign-out below still applies */
+  }
+  leavePortal();
 };
 $('#menu').onclick = () => $('.sidebar').classList.toggle('open');
 $('#notificationBell').onclick = () =>
@@ -1183,63 +799,62 @@ $('#content').addEventListener('click', (e) => {
   const action = e.target.closest('.approve,.reject');
   if (!action) return;
   if (state.role !== 'admin') return toast('Admin access required');
-  const record = state.submissions[Number(action.dataset.index)],
-    approved = action.classList.contains('approve'),
-    now = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
-  record.status = approved ? 'Approved' : 'Rejected';
-  state.emails.unshift({
-    id: `MAIL-${Date.now().toString().slice(-5)}`,
-    application: record.id,
-    to: record.email,
-    name: record.name,
-    subject: approved
-      ? 'Your Sampadha client account is approved'
-      : 'Update required for your Sampadha application',
-    type: approved ? 'Approval confirmation' : 'Decision notification',
-    status: 'Delivered',
-    sent: now,
-    body: approved
-      ? 'Your client account has been approved. You may sign in after your access credentials are activated.'
-      : 'Your application requires changes before approval. Please contact your Sampadha representative for the required corrections.',
-  });
-  toast(`Client ${record.status.toLowerCase()} • confirmation email created`);
-  show('approvals');
+  const approved = action.classList.contains('approve');
+  action.disabled = true;
+  Api.decideApplication(action.dataset.app, approved)
+    .then(async () => {
+      await refreshWorkspace();
+      toast(`Client ${approved ? 'approved' : 'rejected'} • confirmation email logged`);
+      show('approvals');
+    })
+    .catch((err) => {
+      toast(err.message);
+      action.disabled = false;
+    });
 });
-$('#content').addEventListener('submit', (e) => {
+$('#content').addEventListener('submit', async (e) => {
   if (e.target.id !== 'addClientForm') return;
   e.preventDefault();
   const d = new FormData(e.target),
-    segments = d.getAll('segments').join(', ') || 'Cash',
-    id = `APP-${Date.now().toString().slice(-5)}`,
-    now = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
-    record = {
-      id,
-      name: d.get('name'),
-      pan: d.get('pan'),
-      mobile: d.get('mobile'),
-      email: d.get('email'),
-      broker: d.get('broker'),
-      demat: d.get('demat'),
-      segments,
-      risk: d.get('risk'),
-      amount: `₹${Number(d.get('amount')).toLocaleString('en-IN')}`,
-      submitted: now,
-      status: 'Pending',
-    };
-  state.submissions.unshift(record);
-  state.emails.unshift({
-    id: `MAIL-${Date.now().toString().slice(-5)}`,
-    application: id,
-    to: record.email,
-    name: record.name,
-    subject: 'We received your Sampadha client application',
-    type: 'Submission confirmation',
-    status: 'Delivered',
-    sent: now,
-    body: `Your client onboarding application ${id} has been received and is pending Admin review. We will notify you after a decision.`,
-  });
-  toast('Client submitted • confirmation email created');
-  setTimeout(() => show('emails'), 650);
+    button = e.target.querySelector('button:not([type=button])'),
+    payload = Object.fromEntries(
+      [
+        'name',
+        'pan',
+        'dob',
+        'email',
+        'mobile',
+        'occupation',
+        'income',
+        'residency',
+        'city',
+        'broker',
+        'depository',
+        'demat',
+        'tradingId',
+        'bank',
+        'experience',
+        'risk',
+        'horizon',
+        'objective',
+        'amount',
+        'loss',
+        'plan',
+      ].map((k) => [k, d.get(k)]),
+    );
+  payload.segments = d.getAll('segments');
+  payload.products = d.getAll('products');
+  payload.consent = d.get('consent') === 'on';
+  button.disabled = true;
+  try {
+    await Api.submitApplication(payload);
+    await refreshWorkspace();
+    toast('Client submitted • confirmation email logged');
+    show('emails');
+  } catch (err) {
+    toast(err.message);
+    button.disabled = false;
+  }
 });
 const themes = {
   sapphire: {
@@ -1276,9 +891,6 @@ function renderThemes() {
 function openThemes(open = true) {
   $('#themeToolbar').classList.toggle('open', open);
 }
-const researchScript = document.createElement('script');
-researchScript.src = 'research-reports.js';
-document.head.appendChild(researchScript);
 $('#themeToggle').onclick = () => openThemes();
 $('#floatingTheme').onclick = () => openThemes();
 $('#themeClose').onclick = () => openThemes(false);

@@ -198,3 +198,19 @@
     width: 100%;
   }
 }
+
+.research-qr {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.research-qr img {
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+}
+.research-qr code {
+  word-break: break-all;
+}
