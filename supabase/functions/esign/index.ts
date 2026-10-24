@@ -16,12 +16,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const BUCKET = 'v2-research';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const API_BASE = 'https://console.finanalyz.com/production/esign';
-const RETURN_ORIGINS = (
-  Deno.env.get('ESIGN_RETURN_ORIGINS') ?? 'https://racrm.fintecindia.com,http://localhost:8766'
-)
+// The eSign service fails on non-HTTPS callback URLs, so only HTTPS origins are accepted.
+const RETURN_ORIGINS = (Deno.env.get('ESIGN_RETURN_ORIGINS') ?? 'https://racrm.fintecindia.com')
   .split(',')
   .map((o) => o.trim())
-  .filter(Boolean);
+  .filter((o) => o.startsWith('https://'));
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',

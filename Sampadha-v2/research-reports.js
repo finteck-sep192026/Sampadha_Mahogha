@@ -836,7 +836,7 @@ function researchSignPanel(r) {
         '</strong> on ' +
         reportEscape(r.signed) +
         '. Clients receive this signed PDF.</p>'
-      : '<p class="research-notice">Review the PDF above, then sign it with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. You come back here when signing is done, and clients can be selected only after the server confirms the signature.</p><form id="researchSignForm" data-report="' +
+      : '<p class="research-notice">Review the PDF above, then sign it with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. You are normally brought back here when signing is done; if the eSign page ends on the signed PDF instead, come back to this report and click Check signing status. Clients can be selected only after the server confirms the signature.</p><form id="researchSignForm" data-report="' +
         reportEscape(r.id) +
         '" class="research-signing"><label class="research-check"><input type="checkbox" name="consent">I have reviewed this report and will sign it with my Aadhaar eSign.</label><label class="field">Your mobile number<input name="mobile" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" required placeholder="10-digit mobile" value="' +
         reportEscape(researchRememberedMobile()) +
@@ -884,7 +884,10 @@ async function researchStartSign(r, form) {
     status.textContent = 'Preparing the PDF for signing...';
     await Api.uploadPreviewPdf(r.id, await createResearchPdfBlob(r));
     status.textContent = 'Opening the eSign page...';
-    const returnUrl = new URL(location.pathname, location.origin);
+    const returnUrl = new URL(
+      location.pathname,
+      location.protocol === 'https:' ? location.origin : window.SAMPADHA_CONFIG.liveSiteUrl,
+    );
     returnUrl.searchParams.set(ESIGN_RETURN_PARAM, r.id);
     const start = await Api.esignStart(r.id, form.elements.mobile.value, returnUrl.href);
     researchRememberMobile(form.elements.mobile.value.trim());
