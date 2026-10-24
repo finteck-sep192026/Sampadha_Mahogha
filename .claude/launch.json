@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sampadha-v2",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "Sampadha-v2", "-p", "8766", "-c-1"],
+      "port": 8766
+    },
+    {
+      "name": "sampadha-v1",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "Sampadha-mah", "-p", "8765", "-c-1"],
+      "port": 8765
+    }
+  ]
+}

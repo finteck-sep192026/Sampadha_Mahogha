@@ -1,0 +1,63 @@
+.research-pdf-shell {
+  overflow: hidden;
+}
+.research-pdf-shell .research-workflow-header {
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+.research-pdf-shell .research-workflow-header h3,
+.research-pdf-shell .research-workflow-header p {
+  margin: 0.15rem 0;
+}
+.research-pdf-shell iframe {
+  display: block;
+  width: 100%;
+  height: min(76vh, 820px);
+  min-height: 620px;
+  margin-top: 0.65rem;
+  border: 1px solid #c5d5e5;
+  border-radius: 14px;
+  background: #eef3f8;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+.research-analysis-table {
+  min-width: 760px;
+}
+.research-analysis-table th:first-child {
+  width: 220px;
+  color: #0d3970;
+}
+.research-analysis-table td {
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.research-demo-sign {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  width: min(100%, 480px);
+  margin: 1rem 0 0 auto;
+  padding: 0.8rem 1rem;
+  border: 1px solid #c99325;
+  border-radius: 12px;
+  background: #fff9e9;
+  color: #38536f;
+  text-align: right;
+}
+.research-demo-sign strong {
+  color: #8a5b09;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 720px) {
+  .research-pdf-shell iframe {
+    min-height: 480px;
+    height: 68vh;
+  }
+  .research-pdf-shell .research-workflow-header {
+    display: grid;
+  }
+  .research-pdf-shell .research-workflow-header .btn {
+    width: 100%;
+  }
+}

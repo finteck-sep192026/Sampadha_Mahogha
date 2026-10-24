@@ -7,7 +7,9 @@
     "vendor": "node scripts/copy-vendor.mjs",
     "seed:demo": "node --env-file=.env scripts/seed-demo.mjs",
     "serve": "npx --yes http-server Sampadha-mah -p 8765 -c-1",
-    "format": "prettier --write \"Sampadha-mah/**/*.{js,css,html}\" \"scripts/**/*.mjs\""
+    "format": "prettier --write \"Sampadha-mah/**/*.{js,css,html}\" \"Sampadha-v2/**/*.{js,css,html}\" \"scripts/**/*.mjs\"",
+    "serve:v2": "npx --yes http-server Sampadha-v2 -p 8766 -c-1",
+    "deploy:esign": "supabase functions deploy digio-esign --project-ref nxtyswlxnmekpvlfuucg --use-api"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.45.0",

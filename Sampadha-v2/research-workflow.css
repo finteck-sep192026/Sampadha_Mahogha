@@ -1,0 +1,216 @@
+.research-workflow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.research-workflow-header h3 {
+  margin: 0;
+}
+.research-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+.research-steps span {
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.research-entry {
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+}
+.research-entry-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.research-entry-head h4 {
+  margin: 0;
+}
+.research-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.research-entry-grid .field {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+.research-entry-grid input {
+  min-width: 0;
+  font-size: 14px;
+}
+.research-entry-grid input[readonly] {
+  background: #eaf0f6;
+  color: #52667e;
+}
+.research-textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+.research-check {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 14px;
+}
+.research-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.research-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 16px 0;
+}
+.research-type-check {
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.research-type-check:has(input:checked) {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.research-client-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.research-client {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.research-client small {
+  display: block;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.research-section {
+  margin-top: 20px;
+}
+.research-section pre {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.research-notice {
+  font-size: 14px;
+  color: var(--muted);
+}
+.research-message {
+  margin: 12px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.research-orders-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+.research-orders-tabs [aria-pressed='true'] {
+  background: var(--blue);
+  color: #fff;
+}
+.research-signing {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.research-signing input[name='otp'] {
+  max-width: 260px;
+}
+.research-lock {
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 10px;
+}
+.research-order-table {
+  min-width: 2050px;
+}
+.research-exit-form {
+  display: grid;
+  grid-template-columns: 150px 170px auto;
+  gap: 8px;
+  align-items: end;
+  min-width: 460px;
+}
+.research-exit-form label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.research-exit-form input {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.research-exit-form .btn {
+  white-space: nowrap;
+}
+.research-exit-error {
+  grid-column: 1/-1;
+  color: var(--red);
+  white-space: normal;
+  max-width: 460px;
+}
+.research-error {
+  color: var(--red);
+}
+@media (max-width: 1100px) {
+  .research-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .research-entry-grid,
+  .research-client-grid {
+    grid-template-columns: 1fr;
+  }
+  .research-workflow-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .research-filter-bar .btn {
+    width: 100%;
+  }
+}
+
+.research-qr {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.research-qr img {
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+}
+.research-qr code {
+  word-break: break-all;
+}

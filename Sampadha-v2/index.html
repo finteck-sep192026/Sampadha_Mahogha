@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sampadha Wealth Portal v2</title>
+    <meta
+      name="description"
+      content="Four-role wealth advisory portal prototype for administrators, research analysts, sales teams and clients."
+    />
+    <link rel="stylesheet" href="portal.css" />
+    <link rel="stylesheet" href="client-onboarding.css" />
+    <link rel="stylesheet" href="brand-premium.css" />
+    <link rel="stylesheet" href="theme-toolbar.css" />
+    <link rel="stylesheet" href="sidebar-theme-fix.css" />
+    <link rel="stylesheet" href="workflow-map.css" />
+    <link rel="stylesheet" href="client-notifications.css" />
+    <link rel="stylesheet" href="client-actions.css" />
+    <link rel="stylesheet" href="recommendation-sections.css" />
+  </head>
+  <body>
+    <main id="login" class="login-page">
+      <section class="login-brand">
+        <div class="hero-logo"><img src="assets/sampadha-logo.png" alt="Sampadha" /></div>
+        <p class="overline">SAMPADHA WEALTH</p>
+        <h1>One platform.<br />Four focused workspaces.</h1>
+        <p>
+          Research, onboarding, subscriptions and investment communication—with clear role-based
+          access.
+        </p>
+        <div class="feature-row">
+          <span>✓ Research-led</span><span>✓ Consent-aware</span><span>✓ Audit-ready</span>
+        </div>
+      </section>
+      <section class="login-box">
+        <p class="overline">INTERACTIVE PROTOTYPE</p>
+        <h2>Sign in to your account</h2>
+        <p class="muted">Enter your Client ID, staff ID or email address and password.</p>
+        <form id="loginForm">
+          <label
+            >Client ID / Staff ID / Email address<input
+              id="email"
+              type="text"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="CL-1001 or client@sampadha.demo"
+              required /></label
+          ><label
+            >Password<input id="password" type="password" autocomplete="current-password" required
+          /></label>
+          <p id="loginError" class="error" role="alert"></p>
+          <button class="btn primary wide">Enter workspace →</button>
+        </form>
+        <p class="demo-hint">
+          Demo data is fictional. Sign-in is verified by the server; ask your administrator for
+          credentials.
+        </p>
+      </section>
+    </main>
+    <div id="portal" class="portal hidden">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="sidebar-logo"><img src="assets/sampadha-logo.png" alt="Sampadha logo" /></div>
+          <div><b>Sampadha</b><small>Wealth Portal</small></div>
+        </div>
+        <div id="roleBadge" class="role-badge"></div>
+        <nav id="nav"></nav>
+        <button id="logout" class="logout">↪ Sign out</button>
+      </aside>
+      <section class="main">
+        <header class="topbar">
+          <button id="menu" class="menu">☰</button>
+          <div>
+            <p id="crumb" class="overline"></p>
+            <h2 id="title"></h2>
+          </div>
+          <div class="top-right">
+            <span class="live">● DEMO</span
+            ><button id="themeToggle" class="theme-trigger" type="button">◉ Theme</button
+            ><button
+              id="notificationBell"
+              class="icon alert-bell"
+              type="button"
+              aria-label="Open notifications"
+            >
+              🔔<span id="alertCount">0</span></button
+            ><button class="avatar" id="avatar"></button>
+          </div>
+        </header>
+        <div id="content" class="content"></div>
+      </section>
+    </div>
+    <aside id="themeToolbar" class="theme-toolbar">
+      <div class="theme-head">
+        <div><small>APPEARANCE</small><b>Premium themes</b></div>
+        <button id="themeClose" type="button">×</button>
+      </div>
+      <p>Choose a color system. Your preference is saved on this device.</p>
+      <div id="themeOptions" class="theme-options"></div>
+    </aside>
+    <button id="floatingTheme" class="floating-theme" type="button" aria-label="Change color theme">
+      ◉
+    </button>
+    <div id="toast" class="toast"></div>
+    <script src="config.js"></script>
+    <script src="vendor/supabase.js"></script>
+    <script src="api.js"></script>
+    <script src="role-app.js"></script>
+    <script src="research-reports.js"></script>
+  </body>
+</html>
