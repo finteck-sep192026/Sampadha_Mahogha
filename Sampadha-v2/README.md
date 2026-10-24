@@ -25,6 +25,12 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    `DIGIO_ENV` (`sandbox` until you go live, then `production`).
 5. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
 
+## Live site
+
+<https://racrm.fintecindia.com> (Hostinger) is deployed from the GitHub branch `deploy-v2`, which holds only
+this folder. To release changes: commit on `main`, run `npm run publish:v2`, then press *Deploy* in
+hPanel → racrm.fintecindia.com → Advanced → GIT if it does not redeploy on its own.
+
 ## Signing a report
 
 Research Analyst → Multiple reports → fill the legs, attachments and four analysis sections → *Create &
