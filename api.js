@@ -1,6 +1,6 @@
 // Data layer: everything the portal reads or writes goes through here.
 // Security lives in Postgres (RLS + SECURITY DEFINER functions in schema v2), Storage policies and
-// the digio-esign Edge Function; this file only calls them.
+// the esign Edge Function; this file only calls them.
 (() => {
   const cfg = window.SAMPADHA_CONFIG;
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
@@ -374,9 +374,9 @@
     upload(`${reportId}/preview.pdf`, blob, 'application/pdf');
   const downloadFile = async (path) => must(await sb.storage.from(BUCKET).download(path));
 
-  // ───────────── Digio Aadhaar eSign (Edge Function holds the Digio credentials) ─────────────
+  // ───────────── Aadhaar eSign (the esign Edge Function holds the gateway API key) ─────────────
   async function esign(action, body) {
-    const { data, error } = await sb.functions.invoke('digio-esign', {
+    const { data, error } = await sb.functions.invoke('esign', {
       body: { action, ...body },
     });
     if (error) {
@@ -392,7 +392,8 @@
     }
     return data;
   }
-  const esignStart = (reportId, identifier) => esign('start', { reportId, identifier });
+  const esignStart = (reportId, mobile, returnUrl) =>
+    esign('start', { reportId, mobile, returnUrl });
   const esignVerify = (reportId) => esign('verify', { reportId });
 
   window.Api = {
