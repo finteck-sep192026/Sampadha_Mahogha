@@ -24,8 +24,9 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    `supabase/functions/esign/index.ts` into Dashboard → Edge Functions → Deploy via Editor, name `esign`).
 4. **eSign secret** — Dashboard → Edge Functions → Secrets: `FINANALYZ_API_KEY` (the XApiKey from
    console.finanalyz.com, with eSign enabled and production credits). Optional `ESIGN_RETURN_ORIGINS`:
-   comma-separated site origins allowed to receive the signer back (default: racrm.fintecindia.com and
-   localhost:8766).
+   comma-separated HTTPS origins allowed to receive the signer back (default:
+   https://racrm.fintecindia.com). The eSign service rejects non-HTTPS return addresses, so a local copy
+   sends signers back to the live site (`liveSiteUrl` in `config.js`).
 5. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
 
 ## Live site
