@@ -855,11 +855,13 @@ function researchSignPanel(r) {
     '</section>'
   );
 }
-function researchLoadDigio() {
+// Digio serves a separate SDK build per environment (documentation.digio.in/sdk/web/web).
+const DIGIO_SDK_BASE = { sandbox: 'https://ext.digio.in', production: 'https://app.digio.in' };
+function researchLoadDigio(environment) {
   if (window.Digio) return Promise.resolve();
   researchDigioSdk ??= new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'https://app.digio.in/sdk/v11/digio.js';
+    script.src = (DIGIO_SDK_BASE[environment] || DIGIO_SDK_BASE.sandbox) + '/sdk/v11/digio.js';
     script.onload = resolve;
     script.onerror = () => {
       researchDigioSdk = null;
@@ -870,11 +872,13 @@ function researchLoadDigio() {
   });
   return researchDigioSdk;
 }
-// Opens Digio's signing window; resolves when Digio reports success. The server still checks.
+// Opens Digio's signing window inside the page (an iframe, so popup blockers cannot stop it after
+// the async preparation steps); resolves when Digio reports success. The server still checks.
 function researchDigioSign(start) {
   return new Promise((resolve, reject) => {
     const digio = new window.Digio({
       environment: start.environment,
+      is_iframe: true,
       callback: (response) =>
         response && response.error_code
           ? reject(new Error(response.message || 'Signing was not completed in Digio.'))
@@ -883,7 +887,8 @@ function researchDigioSign(start) {
       theme: { primaryColor: '#0d3970', secondaryColor: '#c99325' },
     });
     digio.init();
-    digio.submit(start.documentId, start.identifier);
+    if (start.accessToken) digio.submit(start.documentId, start.identifier, start.accessToken);
+    else digio.submit(start.documentId, start.identifier);
   });
 }
 async function researchConfirmSign(reportId) {
@@ -914,10 +919,8 @@ async function researchStartSign(r, form) {
     status.textContent = 'Preparing the PDF for signing...';
     await Api.uploadPreviewPdf(r.id, await createResearchPdfBlob(r));
     status.textContent = 'Opening Digio...';
-    const [start] = await Promise.all([
-      Api.esignStart(r.id, form.elements.identifier.value),
-      researchLoadDigio(),
-    ]);
+    const start = await Api.esignStart(r.id, form.elements.identifier.value);
+    await researchLoadDigio(start.environment);
     researchRememberIdentifier(start.identifier);
     status.textContent = 'Complete the Aadhaar OTP in the Digio window.';
     await researchDigioSign(start);
