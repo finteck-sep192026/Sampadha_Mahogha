@@ -26,7 +26,10 @@ const reply = (status: number, body: unknown) =>
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
 class HttpError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -150,6 +153,9 @@ async function start(profile: Awaited<ReturnType<typeof caller>>, body: Record<s
           sign_type: 'aadhaar',
         },
       ],
+      signature_type: 'aadhaar',
+      // Returns a token the Web SDK uses to skip Digio's own login step for this signer.
+      generate_access_token: true,
       expire_in_days: 1,
       display_on_page: 'last',
       notify_signers: false,
@@ -177,7 +183,12 @@ async function start(profile: Awaited<ReturnType<typeof caller>>, body: Record<s
     pdf_sha256: hash,
     environment: DIGIO_ENV,
   });
-  return { documentId: doc.id, identifier, environment: DIGIO_ENV };
+  return {
+    documentId: doc.id,
+    identifier,
+    accessToken: doc.access_token?.id ?? null,
+    environment: DIGIO_ENV,
+  };
 }
 
 async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<string, unknown>) {
@@ -207,7 +218,9 @@ async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   if (doc.agreement_status === 'completed' && party?.status === 'signed') {
     const signed = new Uint8Array(
       await (
-        await digio('/v2/client/document/download?document_id=' + encodeURIComponent(request.document_id))
+        await digio(
+          '/v2/client/document/download?document_id=' + encodeURIComponent(request.document_id),
+        )
       ).arrayBuffer(),
     );
     const path = report.id + '/signed.pdf';
@@ -219,11 +232,21 @@ async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<
       signerName = party.name || profile.full_name;
     await v2
       .from('esign_requests')
-      .update({ status: 'Signed', signed_at: signedAt, signer_name: signerName, provider_status: providerStatus })
+      .update({
+        status: 'Signed',
+        signed_at: signedAt,
+        signer_name: signerName,
+        provider_status: providerStatus,
+      })
       .eq('id', request.id);
     await v2
       .from('research_reports')
-      .update({ esign_status: 'Signed', signed_at: signedAt, signer_name: signerName, signed_pdf_path: path })
+      .update({
+        esign_status: 'Signed',
+        signed_at: signedAt,
+        signer_name: signerName,
+        signed_pdf_path: path,
+      })
       .eq('id', report.id);
     await audit(profile, 'report.esigned', report.report_ref, {
       document_id: request.document_id,
@@ -235,10 +258,16 @@ async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   if (['expired', 'failed'].includes(doc.agreement_status) || party?.status === 'failed') {
     await v2
       .from('esign_requests')
-      .update({ status: doc.agreement_status === 'expired' ? 'Expired' : 'Failed', provider_status: providerStatus })
+      .update({
+        status: doc.agreement_status === 'expired' ? 'Expired' : 'Failed',
+        provider_status: providerStatus,
+      })
       .eq('id', request.id);
     await v2.from('research_reports').update({ esign_status: 'Unsigned' }).eq('id', report.id);
-    return { status: 'Unsigned', message: 'The signing request ' + (doc.agreement_status ?? 'failed') + '. Start again.' };
+    return {
+      status: 'Unsigned',
+      message: 'The signing request ' + (doc.agreement_status ?? 'failed') + '. Start again.',
+    };
   }
 
   await v2.from('esign_requests').update({ provider_status: providerStatus }).eq('id', request.id);
