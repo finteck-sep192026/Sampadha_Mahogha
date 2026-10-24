@@ -1,19 +1,27 @@
-// Digio Aadhaar eSign for Sampadha v2 research reports.
+// Aadhaar eSign (NSDL, via the FinAnalyz gateway) for Sampadha v2 research reports.
 //
-//   POST { action: 'start',  reportId, identifier }  → uploads <reportId>/preview.pdf to Digio and
-//        returns { documentId, identifier, environment } for the Digio Web SDK to open the signing.
-//   POST { action: 'verify', reportId }              → asks Digio whether the document is signed;
-//        if so stores the signed PDF at <reportId>/signed.pdf and marks the report Signed.
+//   POST { action: 'start', reportId, mobile, returnUrl }
+//        → sends <reportId>/preview.pdf for signing and returns { url } of the hosted signing
+//          page. After signing, the signer is sent back to returnUrl.
+//   POST { action: 'verify', reportId }
+//        → asks FinAnalyz whether signing finished; if so stores the signed PDF at
+//          <reportId>/signed.pdf and marks the report Signed.
 //
 // Only this function (service role) can mark a report signed; send_research_report() refuses
-// unsigned reports. Digio credentials live in Edge Function secrets, never in the browser:
-//   supabase secrets set DIGIO_CLIENT_ID=... DIGIO_CLIENT_SECRET=... DIGIO_ENV=sandbox
+// unsigned reports. The API key lives in an Edge Function secret, never in the browser:
+//   FINANALYZ_API_KEY   (required)
+//   ESIGN_RETURN_ORIGINS  comma-separated origins allowed as returnUrl (optional)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const BUCKET = 'v2-research';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
-const DIGIO_ENV = Deno.env.get('DIGIO_ENV') === 'production' ? 'production' : 'sandbox';
-const DIGIO_BASE = DIGIO_ENV === 'production' ? 'https://api.digio.in' : 'https://ext.digio.in:444';
+const API_BASE = 'https://console.finanalyz.com/production/esign';
+const RETURN_ORIGINS = (
+  Deno.env.get('ESIGN_RETURN_ORIGINS') ?? 'https://racrm.fintecindia.com,http://localhost:8766'
+)
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -41,48 +49,48 @@ const admin = createClient(
 );
 const v2 = admin.schema('v2');
 
-function digioAuth() {
-  const id = Deno.env.get('DIGIO_CLIENT_ID'),
-    secret = Deno.env.get('DIGIO_CLIENT_SECRET');
-  if (!id || !secret) throw new HttpError(503, 'Digio eSign is not configured on the server yet.');
-  return 'Basic ' + btoa(id + ':' + secret);
-}
-async function digio(path: string, init: RequestInit = {}) {
-  const res = await fetch(DIGIO_BASE + path, {
+// Calls the gateway and unwraps its { data: { data: ... } } / { data: ... } envelopes.
+async function gateway(path: string, init: RequestInit = {}) {
+  const key = Deno.env.get('FINANALYZ_API_KEY');
+  if (!key) throw new HttpError(503, 'Aadhaar eSign is not configured on the server yet.');
+  const res = await fetch(API_BASE + path, {
     ...init,
-    headers: { Authorization: digioAuth(), ...(init.headers ?? {}) },
+    headers: { XApiKey: key, Accept: 'application/json', ...(init.headers ?? {}) },
   });
-  if (!res.ok) {
-    const text = await res.text();
-    let message = text;
-    try {
-      message = JSON.parse(text).message ?? text;
-    } catch {
-      /* plain-text error */
-    }
-    throw new HttpError(502, 'Digio: ' + (message || res.statusText));
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.success === false) {
+    const messages: Record<number, string> = {
+      401: 'The eSign API key was rejected.',
+      402: 'Not enough eSign credits. Top up the FinAnalyz account.',
+      403: 'eSign is not enabled for this FinAnalyz account.',
+    };
+    throw new HttpError(502, 'eSign: ' + (messages[res.status] ?? body.message ?? res.statusText));
   }
-  return res;
+  return body.data?.data ?? body.data ?? body;
 }
 
-const toBase64 = (bytes: Uint8Array) => {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += 0x8000)
-    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-};
 const sha256 = async (bytes: Uint8Array) =>
   [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 
-// Digio identifies a signer by email or 10-digit Indian mobile number.
-function normaliseIdentifier(value: unknown) {
-  const raw = String(value ?? '').trim();
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) && raw.length <= 120) return raw.toLowerCase();
-  const digits = raw.replace(/[\s-]/g, '').replace(/^(\+91|91|0)(?=\d{10}$)/, '');
+// NSDL Aadhaar eSign sends the OTP to the Aadhaar-linked mobile; the gateway wants a
+// 10-digit mobile number for the signer.
+function normaliseMobile(value: unknown) {
+  const digits = String(value ?? '')
+    .replace(/[\s-]/g, '')
+    .replace(/^(\+91|91|0)(?=\d{10}$)/, '');
   if (/^[6-9]\d{9}$/.test(digits)) return digits;
-  throw new HttpError(400, 'Enter the email or 10-digit mobile number you use for Aadhaar eSign.');
+  throw new HttpError(400, 'Enter a 10-digit mobile number.');
+}
+function allowedReturnUrl(value: unknown) {
+  try {
+    const url = new URL(String(value ?? ''));
+    if (RETURN_ORIGINS.includes(url.origin)) return url.toString();
+  } catch {
+    /* fall through */
+  }
+  throw new HttpError(400, 'This website is not allowed to receive eSign results.');
 }
 
 async function caller(req: Request) {
@@ -91,7 +99,7 @@ async function caller(req: Request) {
   if (error || !data.user) throw new HttpError(401, 'Sign in again.');
   const { data: profile } = await v2
     .from('profiles')
-    .select('id, login_id, role, full_name, is_active')
+    .select('id, login_id, role, full_name, email, is_active')
     .eq('id', data.user.id)
     .maybeSingle();
   if (!profile?.is_active || !['ra', 'admin'].includes(profile.role))
@@ -130,65 +138,77 @@ const audit = (
 async function start(profile: Awaited<ReturnType<typeof caller>>, body: Record<string, unknown>) {
   const report = await ownedReport(profile, body.reportId);
   if (report.esign_status === 'Signed') throw new HttpError(409, 'This report is already signed.');
-  const identifier = normaliseIdentifier(body.identifier);
+  const mobile = normaliseMobile(body.mobile);
+  const returnUrl = allowedReturnUrl(body.returnUrl);
 
-  const { data: file, error } = await admin.storage
-    .from(BUCKET)
-    .download(report.id + '/preview.pdf');
+  const path = report.id + '/preview.pdf';
+  const { data: file, error } = await admin.storage.from(BUCKET).download(path);
   if (error || !file) throw new HttpError(400, 'Generate the report PDF before signing.');
   const pdf = new Uint8Array(await file.arrayBuffer());
   if (pdf.length > MAX_PDF_BYTES) throw new HttpError(400, 'The report PDF is larger than 10 MB.');
   if (new TextDecoder().decode(pdf.subarray(0, 5)) !== '%PDF-')
     throw new HttpError(400, 'The uploaded preview is not a PDF.');
+  // The signature goes at the bottom right of the last page.
+  const pages = Math.max(
+    1,
+    (new TextDecoder().decode(pdf).match(/\/Type \/Page\b(?!s)/g) ?? []).length,
+  );
 
-  const res = await digio('/v2/client/document/uploadpdf', {
+  const session = await gateway('/initiate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      signers: [
-        {
-          identifier,
-          name: profile.full_name,
-          reason: 'Research report ' + report.report_ref,
-          sign_type: 'aadhaar',
-        },
-      ],
-      signature_type: 'aadhaar',
-      // Returns a token the Web SDK uses to skip Digio's own login step for this signer.
-      generate_access_token: true,
-      expire_in_days: 1,
-      display_on_page: 'last',
-      notify_signers: false,
-      send_sign_link: false,
-      file_name: report.report_ref + '.pdf',
-      file_data: toBase64(pdf),
+      pdf_pre_uploaded: true,
+      callback_url: returnUrl,
+      config: {
+        auth_mode: '1',
+        reason: 'Research report ' + report.report_ref,
+        accept_selfie: false,
+        allow_selfie_upload: false,
+        accept_virtual_sign: false,
+        track_location: false,
+        positions: { [pages]: [{ x: 560, y: 40 }] },
+      },
+      prefill_options: {
+        full_name: profile.full_name,
+        mobile_number: mobile,
+        user_email: profile.email,
+      },
     }),
   });
-  const doc = await res.json();
-  if (!doc?.id) throw new HttpError(502, 'Digio did not return a document ID.');
+  if (!session?.client_id || !session?.url)
+    throw new HttpError(502, 'eSign: the gateway did not return a signing session.');
+
+  // The gateway fetches the PDF itself; give it a short-lived link to the private file.
+  const { data: link, error: linkError } = await admin.storage
+    .from(BUCKET)
+    .createSignedUrl(path, 15 * 60);
+  if (linkError || !link) throw new HttpError(500, 'Could not share the PDF for signing.');
+  const uploaded = await gateway('/upload-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: session.client_id, link: link.signedUrl }),
+  });
+  if (uploaded?.uploaded !== true) throw new HttpError(502, 'eSign: the PDF was not accepted.');
 
   const hash = await sha256(pdf);
   const { error: insertError } = await v2.from('esign_requests').insert({
     report_id: report.id,
-    document_id: doc.id,
-    signer_identifier: identifier,
+    provider: 'finanalyz',
+    document_id: session.client_id,
+    signer_identifier: mobile,
     pdf_sha256: hash,
     requested_by: profile.id,
-    provider_status: { agreement_status: doc.agreement_status ?? 'requested' },
+    provider_status: { status: 'initiated' },
   });
   if (insertError) throw new HttpError(500, insertError.message);
   await v2.from('research_reports').update({ esign_status: 'Requested' }).eq('id', report.id);
   await audit(profile, 'report.esign_requested', report.report_ref, {
-    document_id: doc.id,
+    client_id: session.client_id,
     pdf_sha256: hash,
-    environment: DIGIO_ENV,
+    provider: 'finanalyz',
   });
-  return {
-    documentId: doc.id,
-    identifier,
-    accessToken: doc.access_token?.id ?? null,
-    environment: DIGIO_ENV,
-  };
+  return { url: session.url };
 }
 
 async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<string, unknown>) {
@@ -196,7 +216,7 @@ async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   if (report.esign_status === 'Signed') return { status: 'Signed', signedAt: report.signed_at };
   const { data: request } = await v2
     .from('esign_requests')
-    .select('id, document_id, signer_identifier')
+    .select('id, document_id')
     .eq('report_id', report.id)
     .eq('status', 'Requested')
     .order('requested_at', { ascending: false })
@@ -204,38 +224,34 @@ async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<
     .maybeSingle();
   if (!request) throw new HttpError(400, 'Start the Aadhaar eSign first.');
 
-  const doc = await (await digio('/v2/client/document/' + request.document_id)).json();
-  const party = (doc.signing_parties ?? []).find(
-    (p: { identifier?: string }) =>
-      String(p.identifier ?? '').toLowerCase() === request.signer_identifier,
-  );
+  const clientId = encodeURIComponent(request.document_id);
+  const state = await gateway('/status?client_id=' + clientId);
   const providerStatus = {
-    agreement_status: doc.agreement_status,
-    signer_status: party?.status,
-    signer_updated_at: party?.updated_at,
+    status: state?.status,
+    completed: state?.completed,
+    esign_error: state?.esign_error,
+    nsdl_error: state?.error_message_from_nsdl,
   };
 
-  if (doc.agreement_status === 'completed' && party?.status === 'signed') {
-    const signed = new Uint8Array(
-      await (
-        await digio(
-          '/v2/client/document/download?document_id=' + encodeURIComponent(request.document_id),
-        )
-      ).arrayBuffer(),
-    );
+  if (state?.completed === true && !state?.esign_error) {
+    const download = await gateway('/download?client_id=' + clientId);
+    if (!download?.url) throw new HttpError(502, 'eSign: no download link for the signed PDF.');
+    const res = await fetch(download.url);
+    const signed = new Uint8Array(await res.arrayBuffer());
+    if (!res.ok || new TextDecoder().decode(signed.subarray(0, 5)) !== '%PDF-')
+      throw new HttpError(502, 'eSign: the signed PDF could not be downloaded.');
     const path = report.id + '/signed.pdf';
     const { error: uploadError } = await admin.storage
       .from(BUCKET)
       .upload(path, signed, { contentType: 'application/pdf', upsert: true });
     if (uploadError) throw new HttpError(500, uploadError.message);
-    const signedAt = new Date().toISOString(),
-      signerName = party.name || profile.full_name;
+    const signedAt = new Date().toISOString();
     await v2
       .from('esign_requests')
       .update({
         status: 'Signed',
         signed_at: signedAt,
-        signer_name: signerName,
+        signer_name: profile.full_name,
         provider_status: providerStatus,
       })
       .eq('id', request.id);
@@ -244,29 +260,29 @@ async function verify(profile: Awaited<ReturnType<typeof caller>>, body: Record<
       .update({
         esign_status: 'Signed',
         signed_at: signedAt,
-        signer_name: signerName,
+        signer_name: profile.full_name,
         signed_pdf_path: path,
       })
       .eq('id', report.id);
     await audit(profile, 'report.esigned', report.report_ref, {
-      document_id: request.document_id,
+      client_id: request.document_id,
       signed_pdf_sha256: await sha256(signed),
     });
     return { status: 'Signed', signedAt };
   }
 
-  if (['expired', 'failed'].includes(doc.agreement_status) || party?.status === 'failed') {
+  if (state?.esign_error) {
     await v2
       .from('esign_requests')
-      .update({
-        status: doc.agreement_status === 'expired' ? 'Expired' : 'Failed',
-        provider_status: providerStatus,
-      })
+      .update({ status: 'Failed', provider_status: providerStatus })
       .eq('id', request.id);
     await v2.from('research_reports').update({ esign_status: 'Unsigned' }).eq('id', report.id);
     return {
       status: 'Unsigned',
-      message: 'The signing request ' + (doc.agreement_status ?? 'failed') + '. Start again.',
+      message:
+        'Signing failed' +
+        (state.error_message_from_nsdl ? ': ' + state.error_message_from_nsdl : '') +
+        '. Start again.',
     };
   }
 

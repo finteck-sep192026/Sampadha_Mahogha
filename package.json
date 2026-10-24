@@ -9,7 +9,7 @@
     "serve": "npx --yes http-server Sampadha-mah -p 8765 -c-1",
     "format": "prettier --write \"Sampadha-mah/**/*.{js,css,html}\" \"Sampadha-v2/**/*.{js,css,html}\" \"scripts/**/*.mjs\"",
     "serve:v2": "npx --yes http-server Sampadha-v2 -p 8766 -c-1",
-    "deploy:esign": "supabase functions deploy digio-esign --project-ref nxtyswlxnmekpvlfuucg --use-api",
+    "deploy:esign": "supabase functions deploy esign --project-ref nxtyswlxnmekpvlfuucg --use-api",
     "publish:v2": "node scripts/publish-v2.mjs"
   },
   "devDependencies": {

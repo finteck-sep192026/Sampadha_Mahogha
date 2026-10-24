@@ -1,4 +1,4 @@
-// Research reports: create (legs, attachments, analysis), preview PDF, Aadhaar eSign via Digio,
+// Research reports: create (legs, attachments, analysis), preview PDF, Aadhaar eSign (NSDL),
 // deliver to subscribed clients, and manage positions. Data lives in Supabase (schema v2) via Api.
 const researchReports = [];
 async function createResearchPdfBlob(report) {
@@ -364,8 +364,7 @@ let researchClients = [],
   researchPositionFilters = { clients: [], products: [], symbols: [] },
   researchDraftAttachments = [null, null, null],
   researchAttachmentTab = 0,
-  researchPdfPreviewUrl = '',
-  researchDigioSdk = null;
+  researchPdfPreviewUrl = '';
 const researchAttachmentUrls = new Map(); // storage path -> object URL
 // Called by role-app.js whenever the workspace is (re)loaded from the database.
 function researchApplyWorkspace(ws) {
@@ -812,15 +811,15 @@ function researchReadRows(form) {
     };
   });
 }
-const researchSignKey = () => 'sampadha.v2.esignIdentifier.' + state.user.uid;
-function researchRememberedIdentifier() {
+const researchSignKey = () => 'sampadha.v2.esignMobile.' + state.user.uid;
+function researchRememberedMobile() {
   try {
     return localStorage.getItem(researchSignKey()) || '';
   } catch {
     return '';
   }
 }
-function researchRememberIdentifier(value) {
+function researchRememberMobile(value) {
   try {
     localStorage.setItem(researchSignKey(), value);
   } catch {
@@ -832,20 +831,20 @@ function researchSignPanel(r) {
   return (
     '<article class="card panel research-section"><h3>Aadhaar eSign</h3>' +
     (signed
-      ? '<p class="research-notice">Signed with Aadhaar eSign (Digio) by <strong>' +
+      ? '<p class="research-notice">Signed with Aadhaar eSign by <strong>' +
         reportEscape(r.signerName) +
         '</strong> on ' +
         reportEscape(r.signed) +
         '. Clients receive this signed PDF.</p>'
-      : '<p class="research-notice">Review the PDF above, then sign it with your Aadhaar through Digio. Digio sends an OTP to the mobile number linked to your Aadhaar. Clients can be selected only after the server confirms the signature with Digio.</p><form id="researchSignForm" data-report="' +
+      : '<p class="research-notice">Review the PDF above, then sign it with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. You come back here when signing is done, and clients can be selected only after the server confirms the signature.</p><form id="researchSignForm" data-report="' +
         reportEscape(r.id) +
-        '" class="research-signing"><label class="research-check"><input type="checkbox" name="consent">I have reviewed this report and will sign it with my Aadhaar eSign.</label><label class="field">Email or mobile number for Digio<input name="identifier" autocomplete="email" maxlength="120" required placeholder="10-digit mobile or email" value="' +
-        reportEscape(researchRememberedIdentifier()) +
+        '" class="research-signing"><label class="research-check"><input type="checkbox" name="consent">I have reviewed this report and will sign it with my Aadhaar eSign.</label><label class="field">Your mobile number<input name="mobile" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" required placeholder="10-digit mobile" value="' +
+        reportEscape(researchRememberedMobile()) +
         '"></label><div class="research-filter-bar"><button class="btn primary">Sign with Aadhaar eSign</button><button type="button" class="btn secondary" data-esign-check="' +
         reportEscape(r.id) +
         '">Check signing status</button></div><p id="researchSignStatus" class="research-message" role="status">' +
         (r.esignStatus === 'Requested'
-          ? 'A signing request is open. Finish it in Digio, or start again.'
+          ? 'A signing request is open. Finish it on the eSign page, or start again.'
           : 'Not signed yet.') +
         '</p></form>') +
     '</article><section id="researchClientSection" class="research-section">' +
@@ -855,58 +854,24 @@ function researchSignPanel(r) {
     '</section>'
   );
 }
-// Digio serves a separate SDK build per environment (documentation.digio.in/sdk/web/web).
-const DIGIO_SDK_BASE = { sandbox: 'https://ext.digio.in', production: 'https://app.digio.in' };
-function researchLoadDigio(environment) {
-  if (window.Digio) return Promise.resolve();
-  researchDigioSdk ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = (DIGIO_SDK_BASE[environment] || DIGIO_SDK_BASE.sandbox) + '/sdk/v11/digio.js';
-    script.onload = resolve;
-    script.onerror = () => {
-      researchDigioSdk = null;
-      script.remove();
-      reject(new Error('Could not load the Digio eSign window. Check your connection.'));
-    };
-    document.head.appendChild(script);
-  });
-  return researchDigioSdk;
-}
-// Opens Digio's signing window inside the page (an iframe, so popup blockers cannot stop it after
-// the async preparation steps); resolves when Digio reports success. The server still checks.
-function researchDigioSign(start) {
-  return new Promise((resolve, reject) => {
-    const digio = new window.Digio({
-      environment: start.environment,
-      is_iframe: true,
-      callback: (response) =>
-        response && response.error_code
-          ? reject(new Error(response.message || 'Signing was not completed in Digio.'))
-          : resolve(response),
-      logo: new URL('assets/sampadha-logo.png', location.href).href,
-      theme: { primaryColor: '#0d3970', secondaryColor: '#c99325' },
-    });
-    digio.init();
-    if (start.accessToken) digio.submit(start.documentId, start.identifier, start.accessToken);
-    else digio.submit(start.documentId, start.identifier);
-  });
-}
 async function researchConfirmSign(reportId) {
   const status = $('#researchSignStatus');
-  if (status) status.textContent = 'Confirming the signature with Digio...';
+  if (status) status.textContent = 'Confirming the signature...';
   const result = await Api.esignVerify(reportId);
   await refreshWorkspace();
   if (result.status !== 'Signed') {
     if ($('#researchSignStatus'))
       $('#researchSignStatus').textContent =
         result.message ||
-        'Digio has not confirmed the signature yet. Finish signing, then use Check signing status.';
+        'The signature is not confirmed yet. Finish signing, then use Check signing status.';
     return;
   }
   researchShow([reportId]);
   $('#researchHistory').innerHTML = researchHistory();
   toast('Report signed with Aadhaar eSign.');
 }
+// Signing happens on the gateway's hosted page; it sends the signer back to this address.
+const ESIGN_RETURN_PARAM = 'esign_report';
 async function researchStartSign(r, form) {
   const status = $('#researchSignStatus'),
     buttons = form.querySelectorAll('button');
@@ -918,18 +883,33 @@ async function researchStartSign(r, form) {
   try {
     status.textContent = 'Preparing the PDF for signing...';
     await Api.uploadPreviewPdf(r.id, await createResearchPdfBlob(r));
-    status.textContent = 'Opening Digio...';
-    const start = await Api.esignStart(r.id, form.elements.identifier.value);
-    await researchLoadDigio(start.environment);
-    researchRememberIdentifier(start.identifier);
-    status.textContent = 'Complete the Aadhaar OTP in the Digio window.';
-    await researchDigioSign(start);
-    await researchConfirmSign(r.id);
+    status.textContent = 'Opening the eSign page...';
+    const returnUrl = new URL(location.pathname, location.origin);
+    returnUrl.searchParams.set(ESIGN_RETURN_PARAM, r.id);
+    const start = await Api.esignStart(r.id, form.elements.mobile.value, returnUrl.href);
+    researchRememberMobile(form.elements.mobile.value.trim());
+    location.href = start.url;
   } catch (error) {
     if ($('#researchSignStatus')) $('#researchSignStatus').textContent = error.message;
-  } finally {
     buttons.forEach((b) => (b.disabled = false));
   }
+}
+// Back from the eSign page: reopen the report and confirm the signature with the server.
+async function researchResumeSign() {
+  const params = new URLSearchParams(location.search),
+    reportId = params.get(ESIGN_RETURN_PARAM);
+  if (!reportId) return;
+  params.delete(ESIGN_RETURN_PARAM);
+  history.replaceState(null, '', location.pathname + (params.size ? '?' + params : ''));
+  const r = researchReports.find((x) => x.id === reportId && researchOwner(x));
+  if (!r) return;
+  show('multiReports');
+  researchShow([r.id]);
+  $('#researchPreview').scrollIntoView({ block: 'start' });
+  if (r.esignStatus !== 'Signed')
+    await researchConfirmSign(r.id).catch((error) => {
+      if ($('#researchSignStatus')) $('#researchSignStatus').textContent = error.message;
+    });
 }
 function researchReleasePdfPreview() {
   if (researchPdfPreviewUrl) {
@@ -948,7 +928,7 @@ function researchPdfPanel(r) {
     ' PDF preview"></iframe></article>'
   );
 }
-// Signed reports show the PDF Digio returned; unsigned drafts show the locally generated preview.
+// Signed reports show the PDF returned by the eSign service; unsigned drafts show the local preview.
 const researchPdfBlob = (r) =>
   r.esignStatus === 'Signed' ? Api.downloadFile(r.signedPdfPath) : createResearchPdfBlob(r);
 async function researchRefreshPdfFrame(r) {
@@ -964,7 +944,7 @@ async function researchRefreshPdfFrame(r) {
   if ($('#researchPdfStatus'))
     $('#researchPdfStatus').textContent =
       r.esignStatus === 'Signed'
-        ? 'Aadhaar eSigned PDF (Digio).'
+        ? 'Aadhaar eSigned PDF.'
         : 'Unsigned preview. This is the PDF you will sign.';
 }
 function researchShow(ids) {
@@ -1285,6 +1265,11 @@ show = function (page) {
   originalResearchShowPage(page);
   researchNumberRows();
   researchRenderAttachments();
+};
+const originalResearchEnterPortal = enterPortal;
+enterPortal = async function (profile) {
+  await originalResearchEnterPortal(profile);
+  await researchResumeSign();
 };
 const originalResearchLogout = $('#logout').onclick;
 $('#logout').onclick = () => {
