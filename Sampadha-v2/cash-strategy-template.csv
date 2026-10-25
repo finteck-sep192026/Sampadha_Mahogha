@@ -1,0 +1,4 @@
+ProductName,PortfolioName,PortfolioType,StopPortfolio,ISIN,Weightage,ExchangeName,IfMutualFund,Stock,Action,Initiation Price,Quantity
+Final,5,Equity,NO,IN1212345671,0.05,NSE,NO,TCS,BUY,3412,20
+Final,5,Equity,NO,IN1212345672,0.05,NSE,NO,KOTAK,SELL,1528,40
+Final,7,Equity,NO,IN1212345688,0.10,NSE,NO,TCS,BUY,1388,45

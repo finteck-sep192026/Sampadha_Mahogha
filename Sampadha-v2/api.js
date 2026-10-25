@@ -186,6 +186,26 @@
     t1: l.t1 == null ? '' : Number(l.t1),
     t2: l.t2 == null ? '' : Number(l.t2),
     t3: l.t3 == null ? '' : Number(l.t3),
+    // Columns of the 19-column advice CSV (older typed-in legs fall back to their base fields).
+    productName: l.product,
+    adviceName: l.advice_name || '',
+    exchangeName: l.exchange_name || '',
+    strategyName: l.strategy_name || '',
+    ifIntraday: l.if_intraday || '',
+    priceType: l.price_type || '',
+    buyOrSell: l.side,
+    instrument: l.symbol,
+    ceOrPe: l.option_type,
+    contractName: l.contract_name || '',
+    contractExpiryDate: l.expiry,
+    entryPriceStart: Number(l.initiation_price),
+    entryPriceEnd: l.entry_price_end == null ? '' : Number(l.entry_price_end),
+    lot: l.lots,
+    targetPrice: l.t1 == null ? '' : Number(l.t1),
+    stopLoss: l.stop_loss == null ? '' : Number(l.stop_loss),
+    exitPrice: l.exit_price == null ? '' : Number(l.exit_price),
+    optionStrikePrice: Number(l.strike),
+    legId: l.leg_ref || '',
     published: istLocal(l.published_at),
     delivered: l.delivered_at ? stamp(l.delivered_at, true) + ' IST' : '',
     signed: signedAt ? stamp(signedAt, true) + ' IST' : '',
@@ -215,9 +235,28 @@
       reference: e.exit_ref,
     })),
   });
-  const mapReport = (r, legs, deliveries, exitsByLeg, attachments) => ({
+  const mapCashRow = (c) => ({
+    productName: c.product_name,
+    portfolioName: c.portfolio_name,
+    portfolioType: c.portfolio_type,
+    stopPortfolio: c.stop_portfolio,
+    isin: c.isin,
+    weightage: Number(c.weightage),
+    exchangeName: c.exchange_name,
+    ifMutualFund: c.if_mutual_fund,
+    stock: c.stock,
+    action: c.action,
+    price: Number(c.initiation_price),
+    quantity: c.quantity,
+  });
+  const mapReport = (r, legs, deliveries, exitsByLeg, attachments, cashRows) => ({
     id: r.id,
     ref: r.report_ref,
+    segment: r.segment,
+    cashProduct: r.cash_product,
+    frequency: r.frequency,
+    fileName: r.source_file || '',
+    createdAt: r.created_at,
     title: r.title,
     sections: r.sections,
     product: r.product,
@@ -244,6 +283,10 @@
         size: a.size_bytes,
         path: a.storage_path,
       })),
+    cashRows: cashRows
+      .filter((c) => c.report_id === r.id)
+      .sort((a, b) => a.position - b.position)
+      .map(mapCashRow),
     recipients: deliveries.filter((d) => d.report_id === r.id).map((d) => d.client_id),
   });
 
@@ -276,8 +319,10 @@
       legs,
       exits,
       attachments,
+      cashRows,
       deliveries,
       researchClients,
+      cashClients,
     ] = await Promise.all([
       ok(q('cash_recommendations', (x) => x.order('published_at'))),
       ok(q('multi_recommendations', (x) => x.order('published_at'))),
@@ -304,8 +349,10 @@
       ok(q('research_legs')),
       ok(q('research_leg_exits', (x) => x.order('at'))),
       ok(q('research_attachments')),
+      ok(q('cash_report_rows')),
       ok(q('research_deliveries')),
       ['ra', 'admin'].includes(role) ? rpc('list_research_clients') : [],
+      ['ra', 'admin'].includes(role) ? rpc('list_cash_clients') : [],
     ]);
 
     const exitsByLeg = new Map();
@@ -327,8 +374,11 @@
       subscriptions: subs,
       payments,
       audit,
-      reports: reports.map((r) => mapReport(r, legs, deliveries, exitsByLeg, attachments)),
+      reports: reports.map((r) =>
+        mapReport(r, legs, deliveries, exitsByLeg, attachments, cashRows),
+      ),
       researchClients,
+      cashClients,
       // [name, id, risk, kyc, plan, email, mobile] rows for the client relationship table
       clientRows: directory
         .filter((p) => p.role === 'client')
@@ -354,6 +404,15 @@
     rpc('create_research_draft', { p_title: title, p_sections: sections, p_legs: legs });
   const sendReport = (reportId, clientIds, types) =>
     rpc('send_research_report', { p_report_id: reportId, p_client_ids: clientIds, p_types: types });
+  const createCashDraft = (product, frequency, fileName, rows) =>
+    rpc('create_cash_report_draft', {
+      p_product: product,
+      p_frequency: frequency,
+      p_file_name: fileName,
+      p_rows: rows,
+    });
+  const sendCashReport = (reportId, clientIds) =>
+    rpc('send_cash_report', { p_report_id: reportId, p_client_ids: clientIds });
   const closeLeg = (legId, lots, price) =>
     rpc('close_research_leg', { p_leg_id: legId, p_lots: lots, p_price: price });
 
@@ -407,6 +466,8 @@
     markNotificationsRead,
     createDraft,
     sendReport,
+    createCashDraft,
+    sendCashReport,
     closeLeg,
     uploadAttachment,
     uploadPreviewPdf,
