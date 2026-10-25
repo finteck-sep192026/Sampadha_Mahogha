@@ -19,6 +19,8 @@ const STRATEGY_URL =
   Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseindia.com/advice/rainput/strategy';
 // NSE's PDC edge drops requests it does not accept without answering; never wait on it forever.
 const TIMEOUT_MS = 20000;
+// Identify this application honestly to PaRRVA/NSE instead of the runtime's generic client name.
+const USER_AGENT = 'Sampadha-RA-Portal/1.0 (+https://racrm.fintecindia.com)';
 const timedOut = (error: unknown) =>
   error instanceof DOMException && ['TimeoutError', 'AbortError'].includes(error.name);
 // Public keys from the PaRRVA API pack (parrva.pem and pdc_public_key.pem).
@@ -127,7 +129,7 @@ async function parrvaToken() {
   const res = await fetch(AUTH_URL, {
     signal: AbortSignal.timeout(TIMEOUT_MS),
     method: 'POST',
-    headers: { accept: '*/*', 'Content-Type': 'application/json' },
+    headers: { accept: '*/*', 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
     body: JSON.stringify({ data: jwe }),
   });
   const body = await readBody(res);
@@ -248,6 +250,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
       headers: {
         accept: '*/*',
         'Content-Type': 'application/json',
+        'User-Agent': USER_AGENT,
         Authorization: 'Bearer ' + token,
       },
       body: JSON.stringify([{ data: jwe }]),
@@ -300,16 +303,17 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   return { status: 'Submitted', submittedAt, strategies: payload.length, legs: legs.length };
 }
 
-// Connection check without sending any recommendation: probes the PDC Strategy endpoint with a GET
-// (no body), which shows whether PDC accepts connections from here, and signs in to PaRRVA only
-// when asked (signIn: true), since repeated failed logins can lock the account.
+// Connection check without sending any recommendation: probes the PDC Strategy endpoint with an
+// empty, unauthenticated POST (no data), which shows whether PDC answers this server, and signs in
+// to PaRRVA only when asked (signIn: true), since repeated failed logins can lock the account.
 async function check(body: Record<string, unknown>) {
   let pdc: Record<string, unknown>;
   try {
     const res = await fetch(STRATEGY_URL, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      method: 'GET',
-      headers: { accept: '*/*' },
+      method: 'POST',
+      headers: { accept: '*/*', 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
+      body: '[]',
     });
     pdc = { reachable: true, http_status: res.status, body: (await res.text()).slice(0, 300) };
   } catch (error) {
@@ -327,7 +331,17 @@ async function check(body: Record<string, unknown>) {
       signIn = error instanceof Error ? error.message : String(error);
     }
   }
-  return { parrva_sign_in: signIn, pdc, strategy_url: STRATEGY_URL };
+  // The address PaRRVA/NSE see our requests coming from (needed if they whitelist by IP).
+  let egressIp = 'unknown';
+  try {
+    const res = await fetch('https://api.ipify.org?format=json', {
+      signal: AbortSignal.timeout(5000),
+    });
+    egressIp = (await res.json()).ip ?? 'unknown';
+  } catch {
+    /* informational only */
+  }
+  return { parrva_sign_in: signIn, pdc, strategy_url: STRATEGY_URL, egress_ip: egressIp };
 }
 
 Deno.serve(async (req) => {
