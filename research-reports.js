@@ -354,6 +354,12 @@ const reportTime = () => new Date().toLocaleString('en-IN', { timeZone: 'Asia/Ko
 const reportAllowed = () => ['ra', 'admin'].includes(state.role);
 const MULTI_TYPES = ['Nano', 'Micro', 'Mini', 'Mega', 'Giga'];
 const RESEARCH_SECTIONS = ['Technical', 'Derivatives', 'Quantitative', 'Risks'];
+// CARE PaRRVA instrument codes per exchange; options carry CE/PE and a strike, futures do not.
+const RESEARCH_INSTRUMENTS = {
+  NSE: ['FUTSTK', 'FUTIDX', 'OPTSTK', 'OPTIDX'],
+  BSE: ['STF', 'IDF', 'STO', 'IDO'],
+};
+const RESEARCH_OPTION_INSTRUMENTS = ['OPTSTK', 'OPTIDX', 'STO', 'IDO'];
 const RESEARCH_IMPORT_COLUMNS = [
   ['productName', 'ProductName'],
   ['adviceName', 'AdviceName'],
@@ -520,12 +526,17 @@ function researchCsvRowsFromText(text) {
       adviceName = get('adviceName'),
       exchangeName = get('exchangeName').toUpperCase(),
       strategyName = get('strategyName'),
-      ifIntraday = get('ifIntraday').toUpperCase(),
+      intradayText = get('ifIntraday').toUpperCase(),
+      ifIntraday = ['YES', 'Y', 'TRUE'].includes(intradayText)
+        ? 'YES'
+        : ['NO', 'N', 'FALSE'].includes(intradayText)
+          ? 'NO'
+          : '',
       priceType = get('priceType').toUpperCase(),
       buyOrSell = get('buyOrSell').toUpperCase(),
       instrument = get('instrument').toUpperCase(),
-      ceOrPe = get('ceOrPe').toUpperCase(),
-      contractName = get('contractName'),
+      ceText = get('ceOrPe').toUpperCase(),
+      contractName = get('contractName').toUpperCase(),
       contractExpiryDate = get('contractExpiryDate'),
       entryPriceStart = Number(get('entryPriceStart')),
       entryPriceEnd = Number(get('entryPriceEnd')),
@@ -534,53 +545,70 @@ function researchCsvRowsFromText(text) {
       stopLoss = Number(get('stopLoss')),
       exitText = get('exitPrice'),
       exitPrice = exitText ? Number(exitText) : '',
-      optionStrikePrice = Number(get('optionStrikePrice')),
-      legId = get('legId');
+      strikeText = get('optionStrikePrice'),
+      legId = get('legId'),
+      isOption = RESEARCH_OPTION_INSTRUMENTS.includes(instrument);
+    // CARE PaRRVA Strategy API rules (RA API document 0.0.3, section 6).
     if (
-      [
-        productName,
-        adviceName,
-        exchangeName,
-        strategyName,
-        ifIntraday,
-        priceType,
-        buyOrSell,
-        instrument,
-        ceOrPe,
-        contractName,
-        contractExpiryDate,
-        legId,
-      ].some((value) => !value)
+      [productName, adviceName, strategyName, priceType, buyOrSell, contractName, legId].some(
+        (value) => !value,
+      )
     )
-      fail('all text fields are required.');
-    if (!['YES', 'NO', 'TRUE', 'FALSE', 'Y', 'N'].includes(ifIntraday))
-      fail('IfIntraday must be YES/NO or TRUE/FALSE.');
+      fail(
+        'ProductName, AdviceName, StrategyName, PriceType, BuyOrSell, ContractName and LegId are required.',
+      );
+    if (!['NSE', 'BSE'].includes(exchangeName)) fail('ExchangeName must be NSE or BSE.');
+    if (!ifIntraday) fail('IfIntraday must be YES or NO.');
+    if (!['PR', 'CMP', 'FP'].includes(priceType)) fail('PriceType must be PR, CMP or FP.');
     if (!['BUY', 'SELL'].includes(buyOrSell)) fail('BuyOrSell must be BUY or SELL.');
-    if (!['CE', 'PE'].includes(ceOrPe)) fail('CEorPE must be CE or PE.');
-    if (!Number.isFinite(Date.parse(contractExpiryDate)))
-      fail('ContractExpiryDate must be a valid date.');
+    if (!RESEARCH_INSTRUMENTS[exchangeName]?.includes(instrument))
+      fail(
+        'Instrument must be ' +
+          (RESEARCH_INSTRUMENTS[exchangeName] || RESEARCH_INSTRUMENTS.NSE).join(', ') +
+          ' for ' +
+          (exchangeName || 'NSE') +
+          '.',
+      );
+    let ceOrPe = null,
+      optionStrikePrice = null;
+    if (isOption) {
+      if (!['CE', 'PE'].includes(ceText)) fail('CEorPE must be CE or PE for options.');
+      ceOrPe = ceText;
+      optionStrikePrice = Number(strikeText);
+      if (!strikeText || !Number.isFinite(optionStrikePrice) || optionStrikePrice <= 0)
+        fail('OptionStrikePrice must be a positive number for options.');
+    } else if (!['', 'NULL'].includes(ceText) || !['', 'NULL'].includes(strikeText.toUpperCase()))
+      fail('Leave CEorPE and OptionStrikePrice empty for futures.');
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(contractExpiryDate) ||
+      !Number.isFinite(Date.parse(contractExpiryDate))
+    )
+      fail('ContractExpiryDate must be a date in YYYY-MM-DD format.');
+    if (contractExpiryDate < researchDefaultPublished().slice(0, 10))
+      fail('ContractExpiryDate is in the past.');
     if (!Number.isSafeInteger(lot) || lot < 1) fail('Lot must be a positive whole number.');
     if (
       !Number.isFinite(entryPriceStart) ||
       entryPriceStart <= 0 ||
       !Number.isFinite(entryPriceEnd) ||
-      entryPriceEnd <= 0 ||
-      entryPriceEnd < entryPriceStart
+      entryPriceEnd <= 0
     )
-      fail(
-        'EntryPriceStart and EntryPriceEnd must be positive, and end must be greater than or equal to start.',
-      );
+      fail('EntryPriceStart and EntryPriceEnd must be positive numbers.');
+    if (buyOrSell === 'BUY' && entryPriceStart > entryPriceEnd)
+      fail('for BUY, EntryPriceStart is the lower price (start must not exceed end).');
+    if (buyOrSell === 'SELL' && entryPriceStart < entryPriceEnd)
+      fail('for SELL, EntryPriceStart is the higher price (start must not be below end).');
     if (
       !Number.isFinite(targetPrice) ||
       targetPrice <= 0 ||
       !Number.isFinite(stopLoss) ||
-      stopLoss <= 0 ||
-      !Number.isFinite(optionStrikePrice) ||
-      optionStrikePrice <= 0
+      stopLoss <= 0
     )
-      fail('TargetPrice, StopLoss and OptionStrikePrice must be positive numbers.');
+      fail('TargetPrice and StopLoss must be positive numbers.');
     if (exitPrice !== '' && (!Number.isFinite(exitPrice) || exitPrice <= 0))
       fail('ExitPrice must be blank or a positive number.');
+    if (!/^\d{1,9}$/.test(legId) || Number(legId) < 1)
+      fail('LegId must be a positive whole number.');
     const published = researchDefaultPublished();
     return {
       productName,
@@ -603,7 +631,7 @@ function researchCsvRowsFromText(text) {
       optionStrikePrice,
       legId,
       product: productName,
-      symbol: instrument,
+      symbol: contractName,
       expiry: contractExpiryDate,
       strike: optionStrikePrice,
       option: ceOrPe,
@@ -618,10 +646,34 @@ function researchCsvRowsFromText(text) {
       published,
     };
   });
-  const duplicates = rows
-    .map((row) => row.legId.toLowerCase())
-    .filter((value, index, all) => all.indexOf(value) !== index);
-  if (duplicates.length) throw new Error('LegId must be unique. Duplicate: ' + duplicates[0] + '.');
+  // Rows sharing an AdviceName are one PaRRVA strategy: same strategy fields, unique LegIds.
+  const strategies = new Map();
+  rows.forEach((row, index) => {
+    const first = strategies.get(row.adviceName);
+    if (!first) return strategies.set(row.adviceName, { row, legs: new Set([row.legId]) });
+    const line = 'CSV row ' + (index + 2) + ': ';
+    if (
+      ['productName', 'exchangeName', 'strategyName', 'ifIntraday'].some(
+        (key) => first.row[key] !== row[key],
+      )
+    )
+      throw new Error(
+        line +
+          'rows with AdviceName ' +
+          row.adviceName +
+          ' must have the same ProductName, ExchangeName, StrategyName and IfIntraday.',
+      );
+    if (first.legs.has(row.legId))
+      throw new Error(
+        line +
+          'LegId ' +
+          row.legId +
+          ' is used more than once in AdviceName ' +
+          row.adviceName +
+          '.',
+      );
+    first.legs.add(row.legId);
+  });
   return rows;
 }
 function researchCsvTable(rows) {
@@ -887,6 +939,13 @@ function researchHistory() {
             : r.esignStatus === 'Signed'
               ? 'eSigned · not sent'
               : 'Not signed') +
+          (state.role !== 'client' && r.segment !== 'Cash'
+            ? '<small>CARE PaRRVA: ' +
+              reportEscape(
+                r.parrvaStatus === 'Submitted' ? 'submitted ' + r.parrvaSubmitted : r.parrvaStatus,
+              ) +
+              '</small>'
+            : '') +
           '</td><td><button type="button" class="btn secondary" data-research-pdf-view="' +
           r.id +
           '">View PDF</button> <button type="button" class="btn secondary" data-research-pdf="' +
@@ -955,7 +1014,7 @@ function researchNumberRows() {
 }
 function researchPage() {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><h3>Create Multi research report</h3><span class="badge">Multi</span></div><div class="research-steps"><span>1. Legs & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Select product clients & send</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><h3>MULTI RECOMMENDATIONS</h3><p class="research-notice">Enter the first leg, then use Add leg to duplicate it and modify only the required fields. T1, T2 and T3 are optional. Published date defaults to today in IST; delivery date, sign stamp, status and closed date appear after report generation.</p><div id="researchEntries">' +
+    '<article class="card panel"><div class="research-workflow-header"><h3>Create Multi research report</h3><span class="badge">Multi</span></div><div class="research-steps"><span>1. Legs & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><h3>MULTI RECOMMENDATIONS</h3><p class="research-notice">Enter the first leg, then use Add leg to duplicate it and modify only the required fields. T1, T2 and T3 are optional. Published date defaults to today in IST; delivery date, sign stamp, status and closed date appear after report generation.</p><div id="researchEntries">' +
     researchEntry() +
     '</div><button type="button" class="btn secondary" id="researchAddRow">+ Add leg</button><section class="research-attachments"><div class="research-attachments-heading"><div><h4>Attachments</h4><p>Three upload tabs are available. Uploaded images are shown inside the downloaded report PDF.</p></div><strong>3 slots</strong></div><div class="research-upload-tabs" role="tablist" aria-label="Attachment uploads">' +
     [1, 2, 3]
@@ -1010,7 +1069,7 @@ function researchAttachmentsMarkup() {
 }
 researchPage = function () {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">RA WORKSPACE</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Select product clients & send</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">MULTI RECOMMENDATIONS</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p><div id="researchCsvPreview"></div></section>' +
+    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">RA WORKSPACE</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">MULTI RECOMMENDATIONS</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p><div id="researchCsvPreview"></div></section>' +
     researchAttachmentsMarkup() +
     '<div class="form-grid research-section">' +
     RESEARCH_SECTIONS.map(
@@ -1200,11 +1259,35 @@ function researchShow(ids) {
   });
   if (researchOwner(r) && r.esignStatus === 'Signed') researchOpenClients(r);
 }
+function researchParrvaChoice(r) {
+  if (r.parrvaStatus === 'Submitted')
+    return (
+      '<p class="research-parrva research-parrva-done"><strong>CARE PaRRVA:</strong> submitted on ' +
+      reportEscape(r.parrvaSubmitted) +
+      '.</p>'
+    );
+  const strategies = new Set(r.rows.map((row) => row.adviceName)).size;
+  return (
+    '<div class="research-parrva"><label class="research-check"><input type="checkbox" name="parrva" checked>Send to CARE PaRRVA (Strategy API, ' +
+    strategies +
+    (strategies === 1 ? ' strategy, ' : ' strategies, ') +
+    r.rows.length +
+    ' legs)</label>' +
+    (r.parrvaStatus === 'Failed'
+      ? '<p class="research-message research-error">Last attempt failed: ' +
+        reportEscape(r.parrvaMessage) +
+        '</p>'
+      : '') +
+    '</div>'
+  );
+}
 function researchClientSection(r) {
   return (
-    '<article class="card panel"><h3>Select clients & send</h3><p class="research-notice">Report signed. Select product types to show their subscribed clients.</p><form id="researchSend" data-report="' +
+    '<article class="card panel"><h3>Send to CARE PaRRVA & clients</h3><p class="research-notice">Report signed. Choose CARE PaRRVA, clients, or both. When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.</p><form id="researchSend" data-report="' +
     r.id +
-    '"><div class="research-filter-bar"><button type="button" class="btn secondary" id="researchSelectAll">Select visible clients</button><button type="button" class="btn secondary" id="researchClearAll">Clear checkboxes</button>' +
+    '">' +
+    researchParrvaChoice(r) +
+    '<p class="research-notice">Clients: select product types to show their subscribed clients.</p><div class="research-filter-bar"><button type="button" class="btn secondary" id="researchSelectAll">Select visible clients</button><button type="button" class="btn secondary" id="researchClearAll">Clear checkboxes</button>' +
     MULTI_TYPES.map(
       (name) =>
         '<label class="research-check research-type-check"><input type="checkbox" name="category" value="' +
@@ -1213,7 +1296,7 @@ function researchClientSection(r) {
         name +
         '</label>',
     ).join('') +
-    '</div><p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p><button class="btn primary">Send to selected clients (demo)</button></form></article>'
+    '</div><p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p><button class="btn primary">Send</button></form></article>'
   );
 }
 function researchFilterClients() {
@@ -1585,7 +1668,7 @@ $('#content').addEventListener('submit', async (e) => {
         throw new Error('Enter a title and all four research sections.');
       const legs = researchReadRows(form).map((r) =>
         Object.fromEntries(
-          RESEARCH_IMPORT_COLUMNS.map(([key]) => [key, r[key] === '' ? '' : String(r[key])]),
+          RESEARCH_IMPORT_COLUMNS.map(([key]) => [key, r[key] == null ? '' : String(r[key])]),
         ),
       );
       button.disabled = true;
@@ -1631,39 +1714,67 @@ $('#content').addEventListener('submit', async (e) => {
       button = form.querySelector('button:not([type=button])');
     if (!r || !researchOwner(r) || r.esignStatus !== 'Signed') return;
     const d = new FormData(form),
+      toParrva = !!form.elements.parrva?.checked,
       types = d.getAll('category'),
       eligible = new Set(researchEligible(types).map((c) => c.id)),
-      selected = researchRecipients(d.get('recipients'), d.getAll('client'));
-    if (!types.length) {
-      message.textContent = 'Choose Nano, Micro, Mini, Mega or Giga to show clients.';
+      selected = researchRecipients(d.get('recipients'), d.getAll('client')),
+      toClients = selected.ids.length > 0 || selected.invalid.length > 0;
+    if (!toParrva && !toClients) {
+      message.textContent = 'Choose CARE PaRRVA, at least one client, or both.';
       return;
     }
-    if (selected.invalid.length) {
-      message.textContent = 'Unknown client IDs/emails: ' + selected.invalid.join(', ');
-      return;
-    }
-    if (!selected.ids.length) {
-      message.textContent = 'Select a client or type a matching client ID/email.';
-      return;
-    }
-    if (selected.ids.some((id) => !eligible.has(id))) {
-      message.textContent = 'Choose only clients subscribed to the selected product types.';
-      return;
+    if (toClients) {
+      if (!types.length) {
+        message.textContent = 'Choose Nano, Micro, Mini, Mega or Giga to show clients.';
+        return;
+      }
+      if (selected.invalid.length) {
+        message.textContent = 'Unknown client IDs/emails: ' + selected.invalid.join(', ');
+        return;
+      }
+      if (selected.ids.some((id) => !eligible.has(id))) {
+        message.textContent = 'Choose only clients subscribed to the selected product types.';
+        return;
+      }
     }
     button.disabled = true;
+    const results = [];
     try {
-      const sent = await researchSendReport(r, selected.ids, types);
+      if (toParrva) {
+        message.textContent = 'Sending to CARE PaRRVA...';
+        const parrva = await Api.parrvaSubmit(r.id);
+        results.push(
+          'CARE PaRRVA accepted ' +
+            parrva.strategies +
+            ' strategy record(s) with ' +
+            parrva.legs +
+            ' legs.',
+        );
+      }
+      if (toClients) {
+        message.textContent = 'Delivering to clients...';
+        results.push(
+          (await researchSendReport(r, selected.ids, types)) + ' client deliveries recorded.',
+        );
+      } else await refreshWorkspace();
       $('#researchClientSection').innerHTML =
         '<article class="card panel"><h3>Report sent</h3><p>' +
-        sent +
-        ' client deliveries recorded. ' +
-        r.rows.length +
-        ' recommendation positions are available in Positions.</p><button class="btn primary" data-go="researchOrders">Open Positions</button> <button class="btn secondary" data-research-pdf-view="' +
+        results.join(' ') +
+        (toClients
+          ? ' ' + r.rows.length + ' recommendation positions are available in Positions.'
+          : '') +
+        '</p>' +
+        (toClients
+          ? '<button class="btn primary" data-go="researchOrders">Open Positions</button> '
+          : '') +
+        '<button class="btn secondary" data-research-pdf-view="' +
         reportEscape(r.id) +
-        '">View PDF</button></article>';
+        '">View report</button></article>';
       $('#researchHistory').innerHTML = researchHistory();
     } catch (error) {
-      message.textContent = error.message;
+      await refreshWorkspace().catch(() => {});
+      $('#researchHistory').innerHTML = researchHistory();
+      message.textContent = (results.length ? results.join(' ') + ' ' : '') + error.message;
       button.disabled = false;
     }
   }

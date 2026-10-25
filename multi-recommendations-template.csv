@@ -1,3 +1,5 @@
 ProductName,AdviceName,ExchangeName,StrategyName,IfIntraday,PriceType,BuyOrSell,Instrument,CEorPE,ContractName,ContractExpiryDate,EntryPriceStart,EntryPriceEnd,Lot,TargetPrice,StopLoss,ExitPrice,OptionStrikePrice,LegId
-Nano,Momentum Entry,NSE,Directional,YES,MARKET,BUY,NIFTY,CE,NIFTY26NOV26000CE,2026-11-26,150.50,152.00,3,180.00,135.00,,26000,LEG-001
-Micro,Hedge Put,NSE,Hedge,NO,LIMIT,BUY,SENSEX,PE,SENSEX26NOV80000PE,2026-11-26,425.00,430.00,2,500.00,390.00,,80000,LEG-002
+Nano,Nifty Bull Call Spread Nov,NSE,Bull Call Spread,NO,PR,BUY,OPTIDX,CE,NIFTY,2026-11-26,150.50,152.00,3,180.00,135.00,,26000,1
+Nano,Nifty Bull Call Spread Nov,NSE,Bull Call Spread,NO,PR,SELL,OPTIDX,CE,NIFTY,2026-11-26,62.00,60.00,3,30.00,80.00,,26300,2
+Micro,Sensex Protective Put Nov,BSE,Protective Put,NO,FP,BUY,IDO,PE,SENSEX,2026-11-26,425.00,425.00,2,500.00,390.00,,80000,1
+Mini,Nifty Futures Long Nov,NSE,Directional Futures,NO,CMP,BUY,FUTIDX,,NIFTY,2026-11-26,25950.00,25990.00,1,26400.00,25700.00,,,1

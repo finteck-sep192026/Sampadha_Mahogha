@@ -176,8 +176,8 @@
     product: l.product,
     symbol: l.symbol,
     expiry: l.expiry,
-    strike: Number(l.strike),
-    option: l.option_type,
+    strike: l.strike == null ? '' : Number(l.strike),
+    option: l.option_type || '',
     side: l.side,
     lots: l.lots,
     lotSize: l.lot_size,
@@ -194,8 +194,8 @@
     ifIntraday: l.if_intraday || '',
     priceType: l.price_type || '',
     buyOrSell: l.side,
-    instrument: l.symbol,
-    ceOrPe: l.option_type,
+    instrument: l.instrument || l.symbol,
+    ceOrPe: l.option_type || '',
     contractName: l.contract_name || '',
     contractExpiryDate: l.expiry,
     entryPriceStart: Number(l.initiation_price),
@@ -204,7 +204,7 @@
     targetPrice: l.t1 == null ? '' : Number(l.t1),
     stopLoss: l.stop_loss == null ? '' : Number(l.stop_loss),
     exitPrice: l.exit_price == null ? '' : Number(l.exit_price),
-    optionStrikePrice: Number(l.strike),
+    optionStrikePrice: l.strike == null ? '' : Number(l.strike),
     legId: l.leg_ref || '',
     published: istLocal(l.published_at),
     delivered: l.delivered_at ? stamp(l.delivered_at, true) + ' IST' : '',
@@ -265,6 +265,9 @@
     status: r.status,
     sent: r.sent_at ? stamp(r.sent_at, true) + ' IST' : '',
     esignStatus: r.esign_status,
+    parrvaStatus: r.parrva_status,
+    parrvaSubmitted: r.parrva_submitted_at ? stamp(r.parrva_submitted_at, true) + ' IST' : '',
+    parrvaMessage: r.parrva_message || '',
     signed: r.signed_at ? stamp(r.signed_at, true) + ' IST' : '',
     signerName: r.signer_name || '',
     signedPdfPath: r.signed_pdf_path,
@@ -455,6 +458,27 @@
     esign('start', { reportId, mobile, returnUrl });
   const esignVerify = (reportId) => esign('verify', { reportId });
 
+  // ───────────── CARE PaRRVA (the parrva Edge Function holds the PaRRVA login) ─────────────
+  async function parrvaSubmit(reportId) {
+    const { data, error } = await sb.functions.invoke('parrva', {
+      body: { action: 'submit', reportId },
+    });
+    if (error) {
+      if (error.name === 'FunctionsFetchError')
+        throw new Error(
+          'The CARE PaRRVA service is not reachable. Ask an administrator to deploy it.',
+        );
+      let message = error.message;
+      try {
+        message = (await error.context.json()).error || message;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new Error(message);
+    }
+    return data;
+  }
+
   window.Api = {
     sb,
     login,
@@ -474,6 +498,7 @@
     downloadFile,
     esignStart,
     esignVerify,
+    parrvaSubmit,
     fmt: { stamp, rupee, dateOnly },
   };
 })();
