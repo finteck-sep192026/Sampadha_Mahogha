@@ -1,7 +1,7 @@
 # Sampadha Wealth Portal v2
 
-Four-role portal (Admin, Research Analyst, Sales, Client) built from the `samapadha-mahoga2` prototype and
-connected to Supabase. v1 (`../Sampadha-mah`) keeps running unchanged; both apps use the same Supabase
+Four-role portal (Admin, Research Analyst, Sales, Client) built from the `samapadha-mahoga2` prototype
+(updated with the 25 Oct 2026 `sampadha-mahg-oct-25 new` prototype) and connected to Supabase. v1 (`../Sampadha-mah`) keeps running unchanged; both apps use the same Supabase
 project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 
 ## What is real here
@@ -13,12 +13,15 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 | Report attachments | Storage bucket `v2-research` (private), max 3 files per report, 5 MB each, image or PDF. |
 | Report signing | **Aadhaar eSign (NSDL) through the FinAnalyz gateway.** The `esign` Edge Function sends the PDF, the analyst signs with an Aadhaar OTP on the hosted eSign page and is sent back, and the server confirms with the gateway and stores the signed PDF. The browser cannot mark a report signed. |
 | Delivery | `send_research_report` refuses reports without a confirmed eSign. Clients download the signed PDF. |
-| Positions | One position per leg. Exits are recorded by lots; every exit is kept in `v2.research_leg_exits`. |
+| Multi Segment | Legs come from the 19-column advice CSV (`multi-recommendations-template.csv`, up to 50 rows). The browser validates and previews it; `create_research_draft` validates every row again and stores all 19 columns on `v2.research_legs`. |
+| Cash Segment | LC/MC/SC reports, Monthly/Quarterly/Half-Yearly, from the 12-column CSV (`cash-strategy-template.csv`, up to 100 rows) via `create_cash_report_draft`. Stored in `v2.research_reports` (`segment = 'Cash'`) + `v2.cash_report_rows`, so they use the same eSign, storage and delivery. Sent with `send_cash_report` to clients whose plan includes Cash. The library shows the latest two real reports per strategy and period. |
+| Positions | One position per Multi CSV row. Exits are recorded by lots; every exit is kept in `v2.research_leg_exits`. |
+| RA Overview | Counts come from the database; the activity table lists this browser session's actions. |
 
 ## Setup (once)
 
-1. **Schema** — run `supabase/migrations/20261024000000_v2_schema.sql`, then `supabase/seed_v2.sql`, in the
-   Supabase SQL editor.
+1. **Schema** — run `supabase/migrations/20261024000000_v2_schema.sql`, then
+   `20261025000000_v2_csv_legs_and_cash.sql`, then `supabase/seed_v2.sql`, in the Supabase SQL editor.
 2. **Expose the schema** — Dashboard → Project Settings → Data API → *Exposed schemas* → add `v2`.
 3. **Edge Function** — `npx supabase login`, then `npm run deploy:esign` (or paste
    `supabase/functions/esign/index.ts` into Dashboard → Edge Functions → Deploy via Editor, name `esign`).
@@ -37,10 +40,10 @@ hPanel → racrm.fintecindia.com → Advanced → GIT if it does not redeploy on
 
 ## Signing a report
 
-Research Analyst → Multiple reports → fill the legs, attachments and four analysis sections → *Create &
-preview* → review the PDF → tick the confirmation, enter your mobile number → *Sign with Aadhaar eSign*. The
+Research Analyst → Multi Segment → upload the advice CSV, add attachments and the four analysis sections →
+*Create & preview PDF* (or Cash Segment → *+ New Report* → product, frequency and CSV → *Create & Preview PDF*) → review the PDF → tick the confirmation, enter your mobile number → *Sign with Aadhaar eSign*. The
 NSDL eSign page opens; enter your Aadhaar number and the OTP, and you are brought back to the report,
-where the signature is confirmed automatically. Then choose product types and clients and send. If you
+where the signature is confirmed automatically. Then choose clients and send. If you
 come back another way, open the report and use *Check signing status*.
 
 ## Files
@@ -49,6 +52,7 @@ come back another way, open the report and use *Check signing status*.
 api.js               the only file that talks to Supabase (schema v2, storage, Edge Function)
 config.js            public project URL + publishable key
 role-app.js          screens, navigation, sign-in/session
-research-reports.js  reports, attachments, PDF, Aadhaar eSign, delivery, positions
+research-reports.js  Multi Segment: CSV import, attachments, PDF, Aadhaar eSign, delivery, positions
+cash-segment.js      Cash Segment: CSV import, report library, PDF, Aadhaar eSign, delivery, RA activity
 vendor/supabase.js   supabase-js browser build
 ```

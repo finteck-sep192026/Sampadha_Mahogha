@@ -49,10 +49,25 @@ async function createResearchPdfBlob(report) {
   };
   const wrap = (text, width, font) => {
     ctx.font = font;
-    const words = String(text ?? '-')
-        .replaceAll('—', '-')
-        .split(/\s+/),
-      lines = [];
+    const words = [];
+    for (const word of String(text ?? '-')
+      .replaceAll('—', '-')
+      .split(/\s+/)) {
+      if (ctx.measureText(word).width <= width) {
+        words.push(word);
+        continue;
+      }
+      let chunk = '';
+      for (const char of word) {
+        const next = chunk + char;
+        if (ctx.measureText(next).width > width && chunk) {
+          words.push(chunk);
+          chunk = char;
+        } else chunk = next;
+      }
+      if (chunk) words.push(chunk);
+    }
+    const lines = [];
     let current = '';
     for (const word of words) {
       const next = current ? current + ' ' + word : word;
@@ -83,25 +98,25 @@ async function createResearchPdfBlob(report) {
     }
   };
   const pdfColumns = [
-    ['__leg', 'Leg', 40],
-    ['product', 'Product', 65],
-    ['symbol', 'Symbol', 65],
-    ['expiry', 'Expiry', 95],
-    ['strike', 'Strike', 75],
-    ['option', 'Option', 65],
-    ['side', 'Buy/Sell', 60],
-    ['lots', 'Lots', 50],
-    ['lotSize', 'Lot size', 55],
-    ['quantity', 'Qty', 60],
-    ['price', 'Initiation', 75],
-    ['t1', 'T1', 60],
-    ['t2', 'T2', 60],
-    ['t3', 'T3', 60],
-    ['published', 'Published', 115],
-    ['delivered', 'Delivered', 115],
-    ['signed', 'Sign stamp', 115],
-    ['status', 'Status', 75],
-    ['closedAt', 'Closed date', 115],
+    ['productName', 'Product name', 80],
+    ['adviceName', 'Advice name', 100],
+    ['exchangeName', 'Exchange', 80],
+    ['strategyName', 'Strategy', 100],
+    ['ifIntraday', 'Intraday', 70],
+    ['priceType', 'Price type', 75],
+    ['buyOrSell', 'Buy/Sell', 65],
+    ['instrument', 'Instrument', 80],
+    ['ceOrPe', 'CE/PE', 60],
+    ['contractName', 'Contract', 100],
+    ['contractExpiryDate', 'Expiry date', 95],
+    ['entryPriceStart', 'Entry start', 80],
+    ['entryPriceEnd', 'Entry end', 80],
+    ['lot', 'Lot', 45],
+    ['targetPrice', 'Target', 80],
+    ['stopLoss', 'Stop loss', 75],
+    ['exitPrice', 'Exit price', 75],
+    ['optionStrikePrice', 'Strike', 90],
+    ['legId', 'Leg ID', 80],
   ];
   const tableHeader = () => {
     const height = 58;
@@ -117,18 +132,18 @@ async function createResearchPdfBlob(report) {
       ctx.strokeStyle = '#d6e2f0';
       ctx.strokeRect(x, y, width, height);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 15px Arial';
-      const lines = wrap(label, width - 12, 'bold 15px Arial').slice(0, 2);
-      lines.forEach((line, i) => ctx.fillText(line, x + 6, y + 22 + i * 18));
+      ctx.font = 'bold 13px Arial';
+      const lines = wrap(label, width - 10, 'bold 13px Arial').slice(0, 3);
+      lines.forEach((line, i) => ctx.fillText(line, x + 5, y + 18 + i * 15));
       x += width;
     }
     y += height;
   };
   const tableRow = (row, index) => {
     const values = pdfColumns.map(([key, , width]) =>
-        wrap(key === '__leg' ? index + 1 : researchValue(row, key), width - 12, '15px Arial'),
+        wrap(researchValue(row, key), width - 10, '13px Arial'),
       ),
-      height = Math.max(48, ...values.map((lines) => lines.length * 18 + 16));
+      height = Math.max(48, ...values.map((lines) => lines.length * 16 + 14));
     if (y + height > bottom) {
       finish();
       begin();
@@ -148,8 +163,8 @@ async function createResearchPdfBlob(report) {
       ctx.strokeStyle = '#c7d5e5';
       ctx.strokeRect(x, y, width, height);
       ctx.fillStyle = '#14243b';
-      ctx.font = '15px Arial';
-      lines.forEach((line, j) => ctx.fillText(line, x + 6, y + 21 + j * 18));
+      ctx.font = '13px Arial';
+      lines.forEach((line, j) => ctx.fillText(line, x + 5, y + 19 + j * 16));
       x += width;
     });
     y += height;
@@ -339,20 +354,29 @@ const reportTime = () => new Date().toLocaleString('en-IN', { timeZone: 'Asia/Ko
 const reportAllowed = () => ['ra', 'admin'].includes(state.role);
 const MULTI_TYPES = ['Nano', 'Micro', 'Mini', 'Mega', 'Giga'];
 const RESEARCH_SECTIONS = ['Technical', 'Derivatives', 'Quantitative', 'Risks'];
+const RESEARCH_IMPORT_COLUMNS = [
+  ['productName', 'ProductName'],
+  ['adviceName', 'AdviceName'],
+  ['exchangeName', 'ExchangeName'],
+  ['strategyName', 'StrategyName'],
+  ['ifIntraday', 'IfIntraday'],
+  ['priceType', 'PriceType'],
+  ['buyOrSell', 'BuyOrSell'],
+  ['instrument', 'Instrument'],
+  ['ceOrPe', 'CEorPE'],
+  ['contractName', 'ContractName'],
+  ['contractExpiryDate', 'ContractExpiryDate'],
+  ['entryPriceStart', 'EntryPriceStart'],
+  ['entryPriceEnd', 'EntryPriceEnd'],
+  ['lot', 'Lot'],
+  ['targetPrice', 'TargetPrice'],
+  ['stopLoss', 'StopLoss'],
+  ['exitPrice', 'ExitPrice'],
+  ['optionStrikePrice', 'OptionStrikePrice'],
+  ['legId', 'LegId'],
+];
 const RESEARCH_COLUMNS = [
-  ['product', 'Product'],
-  ['symbol', 'Symbol'],
-  ['expiry', 'Expiry date'],
-  ['strike', 'Strike price'],
-  ['option', 'Option type'],
-  ['side', 'Buy/Sell'],
-  ['lots', 'No. of lots'],
-  ['lotSize', 'Lot size'],
-  ['quantity', 'Quantity'],
-  ['price', 'Initiation price'],
-  ['t1', 'T1'],
-  ['t2', 'T2'],
-  ['t3', 'T3'],
+  ...RESEARCH_IMPORT_COLUMNS,
   ['published', 'Published date'],
   ['delivered', 'Delivered date'],
   ['signed', 'Sign stamp'],
@@ -364,7 +388,9 @@ let researchClients = [],
   researchPositionFilters = { clients: [], products: [], symbols: [] },
   researchDraftAttachments = [null, null, null],
   researchAttachmentTab = 0,
-  researchPdfPreviewUrl = '';
+  researchPdfPreviewUrl = '',
+  researchCsvRows = [],
+  researchCsvFileName = '';
 const researchAttachmentUrls = new Map(); // storage path -> object URL
 // Called by role-app.js whenever the workspace is (re)loaded from the database.
 function researchApplyWorkspace(ws) {
@@ -394,7 +420,20 @@ researchPdfStyle.href = 'research-pdf.css';
 document.head.appendChild(researchPdfStyle);
 
 function researchValue(row, key) {
-  if (['price', 't1', 't2', 't3'].includes(key)) {
+  if (
+    [
+      'entryPriceStart',
+      'entryPriceEnd',
+      'targetPrice',
+      'stopLoss',
+      'exitPrice',
+      'optionStrikePrice',
+      'price',
+      't1',
+      't2',
+      't3',
+    ].includes(key)
+  ) {
     if (row[key] === '' || row[key] === null || row[key] === undefined) return '—';
     return (
       '₹' +
@@ -404,7 +443,7 @@ function researchValue(row, key) {
       })
     );
   }
-  if (key === 'published') return row.published.replace('T', ' ') + ' IST';
+  if (key === 'published') return String(row.published || '').replace('T', ' ') + ' IST';
   if (key === 'status' && (row.statusHistory || []).length)
     return (
       row.status +
@@ -413,7 +452,7 @@ function researchValue(row, key) {
         .map((event, index) => index + 1 + '. ' + event.status + ' @ ' + event.at)
         .join(' | ')
     );
-  return row[key] || '—';
+  return row[key] === 0 ? 0 : row[key] || '—';
 }
 function researchDefaultPublished() {
   const parts = Object.fromEntries(
@@ -431,6 +470,219 @@ function researchDefaultPublished() {
       .map((part) => [part.type, part.value]),
   );
   return parts.year + '-' + parts.month + '-' + parts.day + 'T' + parts.hour + ':' + parts.minute;
+}
+function researchCsvLine(line) {
+  const cells = [];
+  let current = '',
+    quoted = false;
+  for (let index = 0; index < line.length; index++) {
+    const char = line[index];
+    if (char === '"') {
+      if (quoted && line[index + 1] === '"') {
+        current += '"';
+        index++;
+      } else quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      cells.push(current.trim());
+      current = '';
+    } else current += char;
+  }
+  cells.push(current.trim());
+  return cells;
+}
+function researchCsvRowsFromText(text) {
+  const lines = String(text)
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .filter((line) => line.trim());
+  if (lines.length < 2)
+    throw new Error('CSV must include the 19-column header row and at least one recommendation.');
+  if (lines.length > 51) throw new Error('CSV can contain a maximum of 50 recommendation rows.');
+  const normalize = (value) =>
+      String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, ''),
+    headers = researchCsvLine(lines[0]).map(normalize),
+    indexes = {};
+  for (const [key, label] of RESEARCH_IMPORT_COLUMNS)
+    indexes[key] = headers.indexOf(normalize(label));
+  const missing = RESEARCH_IMPORT_COLUMNS.filter(([key]) => indexes[key] < 0).map(
+    ([, label]) => label,
+  );
+  if (missing.length) throw new Error('Missing CSV columns: ' + missing.join(', ') + '.');
+  const rows = lines.slice(1).map((line, rowIndex) => {
+    const values = researchCsvLine(line),
+      get = (key) => String(values[indexes[key]] ?? '').trim(),
+      fail = (message) => {
+        throw new Error('CSV row ' + (rowIndex + 2) + ': ' + message);
+      },
+      productName = get('productName'),
+      adviceName = get('adviceName'),
+      exchangeName = get('exchangeName').toUpperCase(),
+      strategyName = get('strategyName'),
+      ifIntraday = get('ifIntraday').toUpperCase(),
+      priceType = get('priceType').toUpperCase(),
+      buyOrSell = get('buyOrSell').toUpperCase(),
+      instrument = get('instrument').toUpperCase(),
+      ceOrPe = get('ceOrPe').toUpperCase(),
+      contractName = get('contractName'),
+      contractExpiryDate = get('contractExpiryDate'),
+      entryPriceStart = Number(get('entryPriceStart')),
+      entryPriceEnd = Number(get('entryPriceEnd')),
+      lot = Number(get('lot')),
+      targetPrice = Number(get('targetPrice')),
+      stopLoss = Number(get('stopLoss')),
+      exitText = get('exitPrice'),
+      exitPrice = exitText ? Number(exitText) : '',
+      optionStrikePrice = Number(get('optionStrikePrice')),
+      legId = get('legId');
+    if (
+      [
+        productName,
+        adviceName,
+        exchangeName,
+        strategyName,
+        ifIntraday,
+        priceType,
+        buyOrSell,
+        instrument,
+        ceOrPe,
+        contractName,
+        contractExpiryDate,
+        legId,
+      ].some((value) => !value)
+    )
+      fail('all text fields are required.');
+    if (!['YES', 'NO', 'TRUE', 'FALSE', 'Y', 'N'].includes(ifIntraday))
+      fail('IfIntraday must be YES/NO or TRUE/FALSE.');
+    if (!['BUY', 'SELL'].includes(buyOrSell)) fail('BuyOrSell must be BUY or SELL.');
+    if (!['CE', 'PE'].includes(ceOrPe)) fail('CEorPE must be CE or PE.');
+    if (!Number.isFinite(Date.parse(contractExpiryDate)))
+      fail('ContractExpiryDate must be a valid date.');
+    if (!Number.isSafeInteger(lot) || lot < 1) fail('Lot must be a positive whole number.');
+    if (
+      !Number.isFinite(entryPriceStart) ||
+      entryPriceStart <= 0 ||
+      !Number.isFinite(entryPriceEnd) ||
+      entryPriceEnd <= 0 ||
+      entryPriceEnd < entryPriceStart
+    )
+      fail(
+        'EntryPriceStart and EntryPriceEnd must be positive, and end must be greater than or equal to start.',
+      );
+    if (
+      !Number.isFinite(targetPrice) ||
+      targetPrice <= 0 ||
+      !Number.isFinite(stopLoss) ||
+      stopLoss <= 0 ||
+      !Number.isFinite(optionStrikePrice) ||
+      optionStrikePrice <= 0
+    )
+      fail('TargetPrice, StopLoss and OptionStrikePrice must be positive numbers.');
+    if (exitPrice !== '' && (!Number.isFinite(exitPrice) || exitPrice <= 0))
+      fail('ExitPrice must be blank or a positive number.');
+    const published = researchDefaultPublished();
+    return {
+      productName,
+      adviceName,
+      exchangeName,
+      strategyName,
+      ifIntraday,
+      priceType,
+      buyOrSell,
+      instrument,
+      ceOrPe,
+      contractName,
+      contractExpiryDate,
+      entryPriceStart,
+      entryPriceEnd,
+      lot,
+      targetPrice,
+      stopLoss,
+      exitPrice,
+      optionStrikePrice,
+      legId,
+      product: productName,
+      symbol: instrument,
+      expiry: contractExpiryDate,
+      strike: optionStrikePrice,
+      option: ceOrPe,
+      side: buyOrSell,
+      lots: lot,
+      lotSize: 1,
+      quantity: lot,
+      price: entryPriceStart,
+      t1: targetPrice,
+      t2: '',
+      t3: '',
+      published,
+    };
+  });
+  const duplicates = rows
+    .map((row) => row.legId.toLowerCase())
+    .filter((value, index, all) => all.indexOf(value) !== index);
+  if (duplicates.length) throw new Error('LegId must be unique. Duplicate: ' + duplicates[0] + '.');
+  return rows;
+}
+function researchCsvTable(rows) {
+  return (
+    '<div class="table-wrap"><table class="table research-csv-table"><thead><tr><th>Row</th>' +
+    RESEARCH_IMPORT_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
+    '</tr></thead><tbody>' +
+    rows
+      .map(
+        (row, index) =>
+          '<tr><td>' +
+          (index + 1) +
+          '</td>' +
+          RESEARCH_IMPORT_COLUMNS.map(
+            ([key]) => '<td>' + reportEscape(researchValue(row, key)) + '</td>',
+          ).join('') +
+          '</tr>',
+      )
+      .join('') +
+    '</tbody></table></div>'
+  );
+}
+function researchRenderCsvPreview() {
+  const target = $('#researchCsvPreview'),
+    message = $('#researchCsvMessage'),
+    button = $('#researchCreateButton');
+  if (!target) return;
+  if (button) button.disabled = !researchCsvRows.length;
+  if (message)
+    message.textContent = researchCsvRows.length
+      ? researchCsvRows.length + ' recommendation row(s) imported from ' + researchCsvFileName + '.'
+      : 'Upload the 19-column CSV to generate recommendation rows.';
+  target.innerHTML = researchCsvRows.length
+    ? '<div class="research-csv-summary"><div><strong>' +
+      reportEscape(researchCsvFileName) +
+      '</strong><small>' +
+      researchCsvRows.length +
+      ' advice leg(s) ready for PDF</small></div><button type="button" class="btn secondary" id="researchClearCsv">Remove CSV</button></div>' +
+      researchCsvTable(researchCsvRows)
+    : '<div class="research-csv-empty"><strong>No advice-leg CSV uploaded</strong><span>Download the template, fill ProductName through LegId, and upload it here.</span></div>';
+}
+async function researchImportCsv(file) {
+  const message = $('#researchCsvMessage');
+  try {
+    if (!file) throw new Error('Choose a CSV file.');
+    if (file.size > 5 * 1024 * 1024) throw new Error('CSV file must be 5 MB or smaller.');
+    if (!(
+      file.name.toLowerCase().endsWith('.csv') ||
+      file.type === 'text/csv' ||
+      file.type === 'application/vnd.ms-excel'
+    ))
+      throw new Error('Upload a .csv file.');
+    researchCsvRows = researchCsvRowsFromText(await file.text());
+    researchCsvFileName = file.name;
+    researchRenderCsvPreview();
+  } catch (error) {
+    researchCsvRows = [];
+    researchCsvFileName = '';
+    researchRenderCsvPreview();
+    if (message) message.textContent = error.message;
+  }
 }
 function researchOrdinal(day) {
   const remainder = day % 100;
@@ -609,7 +861,9 @@ function researchSectionsTable(r) {
   );
 }
 function researchHistory() {
-  const list = researchReports.filter(researchCanView);
+  const list = researchReports.filter(
+    (r) => researchCanView(r) && (state.role === 'client' || r.segment !== 'Cash'),
+  );
   return (
     '<article class="card panel research-section"><h3>' +
     (state.role === 'client' ? 'Reports received' : 'Created reports') +
@@ -620,8 +874,10 @@ function researchHistory() {
           '<tr><td>' +
           reportEscape(r.title) +
           '<small>' +
-          r.rows.length +
-          ' recommendations · ' +
+          (r.segment === 'Cash'
+            ? 'Cash ' + reportEscape(r.cashProduct) + ' · ' + r.cashRows.length + ' stocks'
+            : r.rows.length + ' recommendations') +
+          ' · ' +
           reportEscape(r.ref) +
           '</small></td><td>' +
           reportEscape(r.created) +
@@ -732,84 +988,64 @@ function researchPage() {
     '</section>'
   );
 }
+function researchAttachmentsMarkup() {
+  return (
+    '<section class="research-attachments"><div class="research-attachments-heading"><div><h4>Attachments</h4><p>Everything after the CSV import stays the same. Add up to three images or PDFs; uploaded images appear in the generated report PDF.</p></div><strong>3 slots</strong></div><div class="research-upload-tabs" role="tablist" aria-label="Attachment uploads">' +
+    [1, 2, 3]
+      .map(
+        (number, index) =>
+          '<button type="button" role="tab" data-attachment-tab="' +
+          index +
+          '" aria-selected="' +
+          (index === 0) +
+          '" class="' +
+          (index === 0 ? 'is-active' : '') +
+          '"><span>Upload ' +
+          number +
+          '</span><small class="research-upload-state">Empty</small></button>',
+      )
+      .join('') +
+    '</div><div class="research-upload-panel" role="tabpanel"><div id="researchDropzone" class="research-dropzone" tabindex="0"><input id="researchFileInput" type="file" accept="image/*,.pdf,application/pdf" hidden><button type="button" class="btn secondary" id="researchChooseFiles">Choose file</button><p>Drag and drop an image or PDF here, or paste an image with Ctrl+V.</p><small>One file per tab, maximum 5 MB.</small></div><p id="researchAttachmentMessage" class="research-message" role="status"></p><div id="researchAttachmentList" class="research-attachment-list"></div></div></section>'
+  );
+}
+researchPage = function () {
+  return (
+    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">RA WORKSPACE</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Select product clients & send</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">MULTI RECOMMENDATIONS</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p><div id="researchCsvPreview"></div></section>' +
+    researchAttachmentsMarkup() +
+    '<div class="form-grid research-section">' +
+    RESEARCH_SECTIONS.map(
+      (name) =>
+        '<label class="field">' +
+        name +
+        '<textarea class="research-textarea" name="' +
+        name +
+        '" required rows="5" maxlength="5000" placeholder="Enter ' +
+        name.toLowerCase() +
+        ' research..."></textarea></label>',
+    ).join('') +
+    '</div><p id="researchCreateMessage" class="research-message research-error" role="alert"></p><button id="researchCreateButton" class="btn primary" disabled>Create & preview PDF</button></form></article><section id="researchPreview"></section><section id="researchHistory">' +
+    researchHistory() +
+    '</section>'
+  );
+};
 function researchReadRows(form) {
-  const entries = [...form.querySelectorAll('.research-entry')];
-  if (!entries.length) throw new Error('Add at least one recommendation.');
-  return entries.map((entry, i) => {
-    const get = (key) => entry.querySelector('[name="' + key + '"]').value.trim(),
-      product = MULTI_TYPES.find((p) => p.toLowerCase() === get('product').toLowerCase());
-    const symbol = get('symbol').toUpperCase(),
-      option = get('option').toUpperCase(),
-      side = get('side').toUpperCase(),
-      lots = Number(get('lots')),
-      lotSize = Number(get('lotSize')),
-      strike = Number(get('strike')),
-      price = Number(get('price')),
-      t1Text = get('t1'),
-      t2Text = get('t2'),
-      t3Text = get('t3'),
-      t1 = t1Text ? Number(t1Text) : '',
-      t2 = t2Text ? Number(t2Text) : '',
-      t3 = t3Text ? Number(t3Text) : '',
-      expiry = get('expiry'),
-      published = get('published');
-    const fail = (message) => {
-      throw new Error('Leg ' + (i + 1) + ': ' + message);
-    };
-    if (!product) fail('enter Nano, Micro, Mini, Mega or Giga.');
-    if (!['NIFTY', 'SENSEX'].includes(symbol)) fail('enter NIFTY or SENSEX.');
-    if (!['CE', 'PE'].includes(option) || !['BUY', 'SELL'].includes(side))
-      fail('use CE/PE and BUY/SELL.');
-    if (
-      !Number.isSafeInteger(lots) ||
-      lots < 1 ||
-      !Number.isSafeInteger(lotSize) ||
-      lotSize < 1 ||
-      !Number.isSafeInteger(lots * lotSize)
-    )
-      fail('lots and lot size must be positive whole numbers.');
-    if (!Number.isFinite(strike) || strike <= 0 || !Number.isFinite(price) || price <= 0)
-      fail('strike and initiation price must be positive numbers.');
-    if ([t1, t2, t3].some((target) => target !== '' && (!Number.isFinite(target) || target <= 0)))
-      fail('T1, T2 and T3 must be positive numbers when entered.');
-    if (
-      !expiry ||
-      !published ||
-      !Number.isFinite(Date.parse(expiry)) ||
-      !Number.isFinite(Date.parse(published)) ||
-      expiry < published.slice(0, 10)
-    )
-      fail('expiry must be on or after the published date.');
-    return {
-      id: 'POS-' + crypto.randomUUID(),
-      product,
-      symbol,
-      expiry,
-      strike,
-      option,
-      side,
-      lots,
-      lotSize,
-      quantity: lots * lotSize,
-      price,
-      t1,
-      t2,
-      t3,
-      published,
-      delivered: '',
-      signed: '',
-      status: 'Generated',
-      statusHistory: [],
-      closedLots: 0,
-      closedQty: 0,
-      remainingLots: lots,
-      remainingQty: lots * lotSize,
-      closingPrice: 0,
-      lastExit: '',
-      closedAt: '',
-      exits: [],
-    };
-  });
+  if (!researchCsvRows.length) throw new Error('Upload a valid Multi recommendations CSV file.');
+  return researchCsvRows.map((row) => ({
+    id: 'POS-' + crypto.randomUUID(),
+    ...row,
+    delivered: '',
+    signed: '',
+    status: 'Generated',
+    statusHistory: [],
+    closedLots: 0,
+    closedQty: 0,
+    remainingLots: row.lots,
+    remainingQty: row.quantity,
+    closingPrice: 0,
+    lastExit: '',
+    closedAt: '',
+    exits: [],
+  }));
 }
 const researchSignKey = () => 'sampadha.v2.esignMobile.' + state.user.uid;
 function researchRememberedMobile() {
@@ -904,7 +1140,9 @@ async function researchResumeSign() {
   if (!reportId) return;
   params.delete(ESIGN_RETURN_PARAM);
   history.replaceState(null, '', location.pathname + (params.size ? '?' + params : ''));
-  const r = researchReports.find((x) => x.id === reportId && researchOwner(x));
+  const r = researchReports.find(
+    (x) => x.id === reportId && researchOwner(x) && x.segment !== 'Cash',
+  );
   if (!r) return;
   show('multiReports');
   researchShow([r.id]);
@@ -1213,7 +1451,7 @@ function researchOrdersPage() {
     })
     .join('');
   return (
-    '<article class="card panel"><div class="research-workflow-header"><div><h3>Positions</h3><p class="research-notice">Every submitted leg appears here with its client IDs and full details. Exits are entered by number of lots; every partial and full close retains its own timestamp. These are recommendation positions, not broker trades.</p></div><button class="btn secondary" data-go="multiReports">Create report</button></div>' +
+    '<article class="card panel"><div class="research-workflow-header"><div><h3>Positions</h3><p class="research-notice">Every imported CSV recommendation appears here with its client IDs and full details. Exits are entered by number of lots; every partial and full close retains its own timestamp. These are recommendation positions, not broker trades.</p></div><button class="btn secondary" data-go="multiReports">Create report</button></div>' +
     filters +
     '<div class="research-orders-tabs">' +
     views
@@ -1268,6 +1506,7 @@ show = function (page) {
   originalResearchShowPage(page);
   researchNumberRows();
   researchRenderAttachments();
+  researchRenderCsvPreview();
 };
 const originalResearchEnterPortal = enterPortal;
 enterPortal = async function (profile) {
@@ -1279,6 +1518,8 @@ $('#logout').onclick = () => {
   researchReleasePdfPreview();
   researchDraftAttachments = [null, null, null];
   researchAttachmentTab = 0;
+  researchCsvRows = [];
+  researchCsvFileName = '';
   researchPositionFilters = { clients: [], products: [], symbols: [] };
   originalResearchLogout();
 };
@@ -1342,21 +1583,11 @@ $('#content').addEventListener('submit', async (e) => {
         );
       if (!title || Object.values(sections).some((x) => !x))
         throw new Error('Enter a title and all four research sections.');
-      const legs = researchReadRows(form).map((r) => ({
-        product: r.product,
-        symbol: r.symbol,
-        expiry: r.expiry,
-        strike: String(r.strike),
-        option: r.option,
-        side: r.side,
-        lots: String(r.lots),
-        lotSize: String(r.lotSize),
-        price: String(r.price),
-        t1: String(r.t1),
-        t2: String(r.t2),
-        t3: String(r.t3),
-        published: r.published,
-      }));
+      const legs = researchReadRows(form).map((r) =>
+        Object.fromEntries(
+          RESEARCH_IMPORT_COLUMNS.map(([key]) => [key, r[key] === '' ? '' : String(r[key])]),
+        ),
+      );
       button.disabled = true;
       message.classList.remove('research-error');
       message.textContent = 'Saving report...';
@@ -1365,10 +1596,12 @@ $('#content').addEventListener('submit', async (e) => {
         await Api.uploadAttachment(created.id, file.slot, file.file);
       researchDraftAttachments = [null, null, null];
       researchAttachmentTab = 0;
+      researchCsvRows = [];
+      researchCsvFileName = '';
       researchRenderAttachments();
       await refreshWorkspace();
       message.textContent =
-        'Report created. Review the PDF below, then sign it with Aadhaar eSign.';
+        'Report created from the imported CSV. Review the PDF below, then sign it with Aadhaar eSign.';
       researchShow([created.id]);
       $('#researchHistory').innerHTML = researchHistory();
       $('#researchPreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1440,6 +1673,15 @@ $('#content').addEventListener('click', (e) => {
   if (clearPositionFilters && reportAllowed()) {
     researchPositionFilters = { clients: [], products: [], symbols: [] };
     show('researchOrders');
+    return;
+  }
+  const clearCsv = e.target.closest('#researchClearCsv');
+  if (clearCsv && reportAllowed()) {
+    researchCsvRows = [];
+    researchCsvFileName = '';
+    const input = $('#researchCsvInput');
+    if (input) input.value = '';
+    researchRenderCsvPreview();
     return;
   }
   const attachmentTab = e.target.closest('[data-attachment-tab]');
@@ -1516,6 +1758,11 @@ $('#content').addEventListener('click', (e) => {
   }
 });
 $('#content').addEventListener('change', (e) => {
+  if (e.target.id === 'researchCsvInput' && reportAllowed()) {
+    researchImportCsv(e.target.files[0]);
+    e.target.value = '';
+    return;
+  }
   if (e.target.matches('[data-position-filter]') && reportAllowed()) {
     const key = e.target.dataset.positionFilter;
     researchPositionFilters[key] = [

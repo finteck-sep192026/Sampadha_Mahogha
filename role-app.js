@@ -7,7 +7,7 @@ const esc = (v) =>
   );
 const roles = {
   admin: { name: 'Admin', desc: 'Full platform access' },
-  ra: { name: 'Research Analyst', desc: 'Strategies and reports' },
+  ra: { name: 'Research Analyst', desc: 'Cash and Multi reports' },
   sales: { name: 'Sales', desc: 'Clients, KYC and plans' },
   client: { name: 'Client', desc: 'View-only investor access' },
 };
@@ -21,7 +21,7 @@ const nav = {
     ['approvals', '✓', 'Client approvals'],
     ['emails', '✉', 'Email delivery'],
     ['strategies', '↗', 'Strategies'],
-    ['multiReports', '▦', 'Multiple reports'],
+    ['multiReports', '▦', 'Multi Segment'],
     ['kyc', '✓', 'KYC onboarding'],
     ['plans', '₹', 'Subscriptions'],
     ['products', '◫', 'Subscribed products'],
@@ -31,9 +31,8 @@ const nav = {
   ],
   ra: [
     ['dashboard', '⌂', 'Overview'],
-    ['workflowMap', '◆', 'Workflow chart'],
-    ['strategies', '↗', 'Strategies'],
-    ['multiReports', '▦', 'Multiple reports'],
+    ['cashSegment', '₹', 'Cash Segment'],
+    ['multiReports', '▦', 'Multi Segment'],
   ],
   sales: [
     ['profile', '♙', 'Profile'],
@@ -162,22 +161,35 @@ const activity = () =>
         `<div class="activity-row"><span class="activity-icon">${x[0]}</span><div><b>${x[1]}</b><small>${x[2]}</small></div><time>${x[3]}</time></div>`,
     )
     .join('')}</div>`;
+const raStats = () => {
+  const reports = state.ws?.reports || [],
+    cashCount = reports.filter((r) => r.segment === 'Cash').length;
+  return [
+    ['Cash reports', String(cashCount), 'Monthly, quarterly and half-yearly'],
+    ['Multi reports', String(reports.length - cashCount), 'Created from advice CSVs'],
+    [
+      'Signed PDF reports',
+      String(reports.filter((r) => r.esignStatus === 'Signed').length),
+      'Aadhaar eSigned and ready to send',
+    ],
+    [
+      'Client deliveries',
+      String(reports.reduce((total, r) => total + r.recipients.length, 0)),
+      'Reports delivered to clients',
+    ],
+  ];
+};
+const raDashboard = () =>
+  `${statCards(raStats())}<article class="card panel ra-workspace-card"><div class="panel-head"><div><h3>RA report workspace</h3><p>Only Research Analyst report work and activity are shown here.</p></div><span class="badge">REPORTS ONLY</span></div><div class="cash-overview-actions"><button class="btn primary" data-go="cashSegment">Open Cash Segment</button><button class="btn secondary" data-go="multiReports">Open Multi Segment</button><button class="btn secondary" data-go="researchOrders">Open Positions</button></div><div class="grid-2"><div class="notice"><b>Cash Segment</b><br>Create LC, MC or SC reports from CSV, choose monthly, quarterly or half-yearly frequency, preview the PDF and select clients.</div><div class="notice"><b>Multi Segment</b><br>Create multi-leg recommendations, attach supporting files, preview the PDF and manage positions.</div></div></article><article class="card panel ra-activity-card"><div class="panel-head"><div><h3>Recent RA activity</h3><p>Tabs viewed and report actions completed in this browser session.</p></div><span class="badge">LIVE SESSION</span></div>${typeof renderRaActivity === 'function' ? renderRaActivity() : '<p class="muted">Activity will appear after the RA opens a report area.</p>'}</article>`;
 const dashboard = () =>
-  `${statCards(
-    state.role === 'ra'
-      ? [
-          ['Active strategies', '18', '3 published this month'],
-          ['Research reports', '64', '12 this quarter'],
-          ['Stocks covered', '42', '8 sectors'],
-          ['Subscribers reached', '1,248', '+8.6%'],
-        ]
-      : [
-          ['Total users', '1,486', '+42 this month'],
-          ['Active clients', '1,248', '83.9% of users'],
-          ['Revenue', '₹1.82 Cr', '+12.4% YTD'],
-          ['Pending KYC', '27', '9 require action'],
-        ],
-  )}<section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Platform activity</h3><p>Monthly actions across all workspaces</p></div><span class="badge">Last 8 months</span></div><div class="chart">${[42, 65, 54, 81, 72, 93, 78, 100].map((h) => `<i class="bar" style="height:${h}%"></i>`).join('')}</div></article><article class="card panel"><div class="panel-head"><div><h3>Recent activity</h3><p>Latest recorded events</p></div></div>${activity()}</article></section>`;
+  state.role === 'ra'
+    ? raDashboard()
+    : `${statCards([
+        ['Total users', '1,486', '+42 this month'],
+        ['Active clients', '1,248', '83.9% of users'],
+        ['Revenue', '₹1.82 Cr', '+12.4% YTD'],
+        ['Pending KYC', '27', '9 require action'],
+      ])}<section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Platform activity</h3><p>Monthly actions across all workspaces</p></div><span class="badge">Last 8 months</span></div><div class="chart">${[42, 65, 54, 81, 72, 93, 78, 100].map((h) => `<i class="bar" style="height:${h}%"></i>`).join('')}</div></article><article class="card panel"><div class="panel-head"><div><h3>Recent activity</h3><p>Latest recorded events</p></div></div>${activity()}</article></section>`;
 const users = () =>
   `<article class="card panel"><div class="panel-head"><div><h3>Users and access</h3><p>Admin can review all roles and account states.</p></div><button class="btn primary action">＋ Add user</button></div><div class="table-wrap"><table class="table"><thead><tr><th>User</th><th>Role</th><th>Account ID</th><th>Access</th><th>Status</th></tr></thead><tbody>${(
     state.ws?.directory || []
@@ -404,11 +416,11 @@ const titles = {
   clientDashboard: 'Client dashboard',
   notifications: 'Notifications & alerts',
   segments: 'Cash & Multi segments',
-  cashSegment: 'Cash segment',
-  multiSegment: 'Multi segment',
+  cashSegment: 'Cash Segment',
+  multiSegment: 'Multi Segment',
   users: 'Users & access',
   strategies: 'Strategies',
-  multiReports: 'Multiple reports',
+  multiReports: 'Multi Segment',
   clients: 'Clients',
   addClient: 'Add share-market client',
   approvals: 'Client approvals',
