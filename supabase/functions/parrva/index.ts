@@ -1,5 +1,6 @@
 // CARE PaRRVA reporting for Sampadha v2 Multi Segment reports (RA API document 0.0.3).
 //
+//   POST { action: 'check' }            → signs in and probes the PDC endpoint; sends no recommendation.
 //   POST { action: 'submit', reportId }
 //        → builds the Strategy API payload from the report's saved legs (rows sharing an AdviceName
 //          are one strategy), gets a PaRRVA token, and posts the encrypted payload to the PDC
@@ -16,6 +17,10 @@ const AUTH_URL =
   Deno.env.get('PARRVA_AUTH_URL') ?? 'https://careparrva.com/api/parrva/pdc/auth/authenticate';
 const STRATEGY_URL =
   Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseindia.com/advice/rainput/strategy';
+// NSE's PDC edge drops requests it does not accept without answering; never wait on it forever.
+const TIMEOUT_MS = 20000;
+const timedOut = (error: unknown) =>
+  error instanceof DOMException && ['TimeoutError', 'AbortError'].includes(error.name);
 // Public keys from the PaRRVA API pack (parrva.pem and pdc_public_key.pem).
 const PARRVA_PUBLIC_KEY =
   'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtCTj4Oo+RbfXCWXuLLMIMSZVwy6nG4a0T3y5ALW2w7nDCk/SWmd1HMvj6R92Pk8ta1P3HNgmGvWikUMiAOgPNBe35mT0SUv7mFTcSQeTKnhto7tbr2R+hnwA/7o2Fn1iEqcqNdz4fSSULGaloVv/amwPVwKH1z0RQgaLjtvBTKwKxP6LUOJnUo0G9BuH0eNHfmG4En9sYZgs4sAyKK1a6oz+qDYatp2Bv/JRf0Kjnxi7GtiiKhCUWgW5jDIY42Q5D1Gsld8xeUeYYS6A1D/wu0WqJp1oJ9pEV5D+oRdQotYKQqoTllBaJ4NmsigfNr5a9/3UvDY5F7s7MnYhuMSkDQIDAQAB';
@@ -111,7 +116,7 @@ const parrvaMessage = (body: Record<string, unknown>) => {
 
 // ───────────── PaRRVA calls ─────────────
 async function parrvaToken() {
-  const username = Deno.env.get('PARRVA_USERNAME'),
+  const username = Deno.env.get('PARRVA_USERNAME')?.trim(),
     password = Deno.env.get('PARRVA_PASSWORD');
   if (!username || !password)
     throw new HttpError(503, 'CARE PaRRVA is not configured on the server yet.');
@@ -120,6 +125,7 @@ async function parrvaToken() {
     PARRVA_PUBLIC_KEY,
   );
   const res = await fetch(AUTH_URL, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     method: 'POST',
     headers: { accept: '*/*', 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: jwe }),
@@ -237,6 +243,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
     const token = await parrvaToken();
     const jwe = await encryptJwe(JSON.stringify(payload), PDC_PUBLIC_KEY);
     const res = await fetch(STRATEGY_URL, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
       method: 'POST',
       headers: {
         accept: '*/*',
@@ -253,7 +260,12 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
       : 'CARE PaRRVA rejected the submission' +
         (parrvaMessage(response) ? ': ' + parrvaMessage(response) : ' (HTTP ' + res.status + ')');
   } catch (error) {
-    message = error instanceof HttpError ? error.message : 'Could not reach CARE PaRRVA.';
+    message =
+      error instanceof HttpError
+        ? error.message
+        : timedOut(error)
+          ? 'NSE PDC did not answer within 20 seconds. Ask CARE PaRRVA to confirm this server can reach the Strategy API.'
+          : 'Could not reach CARE PaRRVA.';
     response = { error: message };
     if (error instanceof HttpError && error.status === 503) throw error;
   }
@@ -288,6 +300,36 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   return { status: 'Submitted', submittedAt, strategies: payload.length, legs: legs.length };
 }
 
+// Connection check without sending any recommendation: probes the PDC Strategy endpoint with a GET
+// (no body), which shows whether PDC accepts connections from here, and signs in to PaRRVA only
+// when asked (signIn: true), since repeated failed logins can lock the account.
+async function check(body: Record<string, unknown>) {
+  let pdc: Record<string, unknown>;
+  try {
+    const res = await fetch(STRATEGY_URL, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      method: 'GET',
+      headers: { accept: '*/*' },
+    });
+    pdc = { reachable: true, http_status: res.status, body: (await res.text()).slice(0, 300) };
+  } catch (error) {
+    pdc = {
+      reachable: false,
+      error: timedOut(error) ? 'no answer within 20 seconds' : String(error).slice(0, 300),
+    };
+  }
+  let signIn = 'not attempted';
+  if (body.signIn === true) {
+    try {
+      await parrvaToken();
+      signIn = 'ok';
+    } catch (error) {
+      signIn = error instanceof Error ? error.message : String(error);
+    }
+  }
+  return { parrva_sign_in: signIn, pdc, strategy_url: STRATEGY_URL };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return reply(405, { error: 'Use POST.' });
@@ -295,6 +337,7 @@ Deno.serve(async (req) => {
     const profile = await caller(req);
     const body = await req.json().catch(() => ({}));
     if (body.action === 'submit') return reply(200, await submit(profile, body));
+    if (body.action === 'check') return reply(200, await check(body));
     return reply(400, { error: 'Unknown action.' });
   } catch (error) {
     if (error instanceof HttpError) return reply(error.status, { error: error.message });
