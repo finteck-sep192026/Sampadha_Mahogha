@@ -13,7 +13,8 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 | Report attachments | Storage bucket `v2-research` (private), max 3 files per report, 5 MB each, image or PDF. |
 | Report signing | **Aadhaar eSign (NSDL) through the FinAnalyz gateway.** The `esign` Edge Function sends the PDF, the analyst signs with an Aadhaar OTP on the hosted eSign page and is sent back, and the server confirms with the gateway and stores the signed PDF. The browser cannot mark a report signed. |
 | Delivery | `send_research_report` refuses reports without a confirmed eSign. Clients download the signed PDF. |
-| Multi Segment | Legs come from the 19-column advice CSV (`multi-recommendations-template.csv`, up to 50 rows). The browser validates and previews it; `create_research_draft` validates every row again and stores all 19 columns on `v2.research_legs`. |
+| Multi Segment | Legs come from the 19-column advice CSV (`multi-recommendations-template.csv`, up to 50 rows). Its columns are CARE PaRRVA's Strategy API fields, and both the browser and `create_research_draft` validate them with PaRRVA's rules (NSE/BSE instrument codes, PR/CMP/FP, CE/PE + strike for options only, BUY/SELL entry ranges, numeric LegId unique per AdviceName). |
+| CARE PaRRVA | After the eSign, the analyst can send the report to CARE PaRRVA, to clients, or both (PaRRVA first; clients only if it is accepted). The `parrva` Edge Function builds the Strategy payload from the saved legs (rows sharing an AdviceName = one strategy), signs in with the PaRRVA token API and posts the JWE-encrypted payload (RSA-OAEP-256 + A256GCM, `parrva.pem` / `pdc_public_key.pem`) to the PDC Strategy API. Each attempt is kept in `v2.parrva_submissions`. |
 | Cash Segment | LC/MC/SC reports, Monthly/Quarterly/Half-Yearly, from the 12-column CSV (`cash-strategy-template.csv`, up to 100 rows) via `create_cash_report_draft`. Stored in `v2.research_reports` (`segment = 'Cash'`) + `v2.cash_report_rows`, so they use the same eSign, storage and delivery. Sent with `send_cash_report` to clients whose plan includes Cash. The library shows the latest two real reports per strategy and period. |
 | Positions | One position per Multi CSV row. Exits are recorded by lots; every exit is kept in `v2.research_leg_exits`. |
 | RA Overview | Counts come from the database; the activity table lists this browser session's actions. |
@@ -21,7 +22,8 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 ## Setup (once)
 
 1. **Schema** — run `supabase/migrations/20261024000000_v2_schema.sql`, then
-   `20261025000000_v2_csv_legs_and_cash.sql`, then `supabase/seed_v2.sql`, in the Supabase SQL editor.
+   `20261025000000_v2_csv_legs_and_cash.sql`, `20261025010000_v2_parrva.sql`, then `supabase/seed_v2.sql`, in
+   the Supabase SQL editor.
 2. **Expose the schema** — Dashboard → Project Settings → Data API → *Exposed schemas* → add `v2`.
 3. **Edge Function** — `npx supabase login`, then `npm run deploy:esign` (or paste
    `supabase/functions/esign/index.ts` into Dashboard → Edge Functions → Deploy via Editor, name `esign`).
@@ -30,7 +32,10 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    comma-separated HTTPS origins allowed to receive the signer back (default:
    https://racrm.fintecindia.com). The eSign service rejects non-HTTPS return addresses, so a local copy
    sends signers back to the live site (`liveSiteUrl` in `config.js`).
-5. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
+5. **CARE PaRRVA** — `20261025010000_v2_parrva.sql`, deploy `supabase/functions/parrva/index.ts` as `parrva`, and add
+   secrets `PARRVA_USERNAME` (Enrolment ID) and `PARRVA_PASSWORD`. Optional `PARRVA_AUTH_URL` /
+   `PARRVA_STRATEGY_URL` override the endpoints from RA API document 0.0.3.
+6. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
 
 ## Live site
 
@@ -43,7 +48,7 @@ hPanel → racrm.fintecindia.com → Advanced → GIT if it does not redeploy on
 Research Analyst → Multi Segment → upload the advice CSV, add attachments and the four analysis sections →
 *Create & preview PDF* (or Cash Segment → *+ New Report* → product, frequency and CSV → *Create & Preview PDF*) → review the PDF → tick the confirmation, enter your mobile number → *Sign with Aadhaar eSign*. The
 NSDL eSign page opens; enter your Aadhaar number and the OTP, and you are brought back to the report,
-where the signature is confirmed automatically. Then choose clients and send. If you
+where the signature is confirmed automatically. Then send to CARE PaRRVA and/or clients. If you
 come back another way, open the report and use *Check signing status*.
 
 ## Files
