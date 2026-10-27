@@ -3,11 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Sampadha Wealth Portal v2</title>
+    <title>Sampadha · Research portal</title>
     <meta
       name="description"
-      content="Four-role wealth advisory portal prototype for administrators, research analysts, sales teams and clients."
+      content="Sampadha research portal: signed research, client onboarding and compliance for analysts, advisers and clients."
     />
+    <link rel="preload" href="vendor/fonts/ibm-plex-sans-latin-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="vendor/fonts/ibm-plex-sans-latin-600.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="portal.css" />
     <link rel="stylesheet" href="client-onboarding.css" />
     <link rel="stylesheet" href="brand-premium.css" />
@@ -20,45 +22,43 @@
     <link rel="stylesheet" href="cash-segment.css" />
     <link rel="stylesheet" href="broker-email.css" />
     <link rel="stylesheet" href="client-compliance.css" />
+    <link rel="stylesheet" href="design-system.css" />
   </head>
   <body>
     <main id="login" class="login-page">
       <section class="login-brand">
         <div class="hero-logo"><img src="assets/sampadha-logo.png" alt="Sampadha" /></div>
-        <p class="overline">SAMPADHA WEALTH</p>
-        <h1>One platform.<br />Four focused workspaces.</h1>
+        <h1>Research, signed and on record.</h1>
         <p>
-          Research, onboarding, subscriptions and investment communication—with clear role-based
-          access.
+          Sampadha's research desk, client onboarding and compliance in one place, for analysts,
+          advisers and the clients they serve.
         </p>
-        <div class="feature-row">
-          <span>✓ Research-led</span><span>✓ Consent-aware</span><span>✓ Audit-ready</span>
-        </div>
+        <ul class="trust-list">
+          <li>Every report is Aadhaar eSigned before it reaches a client.</li>
+          <li>Risk profile, agreement and KYC are tracked for each client.</li>
+          <li>Broker emails go out only with the client's own consent.</li>
+        </ul>
       </section>
       <section class="login-box">
-        <p class="overline">INTERACTIVE PROTOTYPE</p>
-        <h2>Sign in to your account</h2>
-        <p class="muted">Enter your Client ID, staff ID or email address and password.</p>
+        <h2>Sign in</h2>
+        <p class="muted">Use your client ID, staff ID or email address.</p>
         <form id="loginForm">
           <label
-            >Client ID / Staff ID / Email address<input
+            >Client ID, staff ID or email<input
               id="email"
               type="text"
               autocomplete="username"
               autocapitalize="none"
               spellcheck="false"
-              placeholder="CL-1001 or client@sampadha.demo"
+              placeholder="e.g. CL-1001"
               required /></label
           ><label
             >Password<input id="password" type="password" autocomplete="current-password" required
           /></label>
           <p id="loginError" class="error" role="alert"></p>
-          <button class="btn primary wide">Enter workspace →</button>
+          <button class="btn primary wide">Sign in</button>
         </form>
-        <p class="demo-hint">
-          Demo data is fictional. Sign-in is verified by the server; ask your administrator for
-          credentials.
-        </p>
+        <p class="demo-hint">Forgot your password? Ask your Sampadha administrator to reset it.</p>
       </section>
     </main>
     <div id="portal" class="portal hidden">
@@ -69,25 +69,25 @@
         </div>
         <div id="roleBadge" class="role-badge"></div>
         <nav id="nav"></nav>
-        <button id="logout" class="logout">↪ Sign out</button>
+        <button id="logout" class="logout" type="button"><svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>Sign out</button>
       </aside>
       <section class="main">
         <header class="topbar">
-          <button id="menu" class="menu">☰</button>
+          <button id="menu" class="menu" type="button" aria-label="Open menu"><svg class="icon-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
           <div>
             <p id="crumb" class="overline"></p>
             <h2 id="title"></h2>
           </div>
           <div class="top-right">
-            <span class="live">● DEMO</span
-            ><button id="themeToggle" class="theme-trigger" type="button">◉ Theme</button
+            <button id="themeToggle" class="theme-trigger" type="button" aria-label="Appearance">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.8 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16c3.1 0 5.6-2.5 5.6-5.6C21.5 6 17.1 2 12 2z"/></svg></button
             ><button
               id="notificationBell"
               class="icon alert-bell"
               type="button"
               aria-label="Open notifications"
             >
-              🔔<span id="alertCount">0</span></button
+              <svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span id="alertCount">0</span></button
             ><button class="avatar" id="avatar"></button>
           </div>
         </header>
@@ -96,19 +96,20 @@
     </div>
     <aside id="themeToolbar" class="theme-toolbar">
       <div class="theme-head">
-        <div><small>APPEARANCE</small><b>Premium themes</b></div>
-        <button id="themeClose" type="button">×</button>
+        <div><b>Appearance</b></div>
+        <button id="themeClose" type="button" aria-label="Close">×</button>
       </div>
-      <p>Choose a color system. Your preference is saved on this device.</p>
+      <p>Choose a colour scheme. It is saved on this device.</p>
       <div id="themeOptions" class="theme-options"></div>
     </aside>
-    <button id="floatingTheme" class="floating-theme" type="button" aria-label="Change color theme">
-      ◉
+    <button id="floatingTheme" class="floating-theme" type="button" aria-label="Appearance">
+      <svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.8 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16c3.1 0 5.6-2.5 5.6-5.6C21.5 6 17.1 2 12 2z"/></svg>
     </button>
-    <div id="toast" class="toast"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="config.js"></script>
     <script src="vendor/supabase.js"></script>
     <script src="api.js"></script>
+    <script src="icons.js"></script>
     <script src="role-app.js"></script>
     <script src="research-reports.js"></script>
     <script src="cash-segment.js"></script>

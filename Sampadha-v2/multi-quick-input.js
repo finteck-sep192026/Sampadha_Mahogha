@@ -290,7 +290,7 @@ function multiQuickInputMarkup() {
       .join('') +
     '</select></label>';
   return (
-    '<div id="quickBasket" class="quick-basket"><div><p class="overline">QUICK INPUT</p><h4>Or type a compact basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Lot sizes, exchange and instrument come from the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
+    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Quick input</p><h4>Or type a compact basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Lot sizes, exchange and instrument come from the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
     select('product', 'Product', MULTI_TYPES, 'Giga') +
     select('intraday', 'Intraday', ['NO', 'YES'], 'NO') +
     select('priceType', 'Price type', ['CMP', 'PR', 'FP'], 'CMP') +
@@ -303,7 +303,7 @@ function quickUploadsPage() {
   if (!reportAllowed())
     return '<article class="card panel">Research workspace access required.</article>';
   return (
-    '<article class="card panel"><div class="panel-head"><div><p class="overline">MULTI SEGMENT</p><h3>Weekly contract master</h3><p>Upload the weekly Multisegment master (CSV, XLS or XLSX, up to 10 MB). Quick input uses the latest upload for lot sizes, exchange and instrument codes. Standard columns: MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol.</p></div></div><form id="quickMasterForm"><label class="field">Weekly master file<input name="master" type="file" accept=".csv,.xls,.xlsx" required></label><button class="btn primary">Upload master</button><p id="quickMasterMessage" class="research-message" role="status"></p></form></article><article class="card panel research-section"><h3>Uploaded masters</h3><div id="quickMasterList"><p class="muted">Loading…</p></div></article>'
+    '<article class="card panel"><div class="panel-head"><div><p class="overline">Multi Segment</p><h3>Weekly contract master</h3><p>Upload the weekly Multisegment master (CSV, XLS or XLSX, up to 10 MB). Quick input uses the latest upload for lot sizes, exchange and instrument codes. Standard columns: MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol.</p></div></div><form id="quickMasterForm"><label class="field">Weekly master file<input name="master" type="file" accept=".csv,.xls,.xlsx" required></label><button class="btn primary">Upload master</button><p id="quickMasterMessage" class="research-message" role="status"></p></form></article><article class="card panel research-section"><h3>Uploaded masters</h3><div id="quickMasterList"><p class="muted">Loading…</p></div></article>'
   );
 }
 async function quickRenderMasterList() {
