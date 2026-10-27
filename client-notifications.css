@@ -56,14 +56,14 @@
   padding: 17px;
 }
 .channel-icon {
-  width: 43px;
-  height: 43px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--blue), var(--cyan));
-  font-size: 19px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-m);
+  color: var(--blue);
+  background: var(--tint-blue);
 }
 .channel-card b,
 .channel-card small {
@@ -82,17 +82,20 @@
 }
 .notification-row {
   display: grid;
-  grid-template-columns: 42px 1fr auto;
+  grid-template-columns: 40px 1fr auto;
   gap: 12px;
   align-items: center;
-  padding: 14px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
+  border-radius: var(--radius-inner);
+  background: var(--surface);
 }
 .notification-row.unread {
-  border-color: #9ec8fb;
-  background: #f5f9ff;
+  border-color: color-mix(in srgb, var(--blue) 35%, var(--line));
+  background: var(--selected-bg);
+}
+.notification-row b {
+  font-weight: 600;
 }
 .notification-row b,
 .notification-row small {
@@ -114,18 +117,25 @@
   margin-bottom: 16px;
 }
 .filter-chip {
+  min-height: 36px;
   border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 20px;
-  padding: 8px 13px;
-  color: var(--muted);
-  font-weight: 800;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.filter-chip:hover {
+  border-color: color-mix(in srgb, var(--line) 50%, var(--muted));
 }
 .filter-chip.active {
-  background: var(--navy);
-  border-color: var(--navy);
-  color: #fff;
+  background: var(--selected-bg);
+  border-color: var(--selected-line);
+  color: var(--blue);
+  font-weight: 600;
 }
 .segment-banner {
   display: flex;
@@ -142,15 +152,15 @@
   color: var(--muted);
 }
 .segment-mark {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 15px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--blue), var(--cyan));
-  font-size: 23px;
-  font-weight: 900;
+  border-radius: var(--radius-m);
+  color: var(--blue);
+  background: var(--tint-blue);
+  font-size: 18px;
+  font-weight: 600;
 }
 .segment-summary {
   display: grid;
@@ -159,10 +169,14 @@
   margin: 14px 0;
 }
 .segment-summary div {
-  padding: 12px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f8fbff;
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
+}
+.segment-summary b {
+  font-size: 18px;
+  font-weight: 600;
 }
 .segment-summary small,
 .segment-summary b {

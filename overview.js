@@ -12,6 +12,10 @@ const AUDIT_LABELS = {
   'report.esign_requested': 'Aadhaar eSign started',
   'report.esigned': 'Report signed with Aadhaar eSign',
   'report.sent': 'Report sent to clients',
+  'report.attachment': 'Attachment added to a report',
+  'report.parrva_submitted': 'Report sent to CARE PaRRVA',
+  'report.parrva_failed': 'CARE PaRRVA submission failed',
+  'position.exit': 'Position closed (in part or in full)',
   'application.submitted': 'Client application submitted',
   'application.approved': 'Client application approved',
   'application.rejected': 'Client application returned',
@@ -147,6 +151,9 @@ function clientOverview() {
   ])}<section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Your checklist</h3><p>${done === 3 ? 'All done. Thank you.' : `${done} of 3 done`}</p></div><button class="btn secondary" data-go="compliance">Open</button></div><div class="compliance-checklist single">${tick(Boolean(rp), 'Risk profile', rp ? rp.category : 'Answer nine questions')}${tick(agreement, 'Client agreement', agreement ? 'Signed' : 'Sign it with Aadhaar eSign')}${tick(kyc, 'KYC', state.user.kyc)}</div></article><article class="card panel"><div class="panel-head"><div><h3>Latest notifications</h3><p>The three most recent</p></div><button class="btn secondary" data-go="notifications">View all</button></div>${alertRows(clientAlerts.slice(0, 3))}</article></section>`;
 }
 
+// The audit trail uses the same plain-language feed as the overview.
+pages.audit = () =>
+  `<article class="card panel"><div class="panel-head"><div><h3>Audit trail</h3><p>Every change made through the portal, newest first. Entries cannot be edited or deleted.</p></div><span class="badge">Last ${(state.ws?.audit || []).length}</span></div>${activityFeed(state.ws?.audit || [])}</article>`;
 pages.dashboard = () => (state.role === 'ra' ? raDashboard() : adminOverview());
 pages.clientDashboard = clientOverview;
 
