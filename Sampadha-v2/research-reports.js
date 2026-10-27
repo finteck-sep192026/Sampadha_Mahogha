@@ -1069,7 +1069,9 @@ function researchAttachmentsMarkup() {
 }
 researchPage = function () {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">RA WORKSPACE</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">MULTI RECOMMENDATIONS</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p><div id="researchCsvPreview"></div></section>' +
+    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">RA WORKSPACE</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">MULTI RECOMMENDATIONS</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p>' +
+    (typeof multiQuickInputMarkup === 'function' ? multiQuickInputMarkup() : '') +
+    '<div id="researchCsvPreview"></div></section>' +
     researchAttachmentsMarkup() +
     '<div class="form-grid research-section">' +
     RESEARCH_SECTIONS.map(
@@ -1666,11 +1668,13 @@ $('#content').addEventListener('submit', async (e) => {
         );
       if (!title || Object.values(sections).some((x) => !x))
         throw new Error('Enter a title and all four research sections.');
-      const legs = researchReadRows(form).map((r) =>
-        Object.fromEntries(
+      const legs = researchReadRows(form).map((r) => ({
+        ...Object.fromEntries(
           RESEARCH_IMPORT_COLUMNS.map(([key]) => [key, r[key] == null ? '' : String(r[key])]),
         ),
-      );
+        // Contracts per lot: from the weekly master for Quick input, 1 for CSV uploads.
+        lotSize: String(r.lotSize || 1),
+      }));
       button.disabled = true;
       message.classList.remove('research-error');
       message.textContent = 'Saving report...';

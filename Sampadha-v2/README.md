@@ -14,6 +14,8 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 | Report signing | **Aadhaar eSign (NSDL) through the FinAnalyz gateway.** The `esign` Edge Function sends the PDF, the analyst signs with an Aadhaar OTP on the hosted eSign page and is sent back, and the server confirms with the gateway and stores the signed PDF. The browser cannot mark a report signed. |
 | Delivery | `send_research_report` refuses reports without a confirmed eSign. Clients download the signed PDF. |
 | Multi Segment | Legs come from the 19-column advice CSV (`multi-recommendations-template.csv`, up to 50 rows). Its columns are CARE PaRRVA's Strategy API fields, and both the browser and `create_research_draft` validate them with PaRRVA's rules (NSE/BSE instrument codes, PR/CMP/FP, CE/PE + strike for options only, BUY/SELL entry ranges, numeric LegId unique per AdviceName). |
+| Multi Quick input | Instead of a CSV, the analyst can type a compact basket, one option leg per line: `CB Nifty 03Nov 24000C+3 @120-125 T180 SL95` (prefix CB/PB/BC/BP/RP/RC, symbol, expiry, strike + C/P, `+` buy / `-` sell with lots, `@` entry or entry range, `T` target, `SL` stop-loss). Lot size, exchange, contract name and instrument (NSE OPTIDX/OPTSTK, BSE IDO/STO) come from the latest weekly master. Each basket gets its own AdviceName (prefix + underlying + IST time stamp, e.g. `CALL BUY NIFTY 261027-1630`) so PaRRVA records it as new advice, not a change to an earlier one. The rows then go through the same CSV validation, preview, eSign and sending. |
+| Weekly master | RA/Admin → Uploads: the weekly Multisegment master (CSV, XLS or XLSX, up to 10 MB; standard columns MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol, or legacy Symbol + MLot). Stored privately at `v2-research/masters/<uuid>.<ext>` and listed in `v2.symbol_masters` via `register_symbol_master`; the newest upload is the one in use. |
 | CARE PaRRVA | After the eSign, the analyst can send the report to CARE PaRRVA, to clients, or both (PaRRVA first; clients only if it is accepted). The `parrva` Edge Function builds the Strategy payload from the saved legs (rows sharing an AdviceName = one strategy), signs in with the PaRRVA token API and posts the JWE-encrypted payload (RSA-OAEP-256 + A256GCM, `parrva.pem` / `pdc_public_key.pem`) to the PDC Strategy API. Each attempt is kept in `v2.parrva_submissions`. |
 | Cash Segment | LC/MC/SC reports, Monthly/Quarterly/Half-Yearly, from the 12-column CSV (`cash-strategy-template.csv`, up to 100 rows) via `create_cash_report_draft`. Stored in `v2.research_reports` (`segment = 'Cash'`) + `v2.cash_report_rows`, so they use the same eSign, storage and delivery. Sent with `send_cash_report` to clients whose plan includes Cash. The library shows the latest two real reports per strategy and period. |
 | Positions | One position per Multi CSV row. Exits are recorded by lots; every exit is kept in `v2.research_leg_exits`. |
@@ -22,7 +24,8 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 ## Setup (once)
 
 1. **Schema** — run `supabase/migrations/20261024000000_v2_schema.sql`, then
-   `20261025000000_v2_csv_legs_and_cash.sql`, `20261025010000_v2_parrva.sql`, then `supabase/seed_v2.sql`, in
+   `20261025000000_v2_csv_legs_and_cash.sql`, `20261025010000_v2_parrva.sql`,
+   `20261027000000_v2_symbol_master.sql`, then `supabase/seed_v2.sql`, in
    the Supabase SQL editor.
 2. **Expose the schema** — Dashboard → Project Settings → Data API → *Exposed schemas* → add `v2`.
 3. **Edge Function** — `npx supabase login`, then `npm run deploy:esign` (or paste
@@ -59,5 +62,7 @@ config.js            public project URL + publishable key
 role-app.js          screens, navigation, sign-in/session
 research-reports.js  Multi Segment: CSV import, attachments, PDF, Aadhaar eSign, delivery, positions
 cash-segment.js      Cash Segment: CSV import, report library, PDF, Aadhaar eSign, delivery, RA activity
+multi-quick-input.js Multi Segment Quick input (compact basket) and the Uploads page for the weekly master
 vendor/supabase.js   supabase-js browser build
+vendor/xlsx.full.min.js  SheetJS 0.20.3 (Apache-2.0), loaded only when a weekly master is read
 ```

@@ -436,6 +436,29 @@
     upload(`${reportId}/preview.pdf`, blob, 'application/pdf');
   const downloadFile = async (path) => must(await sb.storage.from(BUCKET).download(path));
 
+  // ───────────── weekly contract master (Uploads page → Multi Segment Quick input) ─────────────
+  // Newest first; the first entry is the master Quick input uses. At most 50 per call.
+  const listSymbolMasters = async (limit = 10) =>
+    must(
+      await sb
+        .from('symbol_masters')
+        .select('id, file_name, storage_path, size_bytes, symbols, contracts, format, uploaded_at')
+        .order('uploaded_at', { ascending: false })
+        .limit(Math.min(Math.max(Math.trunc(limit) || 1, 1), 50)),
+    );
+  // Stored under a fresh id (never overwritten), then registered with the counts the browser parsed.
+  async function uploadSymbolMaster(file, parsed, contentType) {
+    const path = `masters/${crypto.randomUUID()}.${parsed.extension}`;
+    must(await sb.storage.from(BUCKET).upload(path, file, { contentType, upsert: false }));
+    return rpc('register_symbol_master', {
+      p_path: path,
+      p_file_name: file.name,
+      p_symbols: parsed.symbols,
+      p_contracts: parsed.contracts,
+      p_format: parsed.format,
+    });
+  }
+
   // ───────────── Aadhaar eSign (the esign Edge Function holds the gateway API key) ─────────────
   async function esign(action, body) {
     const { data, error } = await sb.functions.invoke('esign', {
@@ -496,6 +519,8 @@
     uploadAttachment,
     uploadPreviewPdf,
     downloadFile,
+    listSymbolMasters,
+    uploadSymbolMaster,
     esignStart,
     esignVerify,
     parrvaSubmit,
