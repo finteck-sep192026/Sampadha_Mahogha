@@ -331,6 +331,9 @@
       researchClients,
       cashClients,
       brokerEmails,
+      compliance,
+      riskProfiles,
+      clientDocuments,
     ] = await Promise.all([
       ok(q('cash_recommendations', (x) => x.order('published_at'))),
       ok(q('multi_recommendations', (x) => x.order('published_at'))),
@@ -364,6 +367,11 @@
       staff
         ? rpc('list_broker_email_clients')
         : ok(q('broker_email_consents')),
+      staff ? rpc('list_client_compliance') : [],
+      ok(q('risk_profiles', (x) => x.order('submitted_at', { ascending: false }).limit(200))),
+      role === 'ra'
+        ? []
+        : ok(q('client_documents', (x) => x.order('created_at', { ascending: false }))),
     ]);
 
     const exitsByLeg = new Map();
@@ -392,6 +400,10 @@
       cashClients,
       // Broker auto-email details per client (a client gets only their own row)
       brokerEmails,
+      // Compliance (Compliance page): per-client overview for staff, risk answers, documents to sign
+      compliance,
+      riskProfiles,
+      clientDocuments,
       // [name, id, risk, kyc, plan, email, mobile] rows for the client relationship table
       clientRows: directory
         .filter((p) => p.role === 'client')
@@ -459,6 +471,53 @@
   const sendBrokerTestEmail = withMail((loginId, testEmail) =>
     rpc('send_broker_test_email', { p_login_id: loginId || null, p_test_email: testEmail || null }),
   );
+  // ───────────── client compliance (risk profile, documents to sign, KYC) ─────────────
+  const riskQuestionnaire = () => rpc('risk_questionnaire');
+  const submitRiskProfile = (answers) => rpc('submit_risk_profile', { p_answers: answers });
+  const setClientKyc = (loginId, status) =>
+    rpc('set_client_kyc', { p_login_id: loginId, p_status: status });
+  const cancelClientDocument = (id) => rpc('cancel_client_document', { p_id: id });
+  // Stored under a fresh id (never overwritten), then registered; the client is notified by email.
+  const sendClientDocument = withMail(async (client, file, details) => {
+    const id = crypto.randomUUID();
+    must(
+      await sb.storage
+        .from(BUCKET)
+        .upload(`clients/${client.id}/${id}.pdf`, file, {
+          contentType: 'application/pdf',
+          upsert: false,
+        }),
+    );
+    return rpc('create_client_document', {
+      p_id: id,
+      p_login_id: client.login_id,
+      p_title: details.title,
+      p_kind: details.kind,
+      p_file_name: file.name,
+      p_sign_pages: details.signPages,
+    });
+  });
+  async function clientEsign(action, body) {
+    const { data, error } = await sb.functions.invoke('client-esign', {
+      body: { action, ...body },
+    });
+    if (error) {
+      if (error.name === 'FunctionsFetchError')
+        throw new Error('The eSign service is not reachable. Ask an administrator to deploy it.');
+      let message = error.message;
+      try {
+        message = (await error.context.json()).error || message;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new Error(message);
+    }
+    return data;
+  }
+  const clientEsignStart = (documentId, mobile, returnUrl) =>
+    clientEsign('start', { documentId, mobile, returnUrl });
+  const clientEsignVerify = (documentId) => clientEsign('verify', { documentId });
+
   async function mailerStatus() {
     const { data, error } = await sb.functions.invoke('mailer', { body: { action: 'status' } });
     if (error) throw new Error('The mailer service is not reachable.');
@@ -569,6 +628,13 @@
     sendBrokerTestEmail,
     mailerStatus,
     flushMail,
+    riskQuestionnaire,
+    submitRiskProfile,
+    setClientKyc,
+    sendClientDocument,
+    cancelClientDocument,
+    clientEsignStart,
+    clientEsignVerify,
     uploadAttachment,
     uploadPreviewPdf,
     downloadFile,
