@@ -3,102 +3,50 @@
  * Direction: "signed and on record". The portal moves research from an analyst's desk to a
  * client's inbox with a signature and an audit trail, so it borrows from the paperwork of Indian
  * finance rather than from app templates: ledger ruling, a signature line, a gold seal for what
- * is signed. One engineered sans (IBM Plex) carries everything; figures use its condensed cut
- * with tabular numerals. Colour comes from the theme variables (--navy, --blue, --gold, …) so all
+ * is signed. Type sets the register of a private bank's statement: Newsreader, a reading serif
+ * with optical sizes, for headings and figures; Mona Sans, a quiet grotesk, for the interface. Colour comes from the theme variables (--navy, --blue, --gold, …) so all
  * four themes keep working; the default Sapphire theme is re-tuned below.
  * Motion: only where the interface answers an action (press, toast, drawer, dialog); nothing on
  * navigation or on data people read. All of it is removed under prefers-reduced-motion.
  */
 
 @font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 400;
+  font-family: 'Mona Sans';
+  font-style: normal;
+  font-weight: 200 900;
   font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-400.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  src: url('vendor/fonts/mona-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 400;
+  font-family: 'Mona Sans';
+  font-style: normal;
+  font-weight: 200 900;
   font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-ext-400.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('vendor/fonts/mona-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 500;
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-500.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  src: url('vendor/fonts/newsreader-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 500;
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-ext-500.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 600;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 600;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-ext-600.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 700 900;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'IBM Plex Sans';
-  font-weight: 700 900;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-latin-ext-700.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'IBM Plex Sans Condensed';
-  font-weight: 500;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-condensed-latin-500.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'IBM Plex Sans Condensed';
-  font-weight: 500;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-condensed-latin-ext-500.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'IBM Plex Sans Condensed';
-  font-weight: 600 700;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-condensed-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'IBM Plex Sans Condensed';
-  font-weight: 600 700;
-  font-display: swap;
-  src: url('vendor/fonts/ibm-plex-sans-condensed-latin-ext-600.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('vendor/fonts/newsreader-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* ───────────── tokens ───────────── */
 :root {
-  --font: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-figures: 'IBM Plex Sans Condensed', 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font: 'Mona Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
   --surface: #ffffff;
   --radius-s: 8px;
   --radius-m: 10px;
@@ -156,10 +104,24 @@ h3 {
   text-wrap: balance;
 }
 .stamp,
-td,
 .price,
 .stat strong {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+/* Headings in the display serif; optical sizing picks the right cut for each size. */
+h1,
+h2,
+h3,
+.topbar h2,
+.panel-head h3,
+.card h3,
+.profile-card h3,
+.plan h3,
+.price,
+.sidebar .brand b {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 500;
 }
 .stamp {
   font-family: var(--font);
@@ -225,11 +187,11 @@ td,
 .login-brand h1 {
   max-width: 11ch;
   margin: 0 0 22px;
-  font-family: var(--font-figures);
-  font-weight: 600;
-  font-size: clamp(44px, 5.2vw, 76px);
-  line-height: 1.02;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 450;
+  font-size: clamp(48px, 5.6vw, 82px);
+  line-height: 1;
+  letter-spacing: -0.025em;
   color: #fff;
 }
 .login-brand > p:not(.overline) {
@@ -276,8 +238,9 @@ td,
 }
 .login-box h2 {
   margin: 0 0 6px;
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 34px;
+  font-weight: 450;
+  letter-spacing: -0.015em;
 }
 .login-box > .muted {
   margin: 0 0 18px;
@@ -316,10 +279,9 @@ td,
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--side-accent, var(--gold)) 70%, transparent);
 }
 .sidebar .brand b {
-  font-family: var(--font);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 .sidebar .brand small {
   font-size: 12px;
@@ -429,9 +391,10 @@ td,
   font-size: 12px;
 }
 .topbar h2 {
-  font-size: 19px;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 .top-right {
   gap: 8px;
@@ -527,10 +490,11 @@ section + .card.panel {
 }
 .panel-head h3,
 .card h3 {
-  margin: 0 0 2px;
-  font-size: 16.5px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
+  margin: 0 0 3px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.008em;
 }
 .panel-head p {
   margin: 0;
@@ -568,11 +532,11 @@ section + .card.panel {
 }
 .stat strong {
   display: block;
-  font-family: var(--font-figures);
-  font-weight: 600;
-  font-size: 30px;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
   color: var(--ink);
 }
 .stat .positive {
@@ -611,9 +575,10 @@ section + .card.panel {
 }
 .client-welcome h3 {
   margin: 2px 0 4px;
-  font-family: var(--font-figures);
-  font-weight: 600;
-  font-size: 28px;
+  font-family: var(--font-display);
+  font-weight: 450;
+  font-size: 32px;
+  letter-spacing: -0.015em;
   color: #fff;
 }
 .client-welcome p {
@@ -921,7 +886,7 @@ input[type='file']::file-selector-button:hover {
     padding: 28px 22px 32px;
   }
   .login-brand h1 {
-    font-size: 36px;
+    font-size: 40px;
     margin-bottom: 12px;
   }
   .login-brand > p:not(.overline),
@@ -967,10 +932,13 @@ input[type='file']::file-selector-button:hover {
     padding: 14px 14px 12px;
   }
   .stat strong {
-    font-size: 24px;
+    font-size: 27px;
   }
   .client-welcome h3 {
-    font-size: 24px;
+    font-size: 27px;
+  }
+  .topbar h2 {
+    font-size: 19px;
   }
   .theme-trigger {
     display: none;
