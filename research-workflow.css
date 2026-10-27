@@ -352,3 +352,37 @@
 .research-parrva .research-message {
   margin: 8px 0 0;
 }
+/* Multi Segment Quick input (compact basket) — multi-quick-input.js */
+.quick-basket {
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+.quick-basket h4 {
+  margin: 2px 0 6px;
+}
+.quick-basket p.research-notice {
+  margin: 0;
+  max-width: 760px;
+  line-height: 1.6;
+}
+.quick-basket-settings {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.quick-basket textarea {
+  display: block;
+  margin-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 14px;
+  resize: vertical;
+}
+.quick-basket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
