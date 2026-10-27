@@ -283,13 +283,19 @@ function portfolioPayload(rows: Record<string, unknown>[]) {
   }
   return [...groups.values()];
 }
-// "The weightage of portfolios should be 1": the first portfolio whose weights do not add up to 1.
-function unbalancedPortfolio(payload: Record<string, unknown>[]) {
+// PaRRVA's portfolio rules ("The weightage of portfolios should be 1"; the submission form: "minimum
+// 2 distinct securities and maximum up to 100"): what is wrong with the first failing portfolio, or ''.
+function portfolioProblem(payload: Record<string, unknown>[]) {
   for (const p of payload) {
-    const total = (p.details as { Weightage: number }[]).reduce((sum, d) => sum + d.Weightage, 0);
-    if (Math.abs(total - 1) > 0.0005) return { name: String(p.PortfolioName), total };
+    const details = p.details as { ISIN: string; Weightage: number }[],
+      total = details.reduce((sum, d) => sum + d.Weightage, 0),
+      distinct = new Set(details.map((d) => d.ISIN)).size;
+    if (Math.abs(total - 1) > 0.0005)
+      return `The weightages of portfolio "${p.PortfolioName}" add up to ${total.toFixed(4)}; CARE PaRRVA needs exactly 1.`;
+    if (distinct < 2 || distinct > 100)
+      return `Portfolio "${p.PortfolioName}" has ${distinct} distinct securities; CARE PaRRVA needs 2 to 100.`;
   }
-  return null;
+  return '';
 }
 
 // Multi: the Strategy API payload from the report's legs.
@@ -334,12 +340,8 @@ async function cashPayload(reportId: string) {
     .order('position');
   if (!rows?.length) throw new HttpError(400, 'This report has no portfolio rows.');
   const payload = portfolioPayload(rows);
-  const unbalanced = unbalancedPortfolio(payload);
-  if (unbalanced)
-    throw new HttpError(
-      400,
-      `The weightages of portfolio "${unbalanced.name}" add up to ${unbalanced.total.toFixed(4)}; CARE PaRRVA needs exactly 1.`,
-    );
+  const problem = portfolioProblem(payload);
+  if (problem) throw new HttpError(400, problem);
   return {
     api: 'portfolio' as PdcApi,
     payload,
