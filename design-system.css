@@ -79,6 +79,9 @@ body:is(:not([data-theme]), [data-theme='']) {
 }
 
 /* ───────────── base ───────────── */
+[hidden] {
+  display: none !important;
+}
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -105,7 +108,7 @@ h3 {
 }
 .stamp,
 .price,
-.stat strong {
+.table td {
   font-variant-numeric: lining-nums tabular-nums;
 }
 /* Headings in the display serif; optical sizing picks the right cut for each size. */
@@ -530,13 +533,16 @@ section + .card.panel {
 .stat .label b {
   display: none;
 }
+/* Figures stay in the interface sans with proportional digits: a serif figure reads as
+   decoration, and tabular digits look loose at this size (dataviz). */
 .stat strong {
   display: block;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 34px;
-  line-height: 1.1;
-  letter-spacing: -0.015em;
+  font-family: var(--font);
+  font-weight: 600;
+  font-variant-numeric: lining-nums proportional-nums;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 .stat .positive {
@@ -592,6 +598,152 @@ section + .card.panel {
 }
 .channel-icon {
   border-radius: var(--radius-m);
+}
+
+/* ───────────── charts & meters (charts.js) ───────────── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.overview-grid > .card {
+  margin: 0;
+}
+.viz {
+  margin: 0 0 18px;
+}
+.overview-grid .viz {
+  margin: 0;
+}
+.viz-toggle {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: -4px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.viz-legend:empty {
+  display: none;
+}
+.viz-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.viz-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.viz-plot {
+  position: relative;
+}
+.viz-tip {
+  position: absolute;
+  z-index: 2;
+  transform: translateX(-50%);
+  min-width: 140px;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-float);
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.viz-tip b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.viz-tip div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.7;
+}
+.viz-tip i {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+}
+.viz-tip strong {
+  min-width: 18px;
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.viz-tip .viz-tip-total {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.viz-table {
+  margin-top: 14px;
+}
+.viz-plot.viz-empty {
+  display: grid;
+  place-items: center;
+  height: auto !important;
+  min-height: 140px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+  border-radius: var(--radius-m);
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  text-wrap: balance;
+}
+.meters {
+  display: grid;
+  gap: 16px;
+}
+.meter-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 7px;
+  font-size: 14px;
+}
+.meter-head span {
+  flex: 1;
+}
+.meter-head b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.meter-head small {
+  min-width: 38px;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.meter-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #dbe6fa;
+  overflow: hidden;
+}
+.meter-track span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #1556d0;
+}
+.compliance-checklist.single {
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 /* ───────────── tables ───────────── */
@@ -873,6 +1025,9 @@ input[type='file']::file-selector-button:hover {
 
 /* ───────────── responsive ───────────── */
 @media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
   .login-brand h1 {
     font-size: clamp(40px, 6vw, 56px);
   }
