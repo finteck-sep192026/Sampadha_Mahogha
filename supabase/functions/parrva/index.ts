@@ -1,19 +1,22 @@
-// CARE PaRRVA reporting for Sampadha v2 Multi Segment reports (RA API document 0.0.3).
+// CARE PaRRVA reporting for Sampadha v2 research reports (RA API document 0.0.3).
 //
-//   POST { action: 'check' }            → signs in and probes the PDC endpoint; sends no recommendation.
+//   POST { action: 'check' }            → probes the PDC endpoint (signs in only with signIn: true);
+//                                          sends no recommendation.
 //   POST { action: 'submit', reportId }
-//        → builds the Strategy API payload from the report's saved legs (rows sharing an AdviceName
-//          are one strategy), gets a PaRRVA token, and posts the encrypted payload to the PDC
-//          Strategy API. Every attempt is stored in v2.parrva_submissions.
+//        → Multi report: the Strategy API payload from its saved legs (rows sharing an AdviceName
+//          are one strategy). Cash report: the Portfolio API payload from its rows (rows sharing a
+//          PortfolioName are one portfolio, whose weightages add up to 1).
+//          Gets a PaRRVA token and posts the encrypted payload to PDC. Every attempt is stored in
+//          v2.parrva_submissions.
 //
 // Requests are JWE-encrypted (RSA-OAEP-256 + A256GCM) exactly as in PaRRVA's Postman collection:
-// the token request with the PaRRVA public key, the Strategy request with the PDC public key.
+// the token request with the PaRRVA public key, the PDC requests with the PDC public key.
 // Credentials live in Edge Function secrets, never in the browser:
 //   PARRVA_USERNAME (Enrolment ID), PARRVA_PASSWORD
 //   optional PARRVA_AUTH_URL, PARRVA_STRATEGY_URL to override the documented endpoints
 //   PDC_RELAY_KEY: NSE PDC answers whitelisted IPs only and Edge Functions have no fixed outgoing
-//     IP, so with this key set the Strategy call goes through the fixed-IP relay on the Hostinger
-//     site (Sampadha-v2/relay/v1, which only forwards to the documented PDC URL);
+//     IP, so with this key set the PDC calls go through the fixed-IP relay on the Hostinger site
+//     (Sampadha-v2/relay/v1, which only forwards to the documented Strategy and Portfolio URLs);
 //     optional PDC_RELAY_URL overrides its address
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -26,6 +29,13 @@ const RELAY_URL = (
 const STRATEGY_URL = RELAY_KEY
   ? 'https://pdc.nseindia.com/advice/rainput/strategy'
   : (Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseindia.com/advice/rainput/strategy');
+const PORTFOLIO_URL = 'https://pdc.nseindia.com/advice/rainput/portfolio';
+// Each PDC API: its direct URL and its route on the relay.
+const PDC = {
+  strategy: { url: STRATEGY_URL, relayRoute: '/pdc/strategies' },
+  portfolio: { url: PORTFOLIO_URL, relayRoute: '/pdc/portfolios' },
+} as const;
+type PdcApi = keyof typeof PDC;
 // NSE's PDC edge drops requests it does not accept without answering; never wait on it forever.
 const TIMEOUT_MS = 20000;
 // Identify this application honestly to PaRRVA/NSE instead of the runtime's generic client name.
@@ -161,11 +171,11 @@ async function parrvaToken() {
   return token as string;
 }
 
-// POSTs a body to the PDC Strategy API: through the fixed-IP relay when PDC_RELAY_KEY is set,
-// otherwise directly. Returns PDC's response; relay failures throw RelayError.
-async function postStrategy(body: string, token?: string) {
+// POSTs a body to a PDC API: through the fixed-IP relay when PDC_RELAY_KEY is set, otherwise
+// directly. Returns PDC's response; relay failures throw RelayError.
+async function postPdc(api: PdcApi, body: string, token?: string) {
   if (!RELAY_KEY)
-    return fetch(STRATEGY_URL, {
+    return fetch(PDC[api].url, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
       method: 'POST',
       headers: {
@@ -176,7 +186,7 @@ async function postStrategy(body: string, token?: string) {
       },
       body,
     });
-  const res = await fetch(RELAY_URL + '/pdc/strategies', {
+  const res = await fetch(RELAY_URL + PDC[api].relayRoute, {
     // The relay waits up to 20 seconds for PDC; leave it time to report that.
     signal: AbortSignal.timeout(TIMEOUT_MS + 8000),
     method: 'POST',
@@ -249,6 +259,94 @@ function strategyPayload(legs: Record<string, unknown>[]) {
   return [...groups.values()];
 }
 
+// Rows sharing a PortfolioName are one portfolio, each row a holding (Portfolio API, section 2.4).
+function portfolioPayload(rows: Record<string, unknown>[]) {
+  const groups = new Map<string, Record<string, unknown>>();
+  for (const r of rows) {
+    let group = groups.get(r.portfolio_name as string);
+    if (!group) {
+      group = {
+        ProductName: r.product_name,
+        PortfolioName: r.portfolio_name,
+        PortfolioType: r.portfolio_type,
+        StopPortfolio: r.stop_portfolio,
+        details: [] as Record<string, unknown>[],
+      };
+      groups.set(r.portfolio_name as string, group);
+    }
+    (group.details as Record<string, unknown>[]).push({
+      ISIN: r.isin,
+      Weightage: Number(r.weightage),
+      ExchangeName: r.exchange_name,
+      IfMutualFund: r.if_mutual_fund,
+    });
+  }
+  return [...groups.values()];
+}
+// "The weightage of portfolios should be 1": the first portfolio whose weights do not add up to 1.
+function unbalancedPortfolio(payload: Record<string, unknown>[]) {
+  for (const p of payload) {
+    const total = (p.details as { Weightage: number }[]).reduce((sum, d) => sum + d.Weightage, 0);
+    if (Math.abs(total - 1) > 0.0005) return { name: String(p.PortfolioName), total };
+  }
+  return null;
+}
+
+// Multi: the Strategy API payload from the report's legs.
+async function multiPayload(reportId: string) {
+  const { data: legs } = await v2
+    .from('research_legs')
+    .select('*')
+    .eq('report_id', reportId)
+    .order('position');
+  if (!legs?.length) throw new HttpError(400, 'This report has no recommendation legs.');
+  const missing = legs.find(
+    (l) =>
+      !l.advice_name ||
+      !l.strategy_name ||
+      !l.instrument ||
+      !l.price_type ||
+      !l.leg_ref ||
+      l.stop_loss == null ||
+      l.t1 == null,
+  );
+  if (missing)
+    throw new HttpError(
+      400,
+      'Leg ' +
+        missing.position +
+        ' is missing PaRRVA Strategy fields. Recreate the report from the advice CSV.',
+    );
+  const payload = strategyPayload(legs);
+  return {
+    api: 'strategy' as PdcApi,
+    payload,
+    counts: { strategies: payload.length, legs: legs.length },
+  };
+}
+
+// Cash: the Portfolio API payload from the report's rows.
+async function cashPayload(reportId: string) {
+  const { data: rows } = await v2
+    .from('cash_report_rows')
+    .select('*')
+    .eq('report_id', reportId)
+    .order('position');
+  if (!rows?.length) throw new HttpError(400, 'This report has no portfolio rows.');
+  const payload = portfolioPayload(rows);
+  const unbalanced = unbalancedPortfolio(payload);
+  if (unbalanced)
+    throw new HttpError(
+      400,
+      `The weightages of portfolio "${unbalanced.name}" add up to ${unbalanced.total.toFixed(4)}; CARE PaRRVA needs exactly 1.`,
+    );
+  return {
+    api: 'portfolio' as PdcApi,
+    payload,
+    counts: { portfolios: payload.length, holdings: rows.length },
+  };
+}
+
 // ───────────── caller and report checks ─────────────
 async function caller(req: Request) {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
@@ -275,38 +373,15 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
     .maybeSingle();
   if (!report || (profile.role !== 'admin' && report.author_id !== profile.id))
     throw new HttpError(404, 'Report not found.');
-  if (report.segment !== 'Multi')
-    throw new HttpError(400, 'Only Multi Segment reports are sent to CARE PaRRVA.');
+  if (!['Multi', 'Cash'].includes(report.segment))
+    throw new HttpError(400, 'Only Multi and Cash Segment reports are sent to CARE PaRRVA.');
   if (report.esign_status !== 'Signed')
     throw new HttpError(409, 'Complete the Aadhaar eSign before sending to CARE PaRRVA.');
   if (report.parrva_status === 'Submitted')
     throw new HttpError(409, 'This report was already submitted to CARE PaRRVA.');
 
-  const { data: legs } = await v2
-    .from('research_legs')
-    .select('*')
-    .eq('report_id', report.id)
-    .order('position');
-  if (!legs?.length) throw new HttpError(400, 'This report has no recommendation legs.');
-  const missing = legs.find(
-    (l) =>
-      !l.advice_name ||
-      !l.strategy_name ||
-      !l.instrument ||
-      !l.price_type ||
-      !l.leg_ref ||
-      l.stop_loss == null ||
-      l.t1 == null,
-  );
-  if (missing)
-    throw new HttpError(
-      400,
-      'Leg ' +
-        missing.position +
-        ' is missing PaRRVA Strategy fields. Recreate the report from the advice CSV.',
-    );
-
-  const payload = strategyPayload(legs);
+  const { api, payload, counts } =
+    report.segment === 'Cash' ? await cashPayload(report.id) : await multiPayload(report.id);
   let httpStatus: number | null = null,
     response: Record<string, unknown> = {},
     ok = false,
@@ -314,7 +389,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   try {
     const token = await parrvaToken();
     const jwe = await encryptJwe(JSON.stringify(payload), PDC_PUBLIC_KEY);
-    const res = await postStrategy(JSON.stringify([{ data: jwe }]), token);
+    const res = await postPdc(api, JSON.stringify([{ data: jwe }]), token);
     httpStatus = res.status;
     response = await readBody(res);
     ok = res.ok && response?.status !== 'error' && response?.success !== false;
@@ -331,7 +406,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
             ? 'NSE PDC did not answer the relay within 20 seconds. Ask CARE PaRRVA / NSE to whitelist the relay IP.'
             : 'The PDC relay failed: ' + error.message
           : timedOut(error)
-            ? 'NSE PDC did not answer within 20 seconds. Ask CARE PaRRVA to confirm this server can reach the Strategy API.'
+            ? 'NSE PDC did not answer within 20 seconds. Ask CARE PaRRVA to confirm this server can reach the PDC API.'
             : 'Could not reach CARE PaRRVA.';
     response = { error: message };
     if (error instanceof HttpError && error.status === 503) throw error;
@@ -339,7 +414,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
 
   await v2.from('parrva_submissions').insert({
     report_id: report.id,
-    endpoint: RELAY_KEY ? STRATEGY_URL + ' via ' + RELAY_URL : STRATEGY_URL,
+    endpoint: RELAY_KEY ? PDC[api].url + ' via ' + RELAY_URL : PDC[api].url,
     request_payload: payload,
     http_status: httpStatus,
     response,
@@ -361,10 +436,10 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
     action: ok ? 'report.parrva_submitted' : 'report.parrva_failed',
     entity: 'research_report',
     entity_ref: report.report_ref,
-    detail: { strategies: payload.length, legs: legs.length, http_status: httpStatus },
+    detail: { api, ...counts, http_status: httpStatus },
   });
   if (!ok) throw new HttpError(502, message);
-  return { status: 'Submitted', submittedAt, strategies: payload.length, legs: legs.length };
+  return { status: 'Submitted', submittedAt, api, ...counts };
 }
 
 // Connection check without sending any recommendation: probes the PDC Strategy endpoint with an
@@ -373,7 +448,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
 async function check(body: Record<string, unknown>) {
   let pdc: Record<string, unknown>;
   try {
-    const res = await postStrategy('[]');
+    const res = await postPdc('strategy', '[]');
     pdc = { reachable: true, http_status: res.status, body: (await res.text()).slice(0, 300) };
   } catch (error) {
     pdc = {

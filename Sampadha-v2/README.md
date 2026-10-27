@@ -17,7 +17,7 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 | Multi Segment | Legs come from the 19-column advice CSV (`multi-recommendations-template.csv`, up to 50 rows). Its columns are CARE PaRRVA's Strategy API fields, and both the browser and `create_research_draft` validate them with PaRRVA's rules (NSE/BSE instrument codes, PR/CMP/FP, CE/PE + strike for options only, BUY/SELL entry ranges, numeric LegId unique per AdviceName). |
 | Multi Quick input | Instead of a CSV, the analyst can type a compact basket, one option leg per line: `CB Nifty 03Nov 24000C+3 @120-125 T180 SL95` (prefix CB/PB/BC/BP/RP/RC, symbol, expiry, strike + C/P, `+` buy / `-` sell with lots, `@` entry or entry range, `T` target, `SL` stop-loss). Lot size, exchange, contract name and instrument (NSE OPTIDX/OPTSTK, BSE IDO/STO) come from the latest weekly master. Each basket gets its own AdviceName (prefix + underlying + IST time stamp, e.g. `CALL BUY NIFTY 261027-1630`) so PaRRVA records it as new advice, not a change to an earlier one. The rows then go through the same CSV validation, preview, eSign and sending. |
 | Weekly master | RA/Admin → Uploads: the weekly Multisegment master (CSV, XLS or XLSX, up to 10 MB; standard columns MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol, or legacy Symbol + MLot). Stored privately at `v2-research/masters/<uuid>.<ext>` and listed in `v2.symbol_masters` via `register_symbol_master`; the newest upload is the one in use. |
-| CARE PaRRVA | After the eSign, the analyst can send the report to CARE PaRRVA, to clients, or both (PaRRVA first; clients only if it is accepted). The `parrva` Edge Function builds the Strategy payload from the saved legs (rows sharing an AdviceName = one strategy), signs in with the PaRRVA token API and posts the JWE-encrypted payload (RSA-OAEP-256 + A256GCM, `parrva.pem` / `pdc_public_key.pem`) to the PDC Strategy API. Each attempt is kept in `v2.parrva_submissions`. |
+| CARE PaRRVA | After the eSign, the analyst can send a Multi or Cash report to CARE PaRRVA, to clients, or both (PaRRVA first; clients only if it is accepted). The `parrva` Edge Function signs in with the PaRRVA token API and posts a JWE-encrypted payload (RSA-OAEP-256 + A256GCM, `parrva.pem` / `pdc_public_key.pem`) to NSE PDC: for Multi the Strategy API, built from the saved legs (rows sharing an AdviceName = one strategy); for Cash the Portfolio API, built from the rows (rows sharing a PortfolioName = one portfolio; its weightages must add up to 1, which the send screen and the function both check). Each attempt is kept in `v2.parrva_submissions`. |
 | Cash Segment | LC/MC/SC reports, Monthly/Quarterly/Half-Yearly, from the 12-column CSV (`cash-strategy-template.csv`, up to 100 rows) via `create_cash_report_draft`. Stored in `v2.research_reports` (`segment = 'Cash'`) + `v2.cash_report_rows`, so they use the same eSign, storage and delivery. Sent with `send_cash_report` to clients whose plan includes Cash. The library shows the latest two real reports per strategy and period. |
 | Broker auto-email | Mahogha's "Auto Email Execution", with the client's own consent. The client enters (or confirms what Sales/Admin entered) the broker, broker client ID, the broker's order email (TO) and CC copies, and ticks the consent (wording `BAE-2026-10-27`, recorded with time; withdrawable any time) on *Broker auto-email*. Whenever a signed Multi or Cash report is delivered to that client, a trigger on `v2.research_deliveries` queues an order email to the broker built from the legs (contract, BUY/SELL, lots × lot size, entry range, target, stop-loss) or the Cash BUY/SELL rows. The RA's send screens tag these clients with ⇄. Every consent change is in the audit trail. |
 | Compliance | Like Mahogha's RA / Contract / KYC columns and E-Sign page. **Client → Compliance**: a 9-question risk profile (`RP-2026-10-27`; scored in the database into Conservative / Moderate / Growth / Aggressive, plus whether F&O research can suit them; every submission kept) and documents to sign with Aadhaar eSign. **Admin / Sales → Compliance**: per-client overview (risk profile, agreement signed, KYC, broker auto-email), *Send a document for e-sign* (any PDF up to 10 MB, all pages or last page signed; the client is notified and emailed), download original and signed copies; Admin records KYC. The `client-esign` Edge Function alone marks a document signed. The RA's send screens warn when a client has no risk profile, no signed agreement, or a profile that F&O may not suit. |
@@ -41,13 +41,14 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    https://racrm.fintecindia.com). The eSign service rejects non-HTTPS return addresses, so a local copy
    sends signers back to the live site (`liveSiteUrl` in `config.js`).
 5. **CARE PaRRVA** — `20261025010000_v2_parrva.sql`, deploy `supabase/functions/parrva/index.ts` as `parrva`, and add
-   secrets `PARRVA_USERNAME` (Enrolment ID) and `PARRVA_PASSWORD`. Optional `PARRVA_AUTH_URL` /
+   secrets `PARRVA_USERNAME` (the PDC enrolment ID, shown in CARE PaRRVA when you open *PDC Data Submission*)
+   and `PARRVA_PASSWORD` (the PDC password set during enrolment). Optional `PARRVA_AUTH_URL` /
    `PARRVA_STRATEGY_URL` override the endpoints from RA API document 0.0.3.
-   NSE PDC only answers whitelisted IP addresses and Supabase has no fixed outgoing IP, so the Strategy
-   call goes through the relay on this site (`relay/v1/index.php`, PHP on Hostinger) once the secret
+   NSE PDC only answers whitelisted IP addresses and Supabase has no fixed outgoing IP, so the PDC
+   calls go through the relay on this site (`relay/v1/index.php`, PHP on Hostinger) once the secret
    `PDC_RELAY_KEY` is set (its value is in the git-ignored `.env`; the relay keeps only its SHA-256).
-   The relay forwards to the one PDC URL only: `GET /relay/v1/health`, `GET /relay/v1/egress-ip` (the IP
-   to whitelist at NSE) and `POST /relay/v1/pdc/strategies` (header `X-Relay-Key`, PaRRVA token in
+   The relay forwards to two PDC URLs only: `GET /relay/v1/health`, `GET /relay/v1/egress-ip` (the IP
+   to whitelist at NSE), `POST /relay/v1/pdc/strategies` and `POST /relay/v1/pdc/portfolios` (header `X-Relay-Key`, PaRRVA token in
    `X-PDC-Authorization`), max 30 calls a minute; its own errors carry `X-Relay-Error`. To change the
    key, put a new SHA-256 in `RELAY_KEY_SHA256` and the new value in the secret.
 6. **Email** — deploy `supabase/functions/mailer/index.ts` as `mailer`, then add secrets `SMTP_HOST`
@@ -94,7 +95,7 @@ overview.js          Admin / Research Analyst / Client overviews built from real
 accounts.js          set-password screen, Users & access, Create login on approvals
 client-compliance.js Compliance pages (risk profile, documents for Aadhaar eSign, KYC)
 broker-email.js      Broker auto-email pages (client consent, Sales/Admin set-up)
-relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy API (PHP, runs on Hostinger)
+relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy and Portfolio APIs (PHP, runs on Hostinger)
 vendor/supabase.js   supabase-js browser build
 vendor/chart.umd.min.js  Chart.js 4 (MIT), loaded only when a chart is drawn
 vendor/fonts/        Newsreader + Mona Sans variable fonts (OFL), self-hosted
