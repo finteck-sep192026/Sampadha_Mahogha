@@ -8,7 +8,8 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 
 | Area | How it works |
 |---|---|
-| Sign-in | Supabase Auth. The same demo logins as v1 work; access in v2 is decided by `v2.profiles`. |
+| Sign-in | Supabase Auth; access in v2 is decided by `v2.profiles` (an account with access turned off cannot sign in). |
+| Accounts | Admin → *Users & access* adds staff; Admin → *Client approvals* → *Create login* turns an approved application into a client login with its plan, products and Multi tier. The `accounts` Edge Function creates the login and emails a one-time link to set the password (never stored, never shown to staff); the link lands on the portal's *Set your password* screen. Admin can resend the link or turn access off and on. |
 | Data | Read through RLS on `v2.*` tables; every write is a `SECURITY DEFINER` function in schema `v2`. |
 | Report attachments | Storage bucket `v2-research` (private), max 3 files per report, 5 MB each, image or PDF. |
 | Report signing | **Aadhaar eSign (NSDL) through the FinAnalyz gateway.** The `esign` Edge Function sends the PDF, the analyst signs with an Aadhaar OTP on the hosted eSign page and is sent back, and the server confirms with the gateway and stores the signed PDF. The browser cannot mark a report signed. |
@@ -53,9 +54,15 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    (e.g. `smtp.hostinger.com`), `SMTP_USERNAME`, `SMTP_PASSWORD`, and optional `SMTP_PORT` (default 465;
    Supabase blocks 25 and 587), `MAIL_FROM` (e.g. `Sampadha Research <research@sampadha.com>`) and
    `MAIL_REPLY_TO`. Admin → *Broker auto-email* shows whether sending is on.
-7. **Client eSign** — deploy `supabase/functions/client-esign/index.ts` as `client-esign` (uses the same
+7. **Accounts** — `20261028000000_v2_accounts.sql`, deploy `supabase/functions/accounts/index.ts` as
+   `accounts` (uses the SMTP secrets), and in Authentication → URL configuration set the Site URL to
+   https://racrm.fintecindia.com and allow `https://racrm.fintecindia.com/**` as a redirect URL.
+8. **Client eSign** — deploy `supabase/functions/client-esign/index.ts` as `client-esign` (uses the same
    `FINANALYZ_API_KEY` as `esign`).
-8. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
+9. **Go live** — create the real Admin login, sign in with it, then run `supabase/golive/1-preview-demo-data.sql`
+   (read-only counts) and `2-remove-demo-data.sql` (archives every demo row in `v2_private.demo_archive`,
+   then removes it; refuses to run without a real Admin).
+10. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
 
 ## Live site
 
@@ -84,6 +91,7 @@ design-system.css    loaded last: tokens, type (Newsreader + Mona Sans), shell, 
 icons.js             SVG line icons for navigation and the top bar
 charts.js            chart card + Chart.js column chart (tooltip, legend, table view) and meters
 overview.js          Admin / Research Analyst / Client overviews built from real data
+accounts.js          set-password screen, Users & access, Create login on approvals
 client-compliance.js Compliance pages (risk profile, documents for Aadhaar eSign, KYC)
 broker-email.js      Broker auto-email pages (client consent, Sales/Admin set-up)
 relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy API (PHP, runs on Hostinger)

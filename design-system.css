@@ -773,6 +773,23 @@ section + .card.panel {
   gap: 10px;
 }
 
+/* Create-login form inside the approvals table (accounts.js). */
+.account-create {
+  display: grid;
+  gap: 8px;
+  min-width: 240px;
+}
+.account-create .field,
+.account-create fieldset {
+  margin: 0;
+}
+.account-create select {
+  margin-top: 4px;
+}
+.account-create .checks {
+  gap: 8px 16px;
+}
+
 /* ───────────── tables ───────────── */
 .table-wrap {
   border: 1px solid var(--line);
