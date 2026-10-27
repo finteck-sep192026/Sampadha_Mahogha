@@ -22,7 +22,6 @@ const nav = {
     ['emails', '✉', 'Email delivery'],
     ['strategies', '↗', 'Strategies'],
     ['multiReports', '▦', 'Multi Segment'],
-    ['kyc', '✓', 'KYC onboarding'],
     ['plans', '₹', 'Subscriptions'],
     ['products', '◫', 'Subscribed products'],
     ['payments', '₹', 'Payments'],
@@ -40,7 +39,6 @@ const nav = {
     ['clients', '◎', 'Clients'],
     ['addClient', '＋', 'Add client'],
     ['emails', '✉', 'Confirmation emails'],
-    ['kyc', '✓', 'KYC onboarding'],
     ['plans', '₹', 'Subscription plans'],
   ],
   client: [
@@ -180,7 +178,7 @@ const raStats = () => {
   ];
 };
 const raDashboard = () =>
-  `${statCards(raStats())}<article class="card panel ra-workspace-card"><div class="panel-head"><div><h3>RA report workspace</h3><p>Only Research Analyst report work and activity are shown here.</p></div><span class="badge">Reports only</span></div><div class="cash-overview-actions"><button class="btn primary" data-go="cashSegment">Open Cash Segment</button><button class="btn secondary" data-go="multiReports">Open Multi Segment</button><button class="btn secondary" data-go="researchOrders">Open Positions</button></div><div class="grid-2"><div class="notice"><b>Cash Segment</b><br>Create LC, MC or SC reports from CSV, choose monthly, quarterly or half-yearly frequency, preview the PDF and select clients.</div><div class="notice"><b>Multi Segment</b><br>Create multi-leg recommendations, attach supporting files, preview the PDF and manage positions.</div></div></article><article class="card panel ra-activity-card"><div class="panel-head"><div><h3>Recent RA activity</h3><p>Tabs viewed and report actions completed in this browser session.</p></div><span class="badge">This session</span></div>${typeof renderRaActivity === 'function' ? renderRaActivity() : '<p class="muted">Activity will appear after the RA opens a report area.</p>'}</article>`;
+  `${statCards(raStats())}${typeof chartCard === 'function' ? chartCard({ id: 'chartAuthored', title: 'Your reports', subtitle: 'Reports you created each month, by segment' }) : ''}<article class="card panel ra-workspace-card"><div class="panel-head"><div><h3>RA report workspace</h3><p>Only Research Analyst report work and activity are shown here.</p></div><span class="badge">Reports only</span></div><div class="cash-overview-actions"><button class="btn primary" data-go="cashSegment">Open Cash Segment</button><button class="btn secondary" data-go="multiReports">Open Multi Segment</button><button class="btn secondary" data-go="researchOrders">Open Positions</button></div><div class="grid-2"><div class="notice"><b>Cash Segment</b><br>Create LC, MC or SC reports from CSV, choose monthly, quarterly or half-yearly frequency, preview the PDF and select clients.</div><div class="notice"><b>Multi Segment</b><br>Create multi-leg recommendations, attach supporting files, preview the PDF and manage positions.</div></div></article><article class="card panel ra-activity-card"><div class="panel-head"><div><h3>Recent RA activity</h3><p>Tabs viewed and report actions completed in this browser session.</p></div><span class="badge">This session</span></div>${typeof renderRaActivity === 'function' ? renderRaActivity() : '<p class="muted">Activity will appear after the RA opens a report area.</p>'}</article>`;
 const dashboard = () =>
   state.role === 'ra'
     ? raDashboard()
@@ -191,7 +189,7 @@ const dashboard = () =>
         ['Pending KYC', '27', '9 require action'],
       ])}<section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Platform activity</h3><p>Monthly actions across all workspaces</p></div><span class="badge">Last 8 months</span></div><div class="chart">${[42, 65, 54, 81, 72, 93, 78, 100].map((h) => `<i class="bar" style="height:${h}%"></i>`).join('')}</div></article><article class="card panel"><div class="panel-head"><div><h3>Recent activity</h3><p>Latest recorded events</p></div></div>${activity()}</article></section>`;
 const users = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Users and access</h3><p>Admin can review all roles and account states.</p></div><button class="btn primary action">＋ Add user</button></div><div class="table-wrap"><table class="table"><thead><tr><th>User</th><th>Role</th><th>Account ID</th><th>Access</th><th>Status</th></tr></thead><tbody>${(
+  `<article class="card panel"><div class="panel-head"><div><h3>Users and access</h3><p>Admin can review all roles and account states.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>User</th><th>Role</th><th>Account ID</th><th>Access</th><th>Status</th></tr></thead><tbody>${(
     state.ws?.directory || []
   )
     .map(
@@ -200,7 +198,7 @@ const users = () =>
     )
     .join('')}</tbody></table></div></article>`;
 const strategies = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Research strategies</h3><p>Create, review and publish investment strategies.</p></div><button class="btn primary action">＋ New strategy</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Strategy</th><th>Universe</th><th>Risk</th><th>Analyst</th><th>Updated</th><th>Status</th></tr></thead><tbody>${(
+  `<article class="card panel"><div class="panel-head"><div><h3>Research strategies</h3><p>Create, review and publish investment strategies.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Strategy</th><th>Universe</th><th>Risk</th><th>Analyst</th><th>Updated</th><th>Status</th></tr></thead><tbody>${(
     state.ws?.strategies || []
   )
     .map(
@@ -232,11 +230,11 @@ const plans = () =>
   `<section class="plan-grid">${(state.ws?.plans || [])
     .map(
       (p, i, all) =>
-        `<article class="card plan ${i === all.length - 1 ? 'featured' : ''}"><span class="badge">${i === all.length - 1 ? 'MOST COMPLETE' : 'SUBSCRIPTION'}</span><h3>${esc(p.name)}</h3><div class="price">${Api.fmt.rupee(p.price_annual)}<small>/ annum</small></div><p class="muted">${esc(p.summary)}</p><ul><li>Advisor research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul><button class="btn ${i === all.length - 1 ? 'primary' : 'secondary'} wide action">Select plan</button></article>`,
+        `<article class="card plan ${i === all.length - 1 ? 'featured' : ''}"><span class="badge">${i === all.length - 1 ? 'MOST COMPLETE' : 'SUBSCRIPTION'}</span><h3>${esc(p.name)}</h3><div class="price">${Api.fmt.rupee(p.price_annual)}<small>/ annum</small></div><p class="muted">${esc(p.summary)}</p><ul><li>Advisor research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul></article>`,
     )
     .join('')}</section>`;
 const profile = () =>
-  `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${esc(state.user.initials)}</div><h3>${esc(state.user.person)}</h3><p class="muted">${roles[state.role].name} account</p><span class="status green">Verified</span></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div><button class="btn secondary action">Edit profile</button></div><div class="detail-grid">${[
+  `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${esc(state.user.initials)}</div><h3>${esc(state.user.person)}</h3><p class="muted">${roles[state.role].name} account</p><span class="status green">Verified</span></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div></div><div class="detail-grid">${[
     ['Email', esc(state.user.email)],
     ['Mobile', esc(state.user.mobile)],
     ['Account ID', esc(state.user.id)],
@@ -285,9 +283,9 @@ const payments = () => {
   }</tbody></table></div></article>`;
 };
 const cashRecommendationTable = (data) =>
-  `<div class="table-wrap recommendation-table"><table class="table"><thead><tr><th>Product</th><th>Stock</th><th>Initiation price</th><th>Initiation quantity</th><th>Published date</th><th>Delivered date</th><th>Status</th><th>Report</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.stock}</b><small>${x.id}</small></td><td>${x.price}</td><td>${x.qty}</td><td class="stamp">${x.published} IST</td><td class="stamp">${x.delivered} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : 'red'}">${x.status}</span></td><td><button class="pdf-btn" data-report="${x.id}" data-segment="Cash">▤ View PDF</button></td></tr>`).join('') : '<tr><td colspan="8" class="empty">No Cash recommendations match these filters.</td></tr>'}</tbody></table></div>`;
+  `<div class="table-wrap recommendation-table"><table class="table"><thead><tr><th>Product</th><th>Stock</th><th>Initiation price</th><th>Initiation quantity</th><th>Published date</th><th>Delivered date</th><th>Status</th><th>Report</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.stock}</b><small>${x.id}</small></td><td>${x.price}</td><td>${x.qty}</td><td class="stamp">${x.published} IST</td><td class="stamp">${x.delivered} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : 'red'}">${x.status}</span></td><td><button class="pdf-btn" data-report="${x.id}" data-segment="Cash">Details</button></td></tr>`).join('') : '<tr><td colspan="8" class="empty">No Cash recommendations match these filters.</td></tr>'}</tbody></table></div>`;
 const multiRecommendationTable = (data) =>
-  `<div class="table-wrap recommendation-table"><table class="table wide-table"><thead><tr><th>Product</th><th>Symbol</th><th>Expiry date</th><th>Strike price</th><th>Option type</th><th>Buy/Sell</th><th>No. of lots</th><th>Lot size</th><th>Quantity</th><th>Initiation price</th><th>Published date</th><th>Delivered date</th><th>Status</th><th>Report</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.symbol}</b><small>${x.id}</small></td><td>${x.expiry}</td><td>${x.strike}</td><td>${x.option}</td><td><span class="status ${x.side === 'BUY' ? 'green' : 'gold'}">${x.side}</span></td><td>${x.lots}</td><td>${x.lotSize}</td><td><b>${x.qty}</b></td><td>${x.price}</td><td class="stamp">${x.published} IST</td><td class="stamp">${x.delivered} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : 'gold'}">${x.status}</span></td><td><button class="pdf-btn" data-report="${x.id}" data-segment="Multi">▤ View PDF</button></td></tr>`).join('') : '<tr><td colspan="14" class="empty">No Multi recommendations match these filters.</td></tr>'}</tbody></table></div>`;
+  `<div class="table-wrap recommendation-table"><table class="table wide-table"><thead><tr><th>Product</th><th>Symbol</th><th>Expiry date</th><th>Strike price</th><th>Option type</th><th>Buy/Sell</th><th>No. of lots</th><th>Lot size</th><th>Quantity</th><th>Initiation price</th><th>Published date</th><th>Delivered date</th><th>Status</th><th>Report</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.symbol}</b><small>${x.id}</small></td><td>${x.expiry}</td><td>${x.strike}</td><td>${x.option}</td><td><span class="status ${x.side === 'BUY' ? 'green' : 'gold'}">${x.side}</span></td><td>${x.lots}</td><td>${x.lotSize}</td><td><b>${x.qty}</b></td><td>${x.price}</td><td class="stamp">${x.published} IST</td><td class="stamp">${x.delivered} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : 'gold'}">${x.status}</span></td><td><button class="pdf-btn" data-report="${x.id}" data-segment="Multi">Details</button></td></tr>`).join('') : '<tr><td colspan="14" class="empty">No Multi recommendations match these filters.</td></tr>'}</tbody></table></div>`;
 const recommendationPanel = (segment, data) => {
   const cash = segment === 'Cash';
   return `<article class="card panel recommendation-section ${segment.toLowerCase()}-section"><div class="segment-banner"><div><p class="overline">${segment} recommendations</p><h3>${cash ? 'Cash equity recommendation table' : 'Multi derivatives recommendation table'}</h3><p>${cash ? 'LC, MC, SC and All equity products.' : 'Nano, Mini, Micro, Mega and Giga derivatives products.'}</p></div><div class="segment-heading-meta"><span class="badge" id="${cash ? 'cash' : 'multi'}RecommendationCount">${data.length} records</span><span class="segment-mark">${cash ? '₹' : '▦'}</span></div></div>${cash ? `<form id="cashRecommendationFilters" class="separate-table-filters cash-table-filters"><label>Product<select id="crProduct"><option>All</option><option>LC</option><option>MC</option><option>SC</option></select></label><label>Stock<select id="crStock"><option>All</option>${[...new Set(cashRecommendations.map((x) => x.stock))].map((x) => `<option>${x}</option>`).join('')}</select></label><label>Status<select id="crStatus"><option>All</option><option>Active</option><option>Closed</option></select></label><button class="btn primary">Apply Cash filters</button><button id="resetCashRecommendations" type="button" class="btn secondary">Reset</button></form><div id="cashRecommendationTable">${cashRecommendationTable(data)}</div>` : `<form id="multiRecommendationFilters" class="separate-table-filters multi-table-filters"><label>Product<select id="mrProduct"><option>All</option><option>Nano</option><option>Mini</option><option>Micro</option><option>Mega</option><option>Giga</option></select></label><label>Symbol<select id="mrSymbol"><option>All</option><option>NIFTY</option><option>SENSEX</option></select></label><label>Option type<select id="mrOption"><option>All</option><option>CE</option><option>PE</option></select></label><label>Buy / Sell<select id="mrSide"><option>All</option><option>BUY</option><option>SELL</option></select></label><label>Status<select id="mrStatus"><option>All</option><option>Active</option><option>Review</option><option>Closed</option></select></label><button class="btn primary">Apply Multi filters</button><button id="resetMultiRecommendations" type="button" class="btn secondary">Reset</button></form><div id="multiRecommendationTable">${multiRecommendationTable(data)}</div>`}</article>`;
@@ -295,7 +293,7 @@ const recommendationPanel = (segment, data) => {
 const recommendationResults = () =>
   `<div class="recommendation-stack">${recommendationPanel('Cash', cashRecommendations)}${recommendationPanel('Multi', multiRecommendations)}</div>`;
 function recommendationPage() {
-  return `<article class="card panel recommendation-filter"><div class="panel-head"><div><h3>All recommendations</h3><p>Cash and Multi have independent filters and separate tables.</p></div><span class="badge">${cashRecommendations.length + multiRecommendations.length} total records</span></div><div class="notice">Research communication only—not an order or guaranteed return. Discuss suitability with your advisor.</div></article><section id="recommendationResults">${recommendationResults()}</section><div id="pdfModal" class="pdf-modal hidden"><div class="pdf-sheet"><div class="pdf-head"><div><small>Sampadha Research</small><h3 id="pdfTitle">Recommendation report</h3></div><button id="closePdf" type="button">×</button></div><div id="pdfBody"></div><div class="pdf-foot"><span>Confidential client research • Demo PDF preview</span><button class="btn primary" id="downloadPdf" type="button">Download PDF</button></div></div></div>`;
+  return `<article class="card panel recommendation-filter"><div class="panel-head"><div><h3>All recommendations</h3><p>Cash and Multi have independent filters and separate tables.</p></div><span class="badge">${cashRecommendations.length + multiRecommendations.length} total records</span></div><div class="notice">Research communication only—not an order or guaranteed return. Discuss suitability with your advisor.</div></article><section id="recommendationResults">${recommendationResults()}</section><div id="pdfModal" class="pdf-modal hidden"><div class="pdf-sheet"><div class="pdf-head"><div><small>Sampadha Research</small><h3 id="pdfTitle">Recommendation report</h3></div><button id="closePdf" type="button">×</button></div><div id="pdfBody"></div><div class="pdf-foot"><span>Recommendation summary. The signed report is under Reports received.</span></div></div></div>`;
 }
 const recTable = (data) =>
   `<div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Stock</th><th>View</th><th>Reference price</th><th>Target</th><th>Published timestamp</th><th>Status</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.stock}</b></td><td>${x.action}</td><td>${x.price}</td><td>${x.target}</td><td class="stamp">${x.date} • ${x.time} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : x.status === 'Closed' ? 'red' : 'gold'}">${x.status}</span></td></tr>`).join('') : `<tr><td class="empty" colspan="7">No recommendations match these filters.</td></tr>`}</tbody></table></div>`;
@@ -324,14 +322,14 @@ const clientDashboard = () => {
     )}</section><section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Latest notifications</h3><p>Most recent communication across all channels.</p></div><button class="btn secondary" data-go="notifications">View all</button></div>${alertRows(clientAlerts.slice(0, 3))}</article><article class="card panel"><div class="panel-head"><div><h3>All recommendations</h3><p>Choose Cash or Multi and view its dedicated table.</p></div></div><div class="activity"><button class="activity-row" data-go="recommendations"><span class="activity-icon">↗</span><div><b>Open recommendations</b><small>Cash equity and Multi derivatives reports</small></div><time>Open →</time></button></div></article></section>`;
 };
 const notifications = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Notification centre</h3><p>Email, WhatsApp and dashboard alerts for your account.</p></div><button id="markRead" class="btn secondary">Mark all as read</button></div><section class="channel-grid">${[
+  `<article class="card panel"><div class="panel-head"><div><h3>Notification centre</h3><p>Every alert sent to you, by channel.</p></div><button id="markRead" class="btn secondary">Mark all as read</button></div><section class="channel-grid">${[
     [icon('mail'), 'Email', clientAlerts.filter((x) => x.channel === 'Email').length],
     [icon('message'), 'WhatsApp', clientAlerts.filter((x) => x.channel === 'WhatsApp').length],
     [icon('bell'), 'In-app', clientAlerts.filter((x) => x.channel === 'In-app').length],
   ]
     .map(
       (x) =>
-        `<article class="card channel-card"><span class="channel-icon">${x[0]}</span><div><b>${x[1]}</b><small>${x[2]} delivered alerts</small></div><span class="status green">ON</span></article>`,
+        `<article class="card channel-card"><span class="channel-icon">${x[0]}</span><div><b>${x[1]}</b><small>${x[2]} alert${x[2] === 1 ? '' : 's'}</small></div></article>`,
     )
     .join(
       '',
@@ -565,7 +563,6 @@ function bind() {
       applyRecommendations();
     };
     $('#closePdf').onclick = () => $('#pdfModal').classList.add('hidden');
-    $('#downloadPdf').onclick = () => toast('Demo PDF report downloaded');
   }
   const sf = $('#segmentFilters');
   if (sf) {
@@ -682,10 +679,8 @@ function bindSeparateRecommendationFilters() {
       applyMulti();
     };
   }
-  const close = $('#closePdf'),
-    download = $('#downloadPdf');
+  const close = $('#closePdf');
   if (close) close.onclick = () => $('#pdfModal').classList.add('hidden');
-  if (download) download.onclick = () => toast('Demo PDF report downloaded');
 }
 function toast(m) {
   $('#toast').textContent = m;

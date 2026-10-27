@@ -261,6 +261,8 @@
     frequency: r.frequency,
     fileName: r.source_file || '',
     createdAt: r.created_at,
+    sentAt: r.sent_at,
+    signedAt: r.signed_at,
     title: r.title,
     sections: r.sections,
     product: r.product,

@@ -22,7 +22,7 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 | Compliance | Like Mahogha's RA / Contract / KYC columns and E-Sign page. **Client → Compliance**: a 9-question risk profile (`RP-2026-10-27`; scored in the database into Conservative / Moderate / Growth / Aggressive, plus whether F&O research can suit them; every submission kept) and documents to sign with Aadhaar eSign. **Admin / Sales → Compliance**: per-client overview (risk profile, agreement signed, KYC, broker auto-email), *Send a document for e-sign* (any PDF up to 10 MB, all pages or last page signed; the client is notified and emailed), download original and signed copies; Admin records KYC. The `client-esign` Edge Function alone marks a document signed. The RA's send screens warn when a client has no risk profile, no signed agreement, or a profile that F&O may not suit. |
 | Email | All portal emails (application, approval, report notices, broker orders, test emails) are queued in `v2.email_log` and sent by the `mailer` Edge Function over SMTP right after the action. Until the SMTP secrets are set they are marked *Simulated* (logged only, never sent later). Broker orders more than 30 minutes old are marked *Expired*, never sent late. Admin → *Email delivery* shows whether sending is on and has *Send test email*. Live since 27 Oct 2026 through the Hostinger mailbox research@fintecindia.com. |
 | Positions | One position per Multi CSV row. Exits are recorded by lots; every exit is kept in `v2.research_leg_exits`. |
-| RA Overview | Counts come from the database; the activity table lists this browser session's actions. |
+| Overviews | Built from the database: Admin sees active clients, reports delivered, the signing pipeline, compliance meters, a monthly *Reports delivered* chart and the latest audit entries; the Research Analyst sees their figures and a monthly *Your reports* chart; clients see their alerts, reports and checklist. Every chart has a hover tooltip and a *Show table* view. |
 
 ## Setup (once)
 
@@ -82,10 +82,13 @@ cash-segment.js      Cash Segment: CSV import, report library, PDF, Aadhaar eSig
 multi-quick-input.js Multi Segment Quick input (compact basket) and the Uploads page for the weekly master
 design-system.css    loaded last: tokens, type (Newsreader + Mona Sans), shell, components, motion (see its header)
 icons.js             SVG line icons for navigation and the top bar
+charts.js            chart card + Chart.js column chart (tooltip, legend, table view) and meters
+overview.js          Admin / Research Analyst / Client overviews built from real data
 client-compliance.js Compliance pages (risk profile, documents for Aadhaar eSign, KYC)
 broker-email.js      Broker auto-email pages (client consent, Sales/Admin set-up)
 relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy API (PHP, runs on Hostinger)
 vendor/supabase.js   supabase-js browser build
+vendor/chart.umd.min.js  Chart.js 4 (MIT), loaded only when a chart is drawn
 vendor/fonts/        Newsreader + Mona Sans variable fonts (OFL), self-hosted
 vendor/xlsx.full.min.js  SheetJS 0.20.3 (Apache-2.0), loaded only when a weekly master is read
 ```
