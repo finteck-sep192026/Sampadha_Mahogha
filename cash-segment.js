@@ -498,8 +498,30 @@ function cashSignPanel(report) {
     '</p></form></article><section id="cashClientSection" class="cash-client-section"><p class="research-lock">Client selection appears after the Aadhaar eSign is confirmed.</p></section>'
   );
 }
-// CARE PaRRVA, Portfolio API: rows sharing a PortfolioName are one portfolio, and the weightages
-// of each portfolio must add up to 1, or PaRRVA refuses it.
+// CARE PaRRVA, Portfolio API: rows sharing a PortfolioName are one portfolio. PaRRVA refuses a
+// portfolio unless its weightages add up to 1 and it holds 2 to 100 distinct securities.
+function cashParrvaProblem(report) {
+  const portfolios = new Map();
+  for (const row of report.rows) {
+    const p = portfolios.get(row.portfolioName) || { total: 0, isins: new Set() };
+    p.total += row.weightage;
+    p.isins.add(row.isin);
+    portfolios.set(row.portfolioName, p);
+  }
+  for (const [name, p] of portfolios) {
+    if (Math.abs(p.total - 1) > 0.0005)
+      return {
+        portfolios,
+        text: `The weightages of portfolio "${name}" add up to ${p.total.toFixed(4)}; CARE PaRRVA needs exactly 1.`,
+      };
+    if (p.isins.size < 2 || p.isins.size > 100)
+      return {
+        portfolios,
+        text: `Portfolio "${name}" has ${p.isins.size} distinct securities; CARE PaRRVA needs 2 to 100.`,
+      };
+  }
+  return { portfolios, text: '' };
+}
 function cashParrvaChoice(report) {
   if (report.parrvaStatus === 'Submitted')
     return (
@@ -507,24 +529,19 @@ function cashParrvaChoice(report) {
       cashEscape(report.parrvaSubmitted) +
       '.</p>'
     );
-  const portfolios = new Map();
-  for (const row of report.rows)
-    portfolios.set(row.portfolioName, (portfolios.get(row.portfolioName) || 0) + row.weightage);
-  const unbalanced = [...portfolios].find(([, total]) => Math.abs(total - 1) > 0.0005);
+  const { portfolios, text: problem } = cashParrvaProblem(report);
   return (
     '<div class="research-parrva"><label class="research-check"><input type="checkbox" name="parrva"' +
-    (unbalanced ? ' disabled' : ' checked') +
+    (problem ? ' disabled' : ' checked') +
     '>Send to CARE PaRRVA (Portfolio API, ' +
     portfolios.size +
     (portfolios.size === 1 ? ' portfolio, ' : ' portfolios, ') +
     report.rows.length +
     ' holdings)</label>' +
-    (unbalanced
-      ? '<p class="research-message research-error">The weightages of portfolio "' +
-        cashEscape(unbalanced[0]) +
-        '" add up to ' +
-        unbalanced[1].toFixed(4) +
-        '. CARE PaRRVA needs exactly 1, so create the report again from a corrected CSV to send it there.</p>'
+    (problem
+      ? '<p class="research-message research-error">' +
+        cashEscape(problem) +
+        ' Create the report again from a corrected CSV to send it there.</p>'
       : '') +
     (report.parrvaStatus === 'Failed'
       ? '<p class="research-message research-error">Last attempt failed: ' +
