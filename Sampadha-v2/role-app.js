@@ -681,10 +681,20 @@ function bindSeparateRecommendationFilters() {
   const close = $('#closePdf');
   if (close) close.onclick = () => $('#pdfModal').classList.add('hidden');
 }
-function toast(m) {
-  $('#toast').textContent = m;
-  $('#toast').classList.add('show');
-  setTimeout(() => $('#toast').classList.remove('show'), 2200);
+// kind 'seal': something was just signed or put on record; the toast carries the gold seal,
+// which stamps in, and stays a little longer.
+let toastTimer;
+function toast(m, kind = '') {
+  const box = $('#toast');
+  box.textContent = m;
+  box.classList.remove('seal');
+  if (kind === 'seal') {
+    void box.offsetWidth; // restart the stamp if a seal toast is already showing
+    box.classList.add('seal');
+  }
+  box.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.remove('show'), kind === 'seal' ? 3400 : 2400);
 }
 function applyWorkspace(ws) {
   state.ws = ws;
@@ -893,50 +903,3 @@ $('#content').addEventListener('submit', async (e) => {
     button.disabled = false;
   }
 });
-const themes = {
-  sapphire: {
-    name: 'Sapphire Gold',
-    note: 'Signature wealth theme',
-    colors: ['#071a35', '#0969e8', '#d7a33b'],
-  },
-  onyx: {
-    name: 'Onyx Copper',
-    note: 'Executive dark luxury',
-    colors: ['#17120f', '#b56a2e', '#d6a15d'],
-  },
-  emerald: {
-    name: 'Emerald Platinum',
-    note: 'Confident institutional',
-    colors: ['#062720', '#087f68', '#c8b36a'],
-  },
-  ivory: {
-    name: 'Ivory Navy',
-    note: 'Quiet private banking',
-    colors: ['#f8f7f3', '#183f75', '#b98a35'],
-  },
-};
-let activeTheme = localStorage.getItem('sampadha-theme') || 'sapphire';
-function renderThemes() {
-  document.body.dataset.theme = activeTheme === 'sapphire' ? '' : activeTheme;
-  $('#themeOptions').innerHTML = Object.entries(themes)
-    .map(
-      ([key, t]) =>
-        `<button class="theme-option ${key === activeTheme ? 'active' : ''}" data-theme="${key}"><span class="theme-swatches">${t.colors.map((c) => `<i style="background:${c}"></i>`).join('')}</span><span><b>${t.name}</b><small>${t.note}</small></span><span class="theme-check">${key === activeTheme ? '✓' : ''}</span></button>`,
-    )
-    .join('');
-}
-function openThemes(open = true) {
-  $('#themeToolbar').classList.toggle('open', open);
-}
-$('#themeToggle').onclick = () => openThemes();
-$('#floatingTheme').onclick = () => openThemes();
-$('#themeClose').onclick = () => openThemes(false);
-$('#themeOptions').onclick = (e) => {
-  const b = e.target.closest('[data-theme]');
-  if (!b) return;
-  activeTheme = b.dataset.theme;
-  localStorage.setItem('sampadha-theme', activeTheme);
-  renderThemes();
-  toast(`${themes[activeTheme].name} applied`);
-};
-renderThemes();

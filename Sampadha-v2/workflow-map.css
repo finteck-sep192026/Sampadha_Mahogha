@@ -37,7 +37,7 @@
   border-radius: 50%;
 }
 .sales-dot {
-  background: #1556d0;
+  background: var(--blue);
 }
 .admin-dot {
   background: var(--gold);
@@ -76,8 +76,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #1556d0;
-  color: #fff;
+  background: var(--blue);
+  color: var(--on-blue);
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -117,7 +117,7 @@
 .lane {
   padding: 16px;
   border: 1px solid var(--line);
-  border-top: 2px solid #1556d0;
+  border-top: 2px solid var(--blue);
   border-radius: var(--radius-inner);
   background: var(--surface-2);
 }
@@ -132,6 +132,7 @@
 }
 .lane.ra .flow-node > span {
   background: #6d4fc2;
+  color: #fff;
 }
 .flow-arrow {
   text-align: center;
@@ -150,7 +151,7 @@
 }
 .email-node > span {
   background: var(--gold);
-  color: #fff;
+  color: var(--on-gold);
 }
 .central {
   margin: 2px auto;
@@ -165,7 +166,7 @@
 }
 .flow-node.admin > span {
   background: var(--gold);
-  color: #fff;
+  color: var(--on-gold);
 }
 .decision {
   display: grid;
@@ -208,9 +209,11 @@
 }
 .flow-node.client > span {
   background: var(--green);
+  color: var(--on-green);
 }
 .flow-node.audit > span {
   background: var(--navy);
+  color: #fff;
 }
 @media (max-width: 900px) {
   .flow-summary {

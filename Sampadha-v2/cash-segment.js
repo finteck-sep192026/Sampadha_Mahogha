@@ -640,7 +640,7 @@ async function cashConfirmSign(reportId) {
   cashShowReport(reportId);
   const report = cashFindReport(reportId);
   if (report) cashTrackRa('Cash Segment', 'Signed with Aadhaar eSign', report.title);
-  toast('Cash report signed with Aadhaar eSign.');
+  toast('Cash report signed with Aadhaar eSign.', 'seal');
 }
 async function cashStartSign(report, form) {
   const status = document.querySelector('#cashSignStatus'),
@@ -850,7 +850,7 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
         report.title + ' to ' + result.delivered + ' client(s)',
       );
       cashShowReport(report.id);
-      toast('Cash report sent to ' + result.delivered + ' client(s).');
+      toast('Cash report sent to ' + result.delivered + ' client(s).', 'seal');
     } catch (error) {
       status.textContent = error.message;
       button.disabled = false;

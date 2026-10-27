@@ -4,8 +4,8 @@
  * client's inbox with a signature and an audit trail, so it borrows from the paperwork of Indian
  * finance rather than from app templates: ledger ruling, a signature line, a gold seal for what
  * is signed. Type sets the register of a private bank's statement: Newsreader, a reading serif
- * with optical sizes, for headings and figures; Mona Sans, a quiet grotesk, for the interface. Colour comes from the theme variables (--navy, --blue, --gold, …) so all
- * four themes keep working; the default Sapphire theme is re-tuned below.
+ * with optical sizes, for headings and figures; Mona Sans, a quiet grotesk, for the interface.
+ * Colour comes only from the tokens below (--navy, --blue, --gold, …), in a light and a dark set.
  * Motion: only where the interface answers an action (press, toast, drawer, dialog); nothing on
  * navigation or on data people read. All of it is removed under prefers-reduced-motion.
  */
@@ -47,38 +47,40 @@
 :root {
   --font: 'Mona Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
-  --surface: #ffffff;
   --radius-s: 8px;
   --radius-m: 10px;
   --radius-l: 14px;
-  --shadow-raised: 0 1px 2px rgb(11 31 58 / 6%), 0 0 0 1px rgb(11 31 58 / 2%);
-  --shadow-float: 0 12px 32px rgb(11 31 58 / 16%), 0 2px 6px rgb(11 31 58 / 8%);
+  --radius-inner: 12px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--blue) 28%, transparent);
-  /* Component conventions, shared by every module stylesheet:
-     card = surface + hairline + --radius-l; inset panel inside a card = --surface-2 + hairline +
-     --radius-inner, no shadow; controls = --radius-m, 40px; tags = pill; selected = --selected-*;
-     icon tile = 40px, --radius-m, tinted. */
-  --surface-2: color-mix(in srgb, var(--bg) 55%, var(--surface));
-  --card: var(--surface);
-  --radius-inner: 12px;
-  --selected-bg: color-mix(in srgb, var(--blue) 8%, var(--surface));
-  --selected-line: var(--blue);
-  --tint-blue: color-mix(in srgb, var(--blue) 9%, var(--surface));
+  color-scheme: light;
 }
-/* Sapphire (default theme): ink navy, a quieter sapphire, seal gold, cool paper. */
-body:is(:not([data-theme]), [data-theme='']) {
+:root[data-mode='dark'] {
+  color-scheme: dark;
+}
+/* Colours live on body, not :root: older stylesheets set some of them on body, and the derived
+   tokens below (--surface-2, --selected-bg, …) must be worked out from the current mode's own
+   base colours. Component conventions, shared by every module stylesheet:
+   card = surface + hairline + --radius-l; inset panel inside a card = --surface-2 + hairline +
+   --radius-inner, no shadow; controls = --radius-m, 40px; tags = pill; selected = --selected-*;
+   icon tile = 40px, --radius-m, tinted; text on a --blue fill = --on-blue. */
+body {
+  /* Light: ink navy, a quieter sapphire, seal gold, cool paper. */
   --navy: #0b1f3a;
   --blue: #1556d0;
+  --on-blue: #ffffff;
+  --on-gold: #241a07;
+  --on-green: #ffffff;
   --cyan: #2e7fd9;
   --gold: #b8862b;
   --ink: #13233a;
   --muted: #5b6b80;
   --line: #dfe5ec;
   --bg: #f3f5f8;
+  --surface: #ffffff;
   --green: #137a55;
   --red: #c0343f;
+  --red-fill: #c0343f;
   --side-mid: #0b1f3a;
   --side-end: #081830;
   --side-text: #b7c4d6;
@@ -86,6 +88,52 @@ body:is(:not([data-theme]), [data-theme='']) {
   --side-accent: #d0a24a;
   --side-border: #ffffff1a;
   --side-panel: #ffffff0a;
+  --chart-1: #1556d0;
+  --chart-2: #b8862b;
+  --chart-grid: #e8edf3;
+  --chart-track: #dbe6fa;
+  --shadow-raised: 0 1px 2px rgb(11 31 58 / 6%), 0 0 0 1px rgb(11 31 58 / 2%);
+  --shadow-float: 0 12px 32px rgb(11 31 58 / 16%), 0 2px 6px rgb(11 31 58 / 8%);
+  --surface-2: color-mix(in srgb, var(--bg) 55%, var(--surface));
+  --card: var(--surface);
+  --selected-bg: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  --selected-line: var(--blue);
+  --tint-blue: color-mix(in srgb, var(--blue) 9%, var(--surface));
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--blue) 28%, transparent);
+}
+/* Dark: the same navy and seal gold on a night ledger. Measured on --surface: text 14:1,
+   secondary text 7:1, blue 7:1, chart series over 6:1; --on-blue on a blue fill 7.5:1. */
+:root[data-mode='dark'] body {
+  --navy: #18305a;
+  --blue: #7ba4ff;
+  --on-blue: #0a1426;
+  --on-green: #06150e;
+  --cyan: #6cb6ff;
+  --gold: #dcb062;
+  --ink: #e7ecf4;
+  --muted: #9eabbe;
+  --line: #26334a;
+  --bg: #0b111d;
+  --surface: #131c2c;
+  --green: #5fcf9b;
+  --red: #ff8a92;
+  --red-fill: #cf3845;
+  --side-mid: #0e1626;
+  --side-end: #0a101c;
+  --side-text: #b7c3d4;
+  --side-muted: #8190a6;
+  --side-accent: #dcb062;
+  --side-border: #ffffff14;
+  --side-panel: #ffffff08;
+  --chart-1: #6f9cff;
+  --chart-2: #d9a94e;
+  --chart-grid: #222e44;
+  --chart-track: #1f2b42;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 2%);
+  --shadow-float: 0 16px 40px rgb(0 0 0 / 55%), 0 0 0 1px rgb(255 255 255 / 6%);
+  --selected-bg: color-mix(in srgb, var(--blue) 14%, var(--surface));
+  --tint-blue: color-mix(in srgb, var(--blue) 13%, var(--surface));
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--blue) 35%, transparent);
 }
 
 /* ───────────── base ───────────── */
@@ -233,13 +281,21 @@ h3,
 }
 /* the signature line: a gold rule with the seal at its start */
 .trust-list {
+  position: relative;
   max-width: 46ch;
   margin: 0;
   padding: 22px 0 0;
   list-style: none;
-  border-top: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
   display: grid;
   gap: 12px;
+}
+.trust-list::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: color-mix(in srgb, var(--gold) 55%, transparent);
+  transform-origin: left;
 }
 .trust-list li {
   position: relative;
@@ -432,7 +488,7 @@ h3,
 .top-right .live {
   display: none;
 }
-.theme-trigger,
+.mode-toggle,
 .alert-bell,
 .menu {
   display: inline-grid;
@@ -451,7 +507,7 @@ h3,
 .menu {
   display: none;
 }
-.theme-trigger:hover,
+.mode-toggle:hover,
 .alert-bell:hover,
 .menu:hover {
   background: var(--bg);
@@ -467,7 +523,7 @@ h3,
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--red);
+  background: var(--red-fill);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
@@ -488,10 +544,29 @@ h3,
   letter-spacing: 0.02em;
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px color-mix(in srgb, var(--gold) 70%, transparent);
 }
-.floating-theme {
-  display: grid;
-  place-items: center;
-  font-size: 0;
+/* Light/dark switch: the moon offers dark, the sun offers light; the icon turns as it swaps. */
+.mode-toggle svg {
+  grid-area: 1 / 1;
+  transition:
+    transform 320ms var(--ease-out),
+    opacity 200ms ease;
+}
+.mode-toggle .mode-sun,
+:root[data-mode='dark'] .mode-toggle .mode-moon {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+:root[data-mode='dark'] .mode-toggle .mode-sun {
+  opacity: 1;
+  transform: none;
+}
+.login-mode {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+.login-box {
+  position: relative;
 }
 .content {
   padding: 28px;
@@ -593,6 +668,26 @@ section + .card.panel {
   color: var(--muted);
   text-align: center;
   padding: 28px 12px;
+}
+/* Empty states read as a blank page of the ledger: a document mark over faint ruling. */
+.empty::before,
+.viz-plot.viz-empty::before {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 10px;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 3v5h5M9 13h6M9 17h4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 3v5h5M9 13h6M9 17h4'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* In a table the empty row can be wider than the screen, so the mark sits beside the text. */
+td.empty::before {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin: 0 10px 0 0;
+  vertical-align: -5px;
 }
 
 /* Dark banners (client welcome, segment headers) carry the same ledger ruling as sign-in. */
@@ -725,7 +820,9 @@ section + .card.panel {
   min-height: 140px;
   padding: 24px;
   border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+  background:
+    repeating-linear-gradient(180deg, transparent 0 27px, color-mix(in srgb, var(--line) 60%, transparent) 27px 28px),
+    var(--surface-2);
   border-radius: var(--radius-m);
   color: var(--muted);
   font-size: 14px;
@@ -759,14 +856,14 @@ section + .card.panel {
 .meter-track {
   height: 8px;
   border-radius: 4px;
-  background: #dbe6fa;
+  background: var(--chart-track);
   overflow: hidden;
 }
 .meter-track span {
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: #1556d0;
+  background: var(--chart-1);
 }
 .compliance-checklist.single {
   grid-template-columns: 1fr;
@@ -856,9 +953,8 @@ section + .card.panel {
     border-color 150ms ease,
     transform 160ms var(--ease-out);
 }
-.btn.primary,
-body[data-theme] .btn.primary {
-  color: #fff;
+.btn.primary {
+  color: var(--on-blue);
   background: var(--blue);
   border: 1px solid var(--blue);
   box-shadow: 0 1px 2px rgb(11 31 58 / 18%);
@@ -921,6 +1017,7 @@ input:where([type='checkbox'], [type='radio']) {
   padding: 0;
   margin: 0;
   flex: none;
+  background: transparent;
 }
 input[type='checkbox'],
 input[type='radio'] {
@@ -939,6 +1036,8 @@ input[type='radio'] {
 input[type='file'] {
   font-size: 13.5px;
   color: var(--muted);
+  background: var(--surface);
+  border-color: var(--line);
 }
 input[type='file']::file-selector-button {
   margin-right: 12px;
@@ -1050,22 +1149,6 @@ input[type='file']::file-selector-button:hover {
     opacity 200ms var(--ease-out),
     transform 200ms var(--ease-out);
 }
-.theme-toolbar {
-  right: 0 !important;
-  transform: translateX(105%);
-  transition: transform 300ms var(--ease-drawer) !important;
-  box-shadow: var(--shadow-float);
-}
-.theme-toolbar.open {
-  transform: none;
-}
-.theme-head b {
-  font-size: 17px;
-  font-weight: 600;
-}
-.theme-option {
-  border-radius: var(--radius-m);
-}
 .pdf-modal:not(.hidden) .pdf-sheet {
   transition:
     opacity 220ms var(--ease-out),
@@ -1075,6 +1158,111 @@ input[type='file']::file-selector-button:hover {
   .pdf-modal:not(.hidden) .pdf-sheet {
     opacity: 0;
     transform: scale(0.97);
+  }
+}
+
+/* Signed or put on record: the toast carries the gold seal, which stamps in (rare moments only:
+   a report or agreement signed, research sent, a risk profile saved). */
+.toast.seal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toast.seal::before {
+  content: '';
+  flex: none;
+  width: 22px;
+  height: 22px;
+  background: var(--gold);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='9' r='6'/%3E%3Cpath d='m9.5 9 1.7 1.7L14.5 7.5'/%3E%3Cpath d='M8.5 14 7 22l5-3 5 3-1.5-8'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='9' r='6'/%3E%3Cpath d='m9.5 9 1.7 1.7L14.5 7.5'/%3E%3Cpath d='M8.5 14 7 22l5-3 5 3-1.5-8'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.toast.seal.show::before {
+  animation: seal-stamp 420ms var(--ease-out) 90ms both;
+}
+@keyframes seal-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.4) rotate(-14deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.92) rotate(3deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Sign-in, once per visit: the signature line draws, then the three promises settle under it. */
+.login-page:not(.hidden) .trust-list::before {
+  animation: sign-line 900ms var(--ease-out) 150ms both;
+}
+.login-page:not(.hidden) .trust-list li {
+  animation: settle-in 360ms var(--ease-out) both;
+}
+.login-page:not(.hidden) .trust-list li:nth-child(1) {
+  animation-delay: 650ms;
+}
+.login-page:not(.hidden) .trust-list li:nth-child(2) {
+  animation-delay: 720ms;
+}
+.login-page:not(.hidden) .trust-list li:nth-child(3) {
+  animation-delay: 790ms;
+}
+@keyframes sign-line {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+/* Signing in or out: a short fade instead of a hard cut between the two screens. */
+.portal,
+.login-page {
+  transition: opacity 240ms var(--ease-out);
+}
+@starting-style {
+  .portal,
+  .login-page {
+    opacity: 0;
+  }
+}
+/* Disclosures open instead of snapping (where the browser can animate to auto height). */
+@supports (interpolate-size: allow-keywords) {
+  .risk-answers-toggle {
+    interpolate-size: allow-keywords;
+  }
+  .risk-answers-toggle::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition:
+      block-size 260ms var(--ease-out),
+      content-visibility 260ms allow-discrete;
+  }
+  .risk-answers-toggle[open]::details-content {
+    block-size: auto;
+  }
+}
+/* Filter dropdowns are used often: a near-invisible pop from the field, and the chevron turns. */
+.research-filter-dropdown[open] .research-filter-options {
+  transform-origin: top center;
+  animation: pop-in 150ms var(--ease-out);
+}
+.research-filter-dropdown summary::after {
+  transition: transform 150ms var(--ease-out);
+}
+.research-filter-dropdown[open] summary::after {
+  transform: rotate(225deg);
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
   }
 }
 
@@ -1089,6 +1277,10 @@ input[type='file']::file-selector-button:hover {
   }
   .btn:active:not(:disabled) {
     transform: none;
+  }
+  .login-page:not(.hidden) .trust-list::before,
+  .login-page:not(.hidden) .trust-list li {
+    animation: none;
   }
 }
 
@@ -1163,9 +1355,6 @@ input[type='file']::file-selector-button:hover {
   }
   .topbar h2 {
     font-size: 19px;
-  }
-  .theme-trigger {
-    display: none;
   }
   .alert-bell {
     display: inline-grid;
