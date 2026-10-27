@@ -18,6 +18,8 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 | Weekly master | RA/Admin → Uploads: the weekly Multisegment master (CSV, XLS or XLSX, up to 10 MB; standard columns MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol, or legacy Symbol + MLot). Stored privately at `v2-research/masters/<uuid>.<ext>` and listed in `v2.symbol_masters` via `register_symbol_master`; the newest upload is the one in use. |
 | CARE PaRRVA | After the eSign, the analyst can send the report to CARE PaRRVA, to clients, or both (PaRRVA first; clients only if it is accepted). The `parrva` Edge Function builds the Strategy payload from the saved legs (rows sharing an AdviceName = one strategy), signs in with the PaRRVA token API and posts the JWE-encrypted payload (RSA-OAEP-256 + A256GCM, `parrva.pem` / `pdc_public_key.pem`) to the PDC Strategy API. Each attempt is kept in `v2.parrva_submissions`. |
 | Cash Segment | LC/MC/SC reports, Monthly/Quarterly/Half-Yearly, from the 12-column CSV (`cash-strategy-template.csv`, up to 100 rows) via `create_cash_report_draft`. Stored in `v2.research_reports` (`segment = 'Cash'`) + `v2.cash_report_rows`, so they use the same eSign, storage and delivery. Sent with `send_cash_report` to clients whose plan includes Cash. The library shows the latest two real reports per strategy and period. |
+| Broker auto-email | Mahogha's "Auto Email Execution", with the client's own consent. The client enters (or confirms what Sales/Admin entered) the broker, broker client ID, the broker's order email (TO) and CC copies, and ticks the consent (wording `BAE-2026-10-27`, recorded with time; withdrawable any time) on *Broker auto-email*. Whenever a signed Multi or Cash report is delivered to that client, a trigger on `v2.research_deliveries` queues an order email to the broker built from the legs (contract, BUY/SELL, lots × lot size, entry range, target, stop-loss) or the Cash BUY/SELL rows. The RA's send screens tag these clients with ⇄. Every consent change is in the audit trail. |
+| Email | All portal emails (application, approval, report notices, broker orders, test emails) are queued in `v2.email_log` and sent by the `mailer` Edge Function over SMTP right after the action. Until the SMTP secrets are set they are marked *Simulated* (logged only, never sent later). Broker orders more than 30 minutes old are marked *Expired*, never sent late. |
 | Positions | One position per Multi CSV row. Exits are recorded by lots; every exit is kept in `v2.research_leg_exits`. |
 | RA Overview | Counts come from the database; the activity table lists this browser session's actions. |
 
@@ -25,7 +27,7 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 
 1. **Schema** — run `supabase/migrations/20261024000000_v2_schema.sql`, then
    `20261025000000_v2_csv_legs_and_cash.sql`, `20261025010000_v2_parrva.sql`,
-   `20261027000000_v2_symbol_master.sql`, then `supabase/seed_v2.sql`, in
+   `20261027000000_v2_symbol_master.sql`, `20261027020000_v2_broker_email.sql`, then `supabase/seed_v2.sql`, in
    the Supabase SQL editor.
 2. **Expose the schema** — Dashboard → Project Settings → Data API → *Exposed schemas* → add `v2`.
 3. **Edge Function** — `npx supabase login`, then `npm run deploy:esign` (or paste
@@ -45,7 +47,11 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    to whitelist at NSE) and `POST /relay/v1/pdc/strategies` (header `X-Relay-Key`, PaRRVA token in
    `X-PDC-Authorization`), max 30 calls a minute; its own errors carry `X-Relay-Error`. To change the
    key, put a new SHA-256 in `RELAY_KEY_SHA256` and the new value in the secret.
-6. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
+6. **Email** — deploy `supabase/functions/mailer/index.ts` as `mailer`, then add secrets `SMTP_HOST`
+   (e.g. `smtp.hostinger.com`), `SMTP_USERNAME`, `SMTP_PASSWORD`, and optional `SMTP_PORT` (default 465;
+   Supabase blocks 25 and 587), `MAIL_FROM` (e.g. `Sampadha Research <research@sampadha.com>`) and
+   `MAIL_REPLY_TO`. Admin → *Broker auto-email* shows whether sending is on.
+7. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
 
 ## Live site
 
@@ -70,6 +76,7 @@ role-app.js          screens, navigation, sign-in/session
 research-reports.js  Multi Segment: CSV import, attachments, PDF, Aadhaar eSign, delivery, positions
 cash-segment.js      Cash Segment: CSV import, report library, PDF, Aadhaar eSign, delivery, RA activity
 multi-quick-input.js Multi Segment Quick input (compact basket) and the Uploads page for the weekly master
+broker-email.js      Broker auto-email pages (client consent, Sales/Admin set-up)
 relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy API (PHP, runs on Hostinger)
 vendor/supabase.js   supabase-js browser build
 vendor/xlsx.full.min.js  SheetJS 0.20.3 (Apache-2.0), loaded only when a weekly master is read

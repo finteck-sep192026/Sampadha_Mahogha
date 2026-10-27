@@ -1298,7 +1298,7 @@ function researchClientSection(r) {
         name +
         '</label>',
     ).join('') +
-    '</div><p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p><button class="btn primary">Send</button></form></article>'
+    '</div><p class="research-notice">Clients marked ⇄ broker auto-email have consented: their broker also receives these legs as an order email.</p><p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p><button class="btn primary">Send</button></form></article>'
   );
 }
 function researchFilterClients() {
@@ -1322,6 +1322,9 @@ function researchFilterClients() {
         reportEscape(c.email) +
         '</small><small>Subscribed: ' +
         reportEscape(c.tier) +
+        (typeof brokerAutoEmailActive === 'function' && brokerAutoEmailActive(c.uid)
+          ? ' · ⇄ broker auto-email'
+          : '') +
         '</small></span></label>',
     )
     .join('');

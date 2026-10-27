@@ -1,0 +1,30 @@
+/* Broker auto-email pages (broker-email.js) and broker mails on the Email delivery page. */
+.broker-consent {
+  margin-top: 16px;
+}
+.broker-consent small + small {
+  margin-top: 6px;
+  opacity: 0.7;
+}
+.broker-test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line, rgba(127, 127, 127, 0.25));
+}
+.broker-test .field {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.broker-mail-body {
+  margin: 0 0 14px;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#mailerStatus {
+  margin-bottom: 17px;
+}

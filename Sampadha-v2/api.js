@@ -163,11 +163,15 @@
     id: r.mail_ref,
     application: r.application_ref || reportRefs.get(r.report_id) || '—',
     to: r.recipient_email,
+    cc: r.cc_emails || [],
+    clientId: r.client_id,
     name: r.recipient_name || '',
     subject: r.subject,
     type: r.mail_type,
     status: r.status,
     sent: stamp(r.sent_at, true) + ' IST',
+    delivered: r.delivered_at ? stamp(r.delivered_at, true) + ' IST' : '',
+    note: r.provider_message || '',
     body: r.body,
   });
   const mapLeg = (l, exits, signedAt) => ({
@@ -326,6 +330,7 @@
       deliveries,
       researchClients,
       cashClients,
+      brokerEmails,
     ] = await Promise.all([
       ok(q('cash_recommendations', (x) => x.order('published_at'))),
       ok(q('multi_recommendations', (x) => x.order('published_at'))),
@@ -356,6 +361,9 @@
       ok(q('research_deliveries')),
       ['ra', 'admin'].includes(role) ? rpc('list_research_clients') : [],
       ['ra', 'admin'].includes(role) ? rpc('list_cash_clients') : [],
+      staff
+        ? rpc('list_broker_email_clients')
+        : ok(q('broker_email_consents')),
     ]);
 
     const exitsByLeg = new Map();
@@ -382,6 +390,8 @@
       ),
       researchClients,
       cashClients,
+      // Broker auto-email details per client (a client gets only their own row)
+      brokerEmails,
       // [name, id, risk, kyc, plan, email, mobile] rows for the client relationship table
       clientRows: directory
         .filter((p) => p.role === 'client')
@@ -399,14 +409,30 @@
   }
 
   // ───────────── writes (all enforced again server-side) ─────────────
-  const submitApplication = (payload) => rpc('submit_client_application', { payload });
-  const decideApplication = (appRef, approve) =>
-    rpc('decide_client_application', { p_app_ref: appRef, p_approve: approve });
+  // The database queues outgoing mail in email_log; the mailer Edge Function sends it. A failed flush
+  // never fails the action itself: the rows stay queued and the next flush picks them up.
+  const flushMail = async () => {
+    try {
+      return (await sb.functions.invoke('mailer', { body: { action: 'flush' } })).data;
+    } catch {
+      return null;
+    }
+  };
+  const withMail = (fn) => async (...args) => {
+    const result = await fn(...args);
+    await flushMail();
+    return result;
+  };
+  const submitApplication = withMail((payload) => rpc('submit_client_application', { payload }));
+  const decideApplication = withMail((appRef, approve) =>
+    rpc('decide_client_application', { p_app_ref: appRef, p_approve: approve }),
+  );
   const markNotificationsRead = () => rpc('mark_notifications_read');
   const createDraft = (title, sections, legs) =>
     rpc('create_research_draft', { p_title: title, p_sections: sections, p_legs: legs });
-  const sendReport = (reportId, clientIds, types) =>
-    rpc('send_research_report', { p_report_id: reportId, p_client_ids: clientIds, p_types: types });
+  const sendReport = withMail((reportId, clientIds, types) =>
+    rpc('send_research_report', { p_report_id: reportId, p_client_ids: clientIds, p_types: types }),
+  );
   const createCashDraft = (product, frequency, fileName, rows) =>
     rpc('create_cash_report_draft', {
       p_product: product,
@@ -414,8 +440,30 @@
       p_file_name: fileName,
       p_rows: rows,
     });
-  const sendCashReport = (reportId, clientIds) =>
-    rpc('send_cash_report', { p_report_id: reportId, p_client_ids: clientIds });
+  const sendCashReport = withMail((reportId, clientIds) =>
+    rpc('send_cash_report', { p_report_id: reportId, p_client_ids: clientIds }),
+  );
+
+  // ───────────── broker auto-email (consent rows in v2.broker_email_consents) ─────────────
+  // loginId is ignored for a client (always their own record); Admin/Sales name the client.
+  const saveBrokerEmail = (loginId, details, consent = false) =>
+    rpc('save_broker_email', {
+      p_login_id: loginId || null,
+      p_broker: details.broker,
+      p_broker_client_id: details.brokerClientId,
+      p_to_email: details.toEmail,
+      p_cc_emails: details.ccEmails,
+      p_consent: consent,
+    });
+  const revokeBrokerEmail = (loginId) => rpc('revoke_broker_email', { p_login_id: loginId || null });
+  const sendBrokerTestEmail = withMail((loginId, testEmail) =>
+    rpc('send_broker_test_email', { p_login_id: loginId || null, p_test_email: testEmail || null }),
+  );
+  async function mailerStatus() {
+    const { data, error } = await sb.functions.invoke('mailer', { body: { action: 'status' } });
+    if (error) throw new Error('The mailer service is not reachable.');
+    return data;
+  }
   const closeLeg = (legId, lots, price) =>
     rpc('close_research_leg', { p_leg_id: legId, p_lots: lots, p_price: price });
 
@@ -516,6 +564,11 @@
     createCashDraft,
     sendCashReport,
     closeLeg,
+    saveBrokerEmail,
+    revokeBrokerEmail,
+    sendBrokerTestEmail,
+    mailerStatus,
+    flushMail,
     uploadAttachment,
     uploadPreviewPdf,
     downloadFile,
