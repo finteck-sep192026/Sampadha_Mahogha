@@ -38,6 +38,13 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 5. **CARE PaRRVA** — `20261025010000_v2_parrva.sql`, deploy `supabase/functions/parrva/index.ts` as `parrva`, and add
    secrets `PARRVA_USERNAME` (Enrolment ID) and `PARRVA_PASSWORD`. Optional `PARRVA_AUTH_URL` /
    `PARRVA_STRATEGY_URL` override the endpoints from RA API document 0.0.3.
+   NSE PDC only answers whitelisted IP addresses and Supabase has no fixed outgoing IP, so the Strategy
+   call goes through the relay on this site (`relay/v1/index.php`, PHP on Hostinger) once the secret
+   `PDC_RELAY_KEY` is set (its value is in the git-ignored `.env`; the relay keeps only its SHA-256).
+   The relay forwards to the one PDC URL only: `GET /relay/v1/health`, `GET /relay/v1/egress-ip` (the IP
+   to whitelist at NSE) and `POST /relay/v1/pdc/strategies` (header `X-Relay-Key`, PaRRVA token in
+   `X-PDC-Authorization`), max 30 calls a minute; its own errors carry `X-Relay-Error`. To change the
+   key, put a new SHA-256 in `RELAY_KEY_SHA256` and the new value in the secret.
 6. **Run** — `npm run serve:v2`, open <http://localhost:8766>.
 
 ## Live site
@@ -63,6 +70,7 @@ role-app.js          screens, navigation, sign-in/session
 research-reports.js  Multi Segment: CSV import, attachments, PDF, Aadhaar eSign, delivery, positions
 cash-segment.js      Cash Segment: CSV import, report library, PDF, Aadhaar eSign, delivery, RA activity
 multi-quick-input.js Multi Segment Quick input (compact basket) and the Uploads page for the weekly master
+relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy API (PHP, runs on Hostinger)
 vendor/supabase.js   supabase-js browser build
 vendor/xlsx.full.min.js  SheetJS 0.20.3 (Apache-2.0), loaded only when a weekly master is read
 ```

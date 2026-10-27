@@ -1,0 +1,11 @@
+# Fixed-IP relay for NSE PDC (see v1/index.php). Every /relay/v1/… path goes to that one script;
+# anything else under /relay is 404.
+Options -Indexes
+DirectoryIndex disabled
+
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+RewriteRule ^v1/index\.php$ - [L]
+RewriteRule ^v1(/.*)?$ v1/index.php [L]
+RewriteRule ^ - [R=404,L]

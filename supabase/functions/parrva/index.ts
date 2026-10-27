@@ -11,12 +11,21 @@
 // Credentials live in Edge Function secrets, never in the browser:
 //   PARRVA_USERNAME (Enrolment ID), PARRVA_PASSWORD
 //   optional PARRVA_AUTH_URL, PARRVA_STRATEGY_URL to override the documented endpoints
+//   PDC_RELAY_KEY: NSE PDC answers whitelisted IPs only and Edge Functions have no fixed outgoing
+//     IP, so with this key set the Strategy call goes through the fixed-IP relay on the Hostinger
+//     site (Sampadha-v2/relay/v1, which only forwards to the documented PDC URL);
+//     optional PDC_RELAY_URL overrides its address
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const AUTH_URL =
   Deno.env.get('PARRVA_AUTH_URL') ?? 'https://careparrva.com/api/parrva/pdc/auth/authenticate';
-const STRATEGY_URL =
-  Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseindia.com/advice/rainput/strategy';
+const RELAY_KEY = Deno.env.get('PDC_RELAY_KEY')?.trim();
+const RELAY_URL = (
+  Deno.env.get('PDC_RELAY_URL') ?? 'https://racrm.fintecindia.com/relay/v1'
+).replace(/\/+$/, '');
+const STRATEGY_URL = RELAY_KEY
+  ? 'https://pdc.nseindia.com/advice/rainput/strategy'
+  : (Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseindia.com/advice/rainput/strategy');
 // NSE's PDC edge drops requests it does not accept without answering; never wait on it forever.
 const TIMEOUT_MS = 20000;
 // Identify this application honestly to PaRRVA/NSE instead of the runtime's generic client name.
@@ -42,6 +51,15 @@ const reply = (status: number, body: unknown) =>
 class HttpError extends Error {
   constructor(
     public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+// An error raised by the relay itself (header X-Relay-Error), as opposed to an answer from PDC.
+class RelayError extends Error {
+  constructor(
+    public code: string,
     message: string,
   ) {
     super(message);
@@ -141,6 +159,58 @@ async function parrvaToken() {
         (parrvaMessage(body) ? ': ' + parrvaMessage(body) : ' (HTTP ' + res.status + ')'),
     );
   return token as string;
+}
+
+// POSTs a body to the PDC Strategy API: through the fixed-IP relay when PDC_RELAY_KEY is set,
+// otherwise directly. Returns PDC's response; relay failures throw RelayError.
+async function postStrategy(body: string, token?: string) {
+  if (!RELAY_KEY)
+    return fetch(STRATEGY_URL, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      method: 'POST',
+      headers: {
+        accept: '*/*',
+        'Content-Type': 'application/json',
+        'User-Agent': USER_AGENT,
+        ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      },
+      body,
+    });
+  const res = await fetch(RELAY_URL + '/pdc/strategies', {
+    // The relay waits up to 20 seconds for PDC; leave it time to report that.
+    signal: AbortSignal.timeout(TIMEOUT_MS + 8000),
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': USER_AGENT,
+      'X-Relay-Key': RELAY_KEY,
+      ...(token ? { 'X-PDC-Authorization': 'Bearer ' + token } : {}),
+    },
+    body,
+  });
+  if (res.headers.get('X-Relay-Upstream') === 'pdc') return res;
+  const answer = await readBody(res);
+  throw new RelayError(
+    res.headers.get('X-Relay-Error') ?? 'http_' + res.status,
+    typeof answer?.error?.message === 'string'
+      ? answer.error.message
+      : 'The relay answered HTTP ' + res.status + '.',
+  );
+}
+// The address NSE sees the Strategy call coming from (the relay's, when it is used).
+async function egressIp() {
+  try {
+    const res = RELAY_KEY
+      ? await fetch(RELAY_URL + '/egress-ip', {
+          signal: AbortSignal.timeout(15000),
+          headers: { 'User-Agent': USER_AGENT, 'X-Relay-Key': RELAY_KEY },
+        })
+      : await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
+    const answer = await readBody(res);
+    return typeof answer?.ip === 'string' ? answer.ip : (answer?.error?.message ?? 'unknown');
+  } catch {
+    return 'unknown';
+  }
 }
 
 // Rows sharing an AdviceName are one strategy; each row is a leg (Strategy API, section 6.6).
@@ -244,17 +314,7 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
   try {
     const token = await parrvaToken();
     const jwe = await encryptJwe(JSON.stringify(payload), PDC_PUBLIC_KEY);
-    const res = await fetch(STRATEGY_URL, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      method: 'POST',
-      headers: {
-        accept: '*/*',
-        'Content-Type': 'application/json',
-        'User-Agent': USER_AGENT,
-        Authorization: 'Bearer ' + token,
-      },
-      body: JSON.stringify([{ data: jwe }]),
-    });
+    const res = await postStrategy(JSON.stringify([{ data: jwe }]), token);
     httpStatus = res.status;
     response = await readBody(res);
     ok = res.ok && response?.status !== 'error' && response?.success !== false;
@@ -266,16 +326,20 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
     message =
       error instanceof HttpError
         ? error.message
-        : timedOut(error)
-          ? 'NSE PDC did not answer within 20 seconds. Ask CARE PaRRVA to confirm this server can reach the Strategy API.'
-          : 'Could not reach CARE PaRRVA.';
+        : error instanceof RelayError
+          ? error.code === 'upstream_timeout'
+            ? 'NSE PDC did not answer the relay within 20 seconds. Ask CARE PaRRVA / NSE to whitelist the relay IP.'
+            : 'The PDC relay failed: ' + error.message
+          : timedOut(error)
+            ? 'NSE PDC did not answer within 20 seconds. Ask CARE PaRRVA to confirm this server can reach the Strategy API.'
+            : 'Could not reach CARE PaRRVA.';
     response = { error: message };
     if (error instanceof HttpError && error.status === 503) throw error;
   }
 
   await v2.from('parrva_submissions').insert({
     report_id: report.id,
-    endpoint: STRATEGY_URL,
+    endpoint: RELAY_KEY ? STRATEGY_URL + ' via ' + RELAY_URL : STRATEGY_URL,
     request_payload: payload,
     http_status: httpStatus,
     response,
@@ -309,17 +373,17 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
 async function check(body: Record<string, unknown>) {
   let pdc: Record<string, unknown>;
   try {
-    const res = await fetch(STRATEGY_URL, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      method: 'POST',
-      headers: { accept: '*/*', 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
-      body: '[]',
-    });
+    const res = await postStrategy('[]');
     pdc = { reachable: true, http_status: res.status, body: (await res.text()).slice(0, 300) };
   } catch (error) {
     pdc = {
       reachable: false,
-      error: timedOut(error) ? 'no answer within 20 seconds' : String(error).slice(0, 300),
+      error:
+        error instanceof RelayError
+          ? 'relay: ' + error.code + ' (' + error.message + ')'
+          : timedOut(error)
+            ? 'no answer within 20 seconds'
+            : String(error).slice(0, 300),
     };
   }
   let signIn = 'not attempted';
@@ -331,17 +395,14 @@ async function check(body: Record<string, unknown>) {
       signIn = error instanceof Error ? error.message : String(error);
     }
   }
-  // The address PaRRVA/NSE see our requests coming from (needed if they whitelist by IP).
-  let egressIp = 'unknown';
-  try {
-    const res = await fetch('https://api.ipify.org?format=json', {
-      signal: AbortSignal.timeout(5000),
-    });
-    egressIp = (await res.json()).ip ?? 'unknown';
-  } catch {
-    /* informational only */
-  }
-  return { parrva_sign_in: signIn, pdc, strategy_url: STRATEGY_URL, egress_ip: egressIp };
+  return {
+    parrva_sign_in: signIn,
+    pdc,
+    strategy_url: STRATEGY_URL,
+    relay: RELAY_KEY ? RELAY_URL : 'not used (PDC_RELAY_KEY is not set)',
+    // The address NSE sees the Strategy call coming from: the one to whitelist.
+    egress_ip: await egressIp(),
+  };
 }
 
 Deno.serve(async (req) => {
