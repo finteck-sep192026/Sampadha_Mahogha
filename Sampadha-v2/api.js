@@ -106,36 +106,30 @@
       .select('*')
       .eq('id', data.session.user.id)
       .maybeSingle();
-    return row; // null when the user has no profile (no access)
+    return row?.is_active ? row : null; // null: no profile, or access turned off (no access)
+  }
+
+  // ───────────── set-password links (accounts Edge Function emails them) ─────────────
+  // The link lands here as #access_token=…&refresh_token=…&type=recovery, or #error=… when it has
+  // expired or was used. Returns { ok } after storing the session, { error } or null (no link).
+  async function sessionFromLink() {
+    const hash = new URLSearchParams(location.hash.slice(1));
+    if (!hash.has('access_token') && !hash.has('error')) return null;
+    history.replaceState(null, '', location.pathname + location.search);
+    if (hash.has('error'))
+      return { error: hash.get('error_description') || 'This link has expired or was already used.' };
+    const { error } = await sb.auth.setSession({
+      access_token: hash.get('access_token'),
+      refresh_token: hash.get('refresh_token'),
+    });
+    return error ? { error: error.message } : { ok: true, type: hash.get('type') };
+  }
+  async function setPassword(password) {
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) throw new Error(error.message);
   }
 
   // ───────────── mapping rows to the shapes the screens already render ─────────────
-  const mapCash = (r) => ({
-    id: r.ref,
-    product: r.product,
-    stock: r.stock,
-    price: rupee(r.price),
-    qty: r.qty,
-    published: stamp(r.published_at),
-    delivered: stamp(r.delivered_at),
-    status: r.status,
-  });
-  const mapMulti = (r) => ({
-    id: r.ref,
-    product: r.product,
-    symbol: r.symbol,
-    expiry: dateOnly(r.expiry),
-    strike: Number(r.strike).toLocaleString('en-IN'),
-    option: r.option_type,
-    side: r.side,
-    lots: r.lots,
-    lotSize: r.lot_size,
-    qty: r.qty,
-    price: rupee(r.price, 2),
-    published: stamp(r.published_at),
-    delivered: stamp(r.delivered_at),
-    status: r.status,
-  });
   const mapAlert = (r) => ({
     id: r.alert_ref,
     channel: r.channel,
@@ -158,6 +152,7 @@
     amount: r.proposed_amount == null ? '—' : rupee(r.proposed_amount),
     submitted: stamp(r.submitted_at) + ' IST',
     status: r.status,
+    clientId: r.client_id,
   });
   const mapMail = (r, reportRefs) => ({
     id: r.mail_ref,
@@ -337,8 +332,10 @@
       riskProfiles,
       clientDocuments,
     ] = await Promise.all([
-      ok(q('cash_recommendations', (x) => x.order('published_at'))),
-      ok(q('multi_recommendations', (x) => x.order('published_at'))),
+      // "All recommendations" is built from delivered reports below; the old sample tables
+      // (cash_recommendations, multi_recommendations) are no longer read.
+      [],
+      [],
       ok(q('plans', (x) => x.order('sort_order'))),
       role === 'client'
         ? ok(q('client_notifications', (x) => x.order('created_at', { ascending: false })))
@@ -383,9 +380,51 @@
     const planName = new Map(plans.map((p) => [p.code, p.name]));
     const subByClient = new Map(subs.map((s) => [s.client_id, s]));
 
+    const mappedReports = reports.map((r) =>
+      mapReport(r, legs, deliveries, exitsByLeg, attachments, cashRows),
+    );
+    // Every recommendation from a signed report that has been sent (RLS limits a client to the
+    // reports delivered to them).
+    const sentReports = mappedReports.filter((r) => r.sentAt);
+    const publishedOf = (r) => stamp(r.signedAt || r.createdAt);
     return {
-      cash: cash.map(mapCash),
-      multi: multi.map(mapMulti),
+      cash: sentReports
+        .filter((r) => r.segment === 'Cash')
+        .flatMap((r) =>
+          r.cashRows.map((c) => ({
+            id: r.ref,
+            reportId: r.id,
+            product: r.cashProduct || c.productName,
+            stock: c.stock,
+            action: c.action,
+            price: rupee(c.price, 2),
+            qty: c.quantity,
+            published: publishedOf(r),
+            delivered: stamp(r.sentAt),
+            status: c.action === 'HOLD' ? 'Hold' : 'Active',
+          })),
+        ),
+      multi: sentReports
+        .filter((r) => r.segment === 'Multi')
+        .flatMap((r) =>
+          r.rows.map((l) => ({
+            id: r.ref,
+            reportId: r.id,
+            product: l.product,
+            symbol: l.symbol,
+            expiry: dateOnly(l.expiry),
+            strike: l.strike === '' ? '—' : Number(l.strike).toLocaleString('en-IN'),
+            option: l.option || '—',
+            side: l.side,
+            lots: l.lots,
+            lotSize: l.lotSize,
+            qty: l.quantity,
+            price: rupee(l.price, 2),
+            published: publishedOf(r),
+            delivered: stamp(r.sentAt),
+            status: l.status === 'Closed' ? 'Closed' : 'Active',
+          })),
+        ),
       plans,
       alerts: alerts.map(mapAlert),
       applications: apps.map(mapApplication),
@@ -395,9 +434,7 @@
       subscriptions: subs,
       payments,
       audit,
-      reports: reports.map((r) =>
-        mapReport(r, legs, deliveries, exitsByLeg, attachments, cashRows),
-      ),
+      reports: mappedReports,
       researchClients,
       cashClients,
       // Broker auto-email details per client (a client gets only their own row)
@@ -521,6 +558,23 @@
   const clientEsignVerify = (documentId) => clientEsign('verify', { documentId });
 
   const sendTestEmail = withMail((to) => rpc('send_test_email', { p_to: to }));
+  // Staff and client logins (accounts Edge Function, Admin only).
+  async function accounts(action, body = {}) {
+    const { data, error } = await sb.functions.invoke('accounts', { body: { action, ...body } });
+    if (error) {
+      if (error.name === 'FunctionsFetchError')
+        throw new Error('The account service is not reachable. Ask an administrator to deploy it.');
+      let message = error.message;
+      try {
+        message = (await error.context.json()).error || message;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new Error(message);
+    }
+    return data;
+  }
+
   async function mailerStatus() {
     const { data, error } = await sb.functions.invoke('mailer', { body: { action: 'status' } });
     if (error) throw new Error('The mailer service is not reachable.');
@@ -632,6 +686,9 @@
     mailerStatus,
     sendTestEmail,
     flushMail,
+    accounts,
+    sessionFromLink,
+    setPassword,
     riskQuestionnaire,
     submitRiskProfile,
     setClientKyc,
