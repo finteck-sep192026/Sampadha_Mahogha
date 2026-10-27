@@ -528,6 +528,9 @@ function cashClientSelection(report) {
           (typeof brokerAutoEmailActive === 'function' && brokerAutoEmailActive(client.id)
             ? ' · ⇄ broker auto-email'
             : '') +
+          (typeof complianceNote === 'function'
+            ? cashEscape(complianceNote(client.id, 'Cash'))
+            : '') +
           '</small></span></label>',
       )
       .join('') +

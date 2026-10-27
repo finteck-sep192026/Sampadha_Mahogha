@@ -1325,6 +1325,7 @@ function researchFilterClients() {
         (typeof brokerAutoEmailActive === 'function' && brokerAutoEmailActive(c.uid)
           ? ' · ⇄ broker auto-email'
           : '') +
+        (typeof complianceNote === 'function' ? reportEscape(complianceNote(c.uid, 'Multi')) : '') +
         '</small></span></label>',
     )
     .join('');

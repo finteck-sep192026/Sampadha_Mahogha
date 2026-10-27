@@ -1,0 +1,92 @@
+/* Compliance pages (client-compliance.js). */
+.compliance-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.compliance-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--line, rgba(127, 127, 127, 0.25));
+  border-radius: 12px;
+}
+.compliance-check > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-weight: 700;
+}
+.compliance-check.done > span {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+.compliance-check.todo > span {
+  background: rgba(202, 138, 4, 0.14);
+  color: #a16207;
+}
+.compliance-check small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted, #64748b);
+}
+.compliance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.compliance-sign,
+.kyc-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.compliance-sign input {
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line, rgba(127, 127, 127, 0.35));
+  border-radius: 8px;
+  font: inherit;
+}
+.kyc-form select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  font: inherit;
+}
+.risk-question {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line, rgba(127, 127, 127, 0.25));
+  border-radius: 12px;
+}
+.risk-question legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.risk-question label {
+  display: block;
+  padding: 4px 0;
+}
+.risk-answers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 12px 0 0;
+}
+.risk-answers dt {
+  color: var(--muted, #64748b);
+}
+.risk-answers dd {
+  margin: 0;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .risk-answers {
+    grid-template-columns: 1fr;
+  }
+}
