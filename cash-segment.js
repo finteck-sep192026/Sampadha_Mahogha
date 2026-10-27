@@ -498,21 +498,59 @@ function cashSignPanel(report) {
     '</p></form></article><section id="cashClientSection" class="cash-client-section"><p class="research-lock">Client selection appears after the Aadhaar eSign is confirmed.</p></section>'
   );
 }
+// CARE PaRRVA, Portfolio API: rows sharing a PortfolioName are one portfolio, and the weightages
+// of each portfolio must add up to 1, or PaRRVA refuses it.
+function cashParrvaChoice(report) {
+  if (report.parrvaStatus === 'Submitted')
+    return (
+      '<p class="research-parrva research-parrva-done"><strong>CARE PaRRVA:</strong> submitted on ' +
+      cashEscape(report.parrvaSubmitted) +
+      '.</p>'
+    );
+  const portfolios = new Map();
+  for (const row of report.rows)
+    portfolios.set(row.portfolioName, (portfolios.get(row.portfolioName) || 0) + row.weightage);
+  const unbalanced = [...portfolios].find(([, total]) => Math.abs(total - 1) > 0.0005);
+  return (
+    '<div class="research-parrva"><label class="research-check"><input type="checkbox" name="parrva"' +
+    (unbalanced ? ' disabled' : ' checked') +
+    '>Send to CARE PaRRVA (Portfolio API, ' +
+    portfolios.size +
+    (portfolios.size === 1 ? ' portfolio, ' : ' portfolios, ') +
+    report.rows.length +
+    ' holdings)</label>' +
+    (unbalanced
+      ? '<p class="research-message research-error">The weightages of portfolio "' +
+        cashEscape(unbalanced[0]) +
+        '" add up to ' +
+        unbalanced[1].toFixed(4) +
+        '. CARE PaRRVA needs exactly 1, so create the report again from a corrected CSV to send it there.</p>'
+      : '') +
+    (report.parrvaStatus === 'Failed'
+      ? '<p class="research-message research-error">Last attempt failed: ' +
+        cashEscape(report.parrvaMessage) +
+        '</p>'
+      : '') +
+    '</div>'
+  );
+}
 function cashClientSelection(report) {
   const received = new Set(report.recipients),
     clients = cashClients();
   return (
-    '<article class="card panel"><h3>Select clients & send</h3><p>' +
+    '<article class="card panel"><h3>Send to CARE PaRRVA & clients</h3><p>' +
     (report.recipients.length
       ? 'Delivered to ' +
         report.recipients.length +
         ' client(s) on ' +
         cashEscape(report.sent) +
         '. You can also send it to more clients.'
-      : 'Report signed. Select one or more clients whose plan includes Cash.') +
+      : 'Report signed. Choose CARE PaRRVA, clients whose plan includes Cash, or both. When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.') +
     '</p><form id="cashSendForm" data-report="' +
     report.id +
-    '"><div class="cash-client-grid">' +
+    '">' +
+    cashParrvaChoice(report) +
+    '<div class="cash-client-grid">' +
     clients
       .map(
         (client) =>
@@ -535,7 +573,7 @@ function cashClientSelection(report) {
       )
       .join('') +
     (clients.length ? '' : '<p class="muted">No clients with a Cash plan.</p>') +
-    '</div><p id="cashSendStatus" class="research-message" role="status"></p><button class="btn primary">Send to Selected Clients</button></form></article>'
+    '</div><p id="cashSendStatus" class="research-message" role="status"></p><button class="btn primary">Send</button></form></article>'
   );
 }
 function cashStrategyPage() {
@@ -831,29 +869,50 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
     const form = event.target,
       report = cashFindReport(form.dataset.report),
       status = document.querySelector('#cashSendStatus'),
-      button = form.querySelector('button'),
+      button = form.querySelector('button:not([type=button])'),
+      toParrva = !!form.elements.parrva?.checked && !form.elements.parrva.disabled,
       selected = [...form.querySelectorAll('[name=client]:checked:not(:disabled)')].map(
         (input) => input.value,
       );
     if (!report) return;
-    if (!selected.length) {
-      status.textContent = 'Select at least one client.';
+    if (!toParrva && !selected.length) {
+      status.textContent = 'Choose CARE PaRRVA, at least one client, or both.';
       return;
     }
     button.disabled = true;
+    const done = [];
     try {
-      const result = await Api.sendCashReport(report.id, selected);
+      // PaRRVA first: clients receive the report only once PaRRVA has accepted it.
+      if (toParrva) {
+        status.textContent = 'Sending to CARE PaRRVA...';
+        const parrva = await Api.parrvaSubmit(report.id);
+        done.push(
+          'CARE PaRRVA accepted ' +
+            parrva.portfolios +
+            ' portfolio(s) with ' +
+            parrva.holdings +
+            ' holdings.',
+        );
+        cashTrackRa('Cash Segment', 'Sent to CARE PaRRVA', report.title);
+      }
+      if (selected.length) {
+        status.textContent = 'Delivering to clients...';
+        const result = await Api.sendCashReport(report.id, selected);
+        done.push('Delivered to ' + result.delivered + ' client(s).');
+        cashTrackRa(
+          'Cash Segment',
+          'Sent report',
+          report.title + ' to ' + result.delivered + ' client(s)',
+        );
+      }
       await refreshWorkspace();
-      cashTrackRa(
-        'Cash Segment',
-        'Sent report',
-        report.title + ' to ' + result.delivered + ' client(s)',
-      );
       cashShowReport(report.id);
-      toast('Cash report sent to ' + result.delivered + ' client(s).', 'seal');
+      toast(done.join(' '), 'seal');
     } catch (error) {
-      status.textContent = error.message;
-      button.disabled = false;
+      await refreshWorkspace().catch(() => {});
+      cashShowReport(report.id);
+      const after = document.querySelector('#cashSendStatus');
+      if (after) after.textContent = (done.length ? done.join(' ') + ' ' : '') + error.message;
     }
   }
 });

@@ -1,14 +1,15 @@
 <?php
-// Sampadha v2 — fixed-IP relay for the NSE PDC Strategy API (CARE PaRRVA), version 1.
+// Sampadha v2 — fixed-IP relay for the NSE PDC APIs used by CARE PaRRVA, version 1.
 //
 // NSE PDC only answers whitelisted IP addresses and Supabase Edge Functions have no fixed outgoing
-// address, so the parrva Edge Function sends its already-encrypted Strategy request here and this
-// server (fixed outgoing IP) forwards it unchanged. It can reach only the one PDC URL below: it is
-// not a general proxy, and it stores nothing.
+// address, so the parrva Edge Function sends its already-encrypted request here and this server
+// (fixed outgoing IP) forwards it unchanged. It can reach only the two PDC URLs below (Strategy for
+// Multi reports, Portfolio for Cash reports): it is not a general proxy, and it stores nothing.
 //
 //   GET  /relay/v1/health          → 200 {"status":"ok","version":1}                    (no key)
 //   GET  /relay/v1/egress-ip       → 200 {"ip":"…"}, the address NSE has to whitelist     (key)
-//   POST /relay/v1/pdc/strategies  → PDC's own status, Content-Type and body              (key)
+//   POST /relay/v1/pdc/strategies  → PDC Strategy API's own status, Content-Type and body (key)
+//   POST /relay/v1/pdc/portfolios  → PDC Portfolio API's own status, Content-Type and body (key)
 //        body: the JSON body for PDC; optional header X-PDC-Authorization: Bearer <PaRRVA token>
 //
 // Every route except health needs header X-Relay-Key: the parrva Edge Function's secret
@@ -18,7 +19,11 @@
 
 declare(strict_types=1);
 
-const PDC_STRATEGY_URL = 'https://pdc.nseindia.com/advice/rainput/strategy';
+// Relay route → the only PDC URL it may forward to.
+const PDC_URLS = [
+    '/pdc/strategies' => 'https://pdc.nseindia.com/advice/rainput/strategy',
+    '/pdc/portfolios' => 'https://pdc.nseindia.com/advice/rainput/portfolio',
+];
 const RELAY_KEY_SHA256 = '91bd0e17f2b452f588823e2f026f4ad73bf35c9d4ca7a0f85b707e69bf48275b';
 const USER_AGENT = 'Sampadha-RA-Portal/1.0 (+https://racrm.fintecindia.com)';
 const UPSTREAM_TIMEOUT = 20; // seconds, as in the Edge Function
@@ -110,7 +115,7 @@ function call(string $url, ?string $body, array $headers, int $timeout): array
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex, nofollow');
 
-$routes = ['/health' => 'GET', '/egress-ip' => 'GET', '/pdc/strategies' => 'POST'];
+$routes = ['/health' => 'GET', '/egress-ip' => 'GET', '/pdc/strategies' => 'POST', '/pdc/portfolios' => 'POST'];
 $path = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
 $route = (string) preg_replace('#^/relay/v1(?=/|$)#', '', $path);
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -142,7 +147,7 @@ if ($route === '/egress-ip') {
     ok(['ip' => $ip]);
 }
 
-// POST /pdc/strategies
+// POST /pdc/strategies or /pdc/portfolios
 if (stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== 0) {
     fail(415, 'unsupported_media_type', 'Send the PDC body as application/json.');
 }
@@ -164,9 +169,10 @@ if ($token !== '') {
 }
 
 $started = microtime(true);
-[$status, $type, $answer, $error, $errno] = call(PDC_STRATEGY_URL, $body, $headers, UPSTREAM_TIMEOUT);
+[$status, $type, $answer, $error, $errno] = call(PDC_URLS[$route], $body, $headers, UPSTREAM_TIMEOUT);
 error_log(sprintf(
-    'sampadha pdc-relay: status=%s ms=%d error=%s',
+    'sampadha pdc-relay: route=%s status=%s ms=%d error=%s',
+    $route,
     $status ?: '-',
     (int) ((microtime(true) - $started) * 1000),
     $error ?: '-'
