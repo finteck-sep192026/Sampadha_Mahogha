@@ -1014,7 +1014,7 @@ function researchNumberRows() {
 }
 function researchPage() {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><h3>Create Multi research report</h3><span class="badge">Multi</span></div><div class="research-steps"><span>1. Legs & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><h3>MULTI RECOMMENDATIONS</h3><p class="research-notice">Enter the first leg, then use Add leg to duplicate it and modify only the required fields. T1, T2 and T3 are optional. Published date defaults to today in IST; delivery date, sign stamp, status and closed date appear after report generation.</p><div id="researchEntries">' +
+    '<article class="card panel"><div class="research-workflow-header"><h3>Create Multi research report</h3><span class="badge">Multi</span></div><div class="research-steps"><span>1. Legs & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><h3>Multi recommendations</h3><p class="research-notice">Enter the first leg, then use Add leg to duplicate it and modify only the required fields. T1, T2 and T3 are optional. Published date defaults to today in IST; delivery date, sign stamp, status and closed date appear after report generation.</p><div id="researchEntries">' +
     researchEntry() +
     '</div><button type="button" class="btn secondary" id="researchAddRow">+ Add leg</button><section class="research-attachments"><div class="research-attachments-heading"><div><h4>Attachments</h4><p>Three upload tabs are available. Uploaded images are shown inside the downloaded report PDF.</p></div><strong>3 slots</strong></div><div class="research-upload-tabs" role="tablist" aria-label="Attachment uploads">' +
     [1, 2, 3]
@@ -1069,7 +1069,7 @@ function researchAttachmentsMarkup() {
 }
 researchPage = function () {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">RA WORKSPACE</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">MULTI RECOMMENDATIONS</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p>' +
+    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">Research workspace</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & Aadhaar eSign</span><span>3. Send to CARE PaRRVA & clients</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">Multi recommendations</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p>' +
     (typeof multiQuickInputMarkup === 'function' ? multiQuickInputMarkup() : '') +
     '<div id="researchCsvPreview"></div></section>' +
     researchAttachmentsMarkup() +
@@ -1221,7 +1221,7 @@ function researchReleasePdfPreview() {
 }
 function researchPdfPanel(r) {
   return (
-    '<article class="card panel research-section research-pdf-shell"><div class="research-workflow-header"><div><p class="overline">REPORT PREVIEW</p><h3>View PDF</h3><p>The report PDF appears here above the Aadhaar eSign step.</p></div><button type="button" class="btn secondary" data-research-pdf="' +
+    '<article class="card panel research-section research-pdf-shell"><div class="research-workflow-header"><div><p class="overline">Report preview</p><h3>View PDF</h3><p>The report PDF appears here above the Aadhaar eSign step.</p></div><button type="button" class="btn secondary" data-research-pdf="' +
     r.id +
     '">Download PDF</button></div><p id="researchPdfStatus" class="research-message" role="status">Generating PDF preview...</p><iframe id="researchPdfViewer" data-report="' +
     r.id +
@@ -1452,13 +1452,13 @@ function researchOrdersPage() {
     .flatMap((order) => (order.row.exits || []).map((exit) => ({ order, row: order.row, exit })))
     .sort((a, b) => b.exit.recordedAt - a.exit.recordedAt);
   const filters =
-    '<section class="research-position-filters" aria-label="Position filters"><div><p class="overline">FILTER POSITIONS</p><h4>Clients, products and symbols</h4><small>Select one or more values in each dropdown. Filters work together.</small></div>' +
+    '<section class="research-position-filters" aria-label="Position filters"><div><p class="overline">Filter positions</p><h4>Clients, products and symbols</h4><small>Select one or more values in each dropdown. Filters work together.</small></div>' +
     researchFilterDropdown('clients', 'Clients', filterOptions.clients) +
     researchFilterDropdown('products', 'Product', filterOptions.products) +
     researchFilterDropdown('symbols', 'Symbol', filterOptions.symbols) +
     '<button type="button" class="btn secondary" id="researchClearPositionFilters">Clear filters</button></section>';
   const history =
-    '<h4 class="research-section">POSITION EXIT HISTORY</h4><p class="research-notice">Every partial or full close is retained as a separate timestamped record. The same filters apply to this history.</p><div class="table-wrap"><table class="table research-exit-history"><thead><tr><th>Client IDs</th><th>Exit reference</th><th>Unified code</th><th>Symbol</th><th>Expiry date</th><th>Strike price</th><th>Option type</th><th>Buy/Sell</th><th>Exit #</th><th>Closing price</th><th>No. of lots</th><th>Exit quantity</th><th>Remaining lots</th><th>Remaining quantity</th><th>Status</th><th>Timestamp</th></tr></thead><tbody>' +
+    '<h4 class="research-section">Position exit history</h4><p class="research-notice">Every partial or full close is retained as a separate timestamped record. The same filters apply to this history.</p><div class="table-wrap"><table class="table research-exit-history"><thead><tr><th>Client IDs</th><th>Exit reference</th><th>Unified code</th><th>Symbol</th><th>Expiry date</th><th>Strike price</th><th>Option type</th><th>Buy/Sell</th><th>Exit #</th><th>Closing price</th><th>No. of lots</th><th>Exit quantity</th><th>Remaining lots</th><th>Remaining quantity</th><th>Status</th><th>Timestamp</th></tr></thead><tbody>' +
     exits
       .map(
         (item) =>
@@ -1561,7 +1561,7 @@ function researchOrdersPage() {
     rows.length +
     '</strong> ' +
     researchOrderFilter.toLowerCase() +
-    ' position(s) match the selected filters.</p><h4>MULTI RECOMMENDATIONS</h4><div class="table-wrap"><table class="table research-order-table"><thead><tr><th>Client IDs</th>' +
+    ' position(s) match the selected filters.</p><h4>Multi recommendations</h4><div class="table-wrap"><table class="table research-order-table"><thead><tr><th>Client IDs</th>' +
     RESEARCH_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
     '<th>Closing price</th><th>Closed lots</th><th>Remaining lots</th><th>Remaining quantity</th><th>Last exit</th><th>Action</th></tr></thead><tbody>' +
     positionRows +

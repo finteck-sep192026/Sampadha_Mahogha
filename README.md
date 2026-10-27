@@ -80,9 +80,12 @@ role-app.js          screens, navigation, sign-in/session
 research-reports.js  Multi Segment: CSV import, attachments, PDF, Aadhaar eSign, delivery, positions
 cash-segment.js      Cash Segment: CSV import, report library, PDF, Aadhaar eSign, delivery, RA activity
 multi-quick-input.js Multi Segment Quick input (compact basket) and the Uploads page for the weekly master
+design-system.css    loaded last: tokens, IBM Plex type, shell, components, motion (see its header)
+icons.js             SVG line icons for navigation and the top bar
 client-compliance.js Compliance pages (risk profile, documents for Aadhaar eSign, KYC)
 broker-email.js      Broker auto-email pages (client consent, Sales/Admin set-up)
 relay/v1/index.php   fixed-IP relay for the NSE PDC Strategy API (PHP, runs on Hostinger)
 vendor/supabase.js   supabase-js browser build
+vendor/fonts/        IBM Plex Sans + Sans Condensed (OFL), self-hosted
 vendor/xlsx.full.min.js  SheetJS 0.20.3 (Apache-2.0), loaded only when a weekly master is read
 ```
