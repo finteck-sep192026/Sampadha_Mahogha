@@ -6,14 +6,14 @@
 }
 fieldset {
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-inner);
   margin: 17px 0 0;
   padding: 14px;
 }
 legend {
-  font-size: 13px;
-  font-weight: 800;
-  padding: 0 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 0 6px;
 }
 .checks {
   display: flex;
@@ -23,8 +23,8 @@ legend {
 .checks label {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: #44566d;
+  gap: 8px;
+  color: var(--ink);
 }
 .checks input,
 .consent input {
@@ -36,10 +36,13 @@ legend {
   align-items: flex-start;
   gap: 11px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-inner);
   padding: 14px;
   margin: 17px 0;
-  background: #fbfdff;
+  background: var(--surface-2);
+}
+.consent b {
+  font-weight: 600;
 }
 .consent b,
 .consent small {
@@ -54,8 +57,9 @@ legend {
   gap: 6px;
 }
 .approval-actions .btn {
-  padding: 8px 10px;
-  font-size: 12px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13.5px;
 }
 @media (max-width: 1100px) {
   .form-grid.three {
@@ -87,16 +91,24 @@ legend {
   gap: 10px;
   align-items: start;
   border: 1px solid var(--line);
-  border-radius: 11px;
-  background: #fff;
-  padding: 13px;
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+  padding: 12px 14px;
+  font: inherit;
   text-align: left;
+  color: var(--ink);
   cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
-.email-item:hover,
+.email-item:hover {
+  border-color: color-mix(in srgb, var(--line) 50%, var(--muted));
+}
 .email-item.active {
-  border-color: var(--blue);
-  background: #f1f7ff;
+  border-color: var(--selected-line);
+  background: var(--selected-bg);
+}
+.email-item b {
+  font-weight: 600;
 }
 .email-item b,
 .email-item small {
@@ -115,17 +127,17 @@ legend {
 }
 .email-preview {
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: var(--radius-inner);
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
   min-height: 360px;
 }
 .email-preview-head {
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  padding: 17px;
-  background: #f6f9fc;
+  padding: 16px 18px;
+  background: var(--surface-2);
   border-bottom: 1px solid var(--line);
 }
 .email-preview-head h3,
@@ -134,7 +146,7 @@ legend {
 }
 .email-preview-head p {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 5px;
 }
 .email-preview-head .status {
@@ -160,8 +172,8 @@ legend {
   margin: 10px 0 2px;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f5f9ff;
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
   color: var(--ink);
 }
 .account-summary b,
@@ -170,7 +182,7 @@ legend {
 }
 .account-summary span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   text-align: right;
 }
 @media (max-width: 520px) {

@@ -1,3 +1,6 @@
+/* Workflow chart (role-app.js workflowMap): the end-to-end journey across the four roles.
+   Built on the design-system tokens; each role keeps one identifying colour for its lane and
+   step numbers (named in the legend). */
 .flow-summary {
   display: flex;
   align-items: flex-end;
@@ -6,10 +9,11 @@
   margin-bottom: 18px;
 }
 .flow-summary h3 {
-  font:
-    600 30px Georgia,
-    serif;
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 .flow-summary p:not(.overline) {
   color: var(--muted);
@@ -18,65 +22,65 @@
 .flow-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px 16px;
 }
 .flow-legend span {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 7px;
+  font-size: 13px;
   color: var(--muted);
 }
 .flow-legend i {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 .sales-dot {
-  background: #1679e8;
+  background: #1556d0;
 }
 .admin-dot {
   background: var(--gold);
 }
 .ra-dot {
-  background: #7b55c7;
+  background: #6d4fc2;
 }
 .client-dot {
   background: var(--green);
 }
 .workflow-board {
-  padding: 28px;
-  background: linear-gradient(145deg, #fff, #f8fbff);
+  padding: 24px;
   overflow: hidden;
 }
 .flow-start,
 .flow-node {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 13px;
-  background: #fff;
-  padding: 15px;
-  box-shadow: 0 8px 22px #08254f0d;
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+  padding: 14px;
 }
 .flow-start {
   max-width: 520px;
   margin: auto;
-  border-color: var(--blue);
-  background: linear-gradient(145deg, #f8fbff, #edf5ff);
+  border-color: var(--selected-line);
+  background: var(--selected-bg);
 }
 .flow-start > span,
 .flow-node > span {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--blue);
+  background: #1556d0;
   color: #fff;
-  font-weight: 900;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .flow-start b,
 .flow-start small,
@@ -84,69 +88,69 @@
 .flow-node small {
   display: block;
 }
+.flow-start b,
+.flow-node b {
+  font-weight: 600;
+}
 .flow-start small,
 .flow-node small {
   color: var(--muted);
-  margin-top: 4px;
+  font-size: 13px;
+  margin-top: 3px;
 }
 .flow-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 34px;
-  margin-top: 34px;
+  gap: 28px;
+  margin-top: 28px;
   position: relative;
 }
 .flow-split:before {
   content: '';
   position: absolute;
   left: 50%;
-  top: -34px;
+  top: -28px;
   width: 1px;
-  height: 34px;
+  height: 28px;
   background: var(--line);
 }
 .lane {
-  padding: 17px;
-  border-radius: 15px;
-  background: #f5f9ff;
-  border-top: 3px solid #1679e8;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-top: 2px solid #1556d0;
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
 }
 .lane.ra {
-  background: #faf8ff;
-  border-top-color: #7b55c7;
+  border-top-color: #6d4fc2;
 }
 .lane-title {
   margin-bottom: 12px;
-  font-size: 10px;
-  letter-spacing: 0.15em;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--muted);
-  font-weight: 900;
 }
 .lane.ra .flow-node > span {
-  background: #7b55c7;
+  background: #6d4fc2;
 }
 .flow-arrow {
   text-align: center;
-  color: var(--blue);
-  font-weight: 900;
-  font-size: 20px;
-  line-height: 32px;
-}
-.mail-arrow {
+  color: var(--muted);
   font-size: 16px;
+  line-height: 30px;
 }
 .mail-arrow em {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--muted);
   font-style: normal;
-  margin-left: 5px;
+  margin-left: 6px;
 }
 .email-node {
   border-style: dashed;
 }
 .email-node > span {
   background: var(--gold);
-  color: var(--navy);
+  color: #fff;
 }
 .central {
   margin: 2px auto;
@@ -154,26 +158,26 @@
 .admin-gate {
   max-width: 720px;
   margin: auto;
-  padding: 18px;
-  border-radius: 15px;
-  background: color-mix(in srgb, var(--gold) 10%, white);
-  border: 1px solid color-mix(in srgb, var(--gold) 48%, white);
+  padding: 16px;
+  border-radius: var(--radius-inner);
+  background: color-mix(in srgb, var(--gold) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--line));
 }
 .flow-node.admin > span {
   background: var(--gold);
-  color: var(--navy);
+  color: #fff;
 }
 .decision {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 12px;
   align-items: center;
-  margin-top: 13px;
+  margin-top: 12px;
 }
 .decision div {
-  padding: 11px;
-  border-radius: 10px;
-  background: #fff;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  background: var(--surface);
   border: 1px solid var(--line);
 }
 .decision b,
@@ -181,7 +185,8 @@
   display: block;
 }
 .decision b {
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--green);
 }
 .decision div:last-child b {
@@ -189,41 +194,23 @@
 }
 .decision small {
   color: var(--muted);
-  font-size: 11px;
-  margin-top: 3px;
+  font-size: 12.5px;
+  margin-top: 2px;
 }
 .decision > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: var(--muted);
-  font-weight: 900;
 }
 .flow-end-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  gap: 12px;
 }
 .flow-node.client > span {
   background: var(--green);
 }
 .flow-node.audit > span {
   background: var(--navy);
-}
-body[data-theme='onyx'] .workflow-board,
-body[data-theme='onyx'] .flow-start,
-body[data-theme='onyx'] .lane,
-body[data-theme='onyx'] .flow-node,
-body[data-theme='onyx'] .decision div {
-  background: #fffaf6;
-}
-body[data-theme='emerald'] .workflow-board,
-body[data-theme='emerald'] .flow-start,
-body[data-theme='emerald'] .lane,
-body[data-theme='emerald'] .flow-node,
-body[data-theme='emerald'] .decision div {
-  background: #f7fffc;
-}
-body[data-theme='ivory'] .workflow-board {
-  background: #fffefb;
 }
 @media (max-width: 900px) {
   .flow-summary {
@@ -244,6 +231,6 @@ body[data-theme='ivory'] .workflow-board {
     text-align: center;
   }
   .workflow-board {
-    padding: 18px;
+    padding: 16px;
   }
 }

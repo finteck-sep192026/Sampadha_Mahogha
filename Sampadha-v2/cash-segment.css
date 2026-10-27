@@ -3,18 +3,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 28px;
-  padding: 28px 30px;
-  background: linear-gradient(
-    120deg,
-    var(--panel, #fff) 52%,
-    color-mix(in srgb, var(--accent, #0969e8) 10%, transparent)
-  );
-  border: 1px solid var(--line, #dce7f3);
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 .cash-hero h3,
 .cash-library-heading h3 {
-  font-size: 26px;
-  margin: 3px 0 7px;
+  font-size: 24px;
+  margin: 2px 0 6px;
 }
 .cash-hero p,
 .cash-library-heading p {
@@ -79,8 +75,9 @@
   flex-wrap: wrap;
 }
 .cash-report-actions .btn {
-  padding: 9px 11px;
-  font-size: 12px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13.5px;
 }
 .cash-report-table-card {
   overflow: hidden;
@@ -91,20 +88,22 @@
 }
 .cash-report-matrix thead th {
   font-size: 13px;
-  letter-spacing: 0.04em;
 }
 .cash-report-matrix th:first-child {
   width: 190px;
 }
 .cash-report-matrix tbody > tr > th {
+  position: static;
   vertical-align: top;
-  padding: 20px;
+  padding: 18px;
   text-align: left;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--accent, #0969e8) 10%, var(--panel, #fff)),
-    var(--panel, #fff)
-  );
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 14px;
+  white-space: normal;
+}
+.cash-report-matrix tbody > tr > th strong {
+  font-weight: 600;
 }
 .cash-report-matrix tbody > tr > th strong,
 .cash-report-matrix tbody > tr > th small {
@@ -137,9 +136,9 @@
   display: block;
   width: 100%;
   height: 690px;
-  border: 1px solid var(--line, #dce7f3);
-  border-radius: 14px;
-  background: #272727;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
 }
 .cash-otp-card form {
   display: grid;
@@ -164,11 +163,15 @@
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  padding: 13px 14px;
-  border: 1px solid var(--line, #dce7f3);
-  border-radius: 12px;
-  background: var(--panel, #fff);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: var(--surface);
   text-align: left;
+}
+.cash-client-grid label:has(input:checked:not(:disabled)) {
+  border-color: var(--selected-line);
+  background: var(--selected-bg);
 }
 .cash-client-grid input[type='checkbox'] {
   width: 18px;
@@ -198,11 +201,11 @@
 }
 .cash-csv-schema {
   margin: 14px 0;
-  padding: 13px 15px;
-  border: 1px solid var(--line, #dce7f3);
-  border-radius: 12px;
-  background: var(--bg, #f5f8fc);
-  color: var(--muted, #60748b);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;

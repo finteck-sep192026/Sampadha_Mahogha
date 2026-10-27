@@ -56,6 +56,16 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--blue) 28%, transparent);
+  /* Component conventions, shared by every module stylesheet:
+     card = surface + hairline + --radius-l; inset panel inside a card = --surface-2 + hairline +
+     --radius-inner, no shadow; controls = --radius-m, 40px; tags = pill; selected = --selected-*;
+     icon tile = 40px, --radius-m, tinted. */
+  --surface-2: color-mix(in srgb, var(--bg) 55%, var(--surface));
+  --card: var(--surface);
+  --radius-inner: 12px;
+  --selected-bg: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  --selected-line: var(--blue);
+  --tint-blue: color-mix(in srgb, var(--blue) 9%, var(--surface));
 }
 /* Sapphire (default theme): ink navy, a quieter sapphire, seal gold, cool paper. */
 body:is(:not([data-theme]), [data-theme='']) {
@@ -140,6 +150,23 @@ h3,
 }
 .muted {
   color: var(--muted);
+}
+/* Browser-default <small> is ~11.7px here; nothing in the portal goes below 12px. */
+:where(small) {
+  font-size: 12.5px;
+}
+.profile-avatar {
+  background: var(--navy) !important;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px color-mix(in srgb, var(--gold) 70%, transparent);
+}
+.detail {
+  border-radius: var(--radius-inner);
+}
+.detail b {
+  font-weight: 600;
 }
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--blue);
@@ -837,6 +864,12 @@ body[data-theme] .btn.primary {
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+.cash-hero .btn,
+.research-workflow-header .btn,
+.panel-head .btn {
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .btn.wide {
   width: 100%;

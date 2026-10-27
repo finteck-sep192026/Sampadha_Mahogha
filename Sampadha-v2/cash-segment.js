@@ -256,7 +256,7 @@ async function cashCreatePdfBlob(report) {
   write(report.ref + ' | ' + report.created, '18px Arial', '#60748b', 34);
   const info = [
       ['Product', report.product],
-      ['Report type', report.frequency || 'New Report'],
+      ['Report type', report.frequency || 'New report'],
       ['CSV file', report.fileName],
       ['Recommendations', String(report.rows.length)],
     ],
@@ -447,7 +447,7 @@ function cashCreateForm() {
   return (
     '<article class="card panel cash-create-card"><div class="panel-head"><div><p class="overline">New Cash report</p><h3>Upload Cash Segment CSV</h3><p>Select the market-cap product and reporting period, then upload the exact 12-column Cash Segment file.</p></div><button type="button" class="btn secondary" id="cashCancelCreate">Close</button></div><form id="cashCreateForm"><div class="form-grid three"><label class="field">Product<select name="product" required><option value="">Select product</option><option>LC</option><option>MC</option><option>SC</option></select></label><label class="field">Report frequency<select name="frequency" required><option value="">Select report frequency</option><option>Monthly</option><option>Quarterly</option><option>Half-Yearly</option></select></label><label class="field">Upload CSV file<input name="csv" type="file" accept=".csv,text/csv" required><small>12 required headers: ProductName through Quantity. Maximum 100 rows.</small></label></div><p class="cash-csv-schema"><strong>Accepted columns:</strong> ' +
     cashCsvColumns.map(([, label]) => label).join(', ') +
-    '</p><div class="cash-form-actions"><button class="btn primary">Create & Preview PDF</button><a class="btn secondary" href="cash-strategy-template.csv" download>Download 12-column template</a></div><p id="cashCreateMessage" class="research-message research-error" role="alert"></p></form></article>'
+    '</p><div class="cash-form-actions"><button class="btn primary">Create and preview PDF</button><a class="btn secondary" href="cash-strategy-template.csv" download>Download 12-column template</a></div><p id="cashCreateMessage" class="research-message research-error" role="alert"></p></form></article>'
   );
 }
 
@@ -542,9 +542,9 @@ function cashStrategyPage() {
   if (!['ra', 'admin'].includes(state.role)) return segmentPage('Cash');
   const report = cashSelectedId ? cashFindReport(cashSelectedId) : null;
   return (
-    '<section class="cash-hero card"><div><p class="overline">Cash Segment</p><h3>Cash Segment</h3><p>Create LC, MC or SC reports from CSV and organize them by monthly, quarterly or half-yearly frequency.</p></div><button type="button" class="btn primary" id="cashNewStrategy">+ New Report</button></section><div class="research-steps cash-steps"><span>1. Product, Frequency & CSV</span><span>2. Create & Preview PDF</span><span>3. Aadhaar eSign</span><span>4. Select Clients & Send</span></div>' +
+    '<section class="cash-hero card"><div><h3>Cash reports</h3><p>Create LC, MC or SC reports from a CSV and file them by monthly, quarterly or half-yearly frequency.</p></div><button type="button" class="btn primary" id="cashNewStrategy">New report</button></section><div class="research-steps cash-steps"><span>1. Product, frequency and CSV</span><span>2. Create and preview the PDF</span><span>3. Aadhaar eSign</span><span>4. Choose clients and send</span></div>' +
     cashCreateForm() +
-    '<section class="cash-library-heading"><div><p class="overline">Report library</p><h3>Cash Segment Reports</h3></div><p>Four-column view with the latest two reports in each reporting period.</p></section>' +
+    '<section class="cash-library-heading"><div><h3>Report library</h3></div><p>The latest two reports for each strategy and period.</p></section>' +
     cashReportGroups() +
     '<section id="cashPreviewRegion" class="cash-preview-region">' +
     (report ? cashPdfPanel(report) + cashSignPanel(report) : '') +
