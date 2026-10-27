@@ -26,6 +26,7 @@ const BROKER_STATUS = {
 };
 const MAIL_STATUS_CLASS = { Sent: 'green', Queued: 'gold', Sending: 'gold', Simulated: 'gold' };
 let brokerSetupLogin = '';
+let brokerMailTestNote = ''; // result of the last test email, kept across re-renders
 
 const brokerRows = () => state.ws?.brokerEmails || [];
 const brokerRowFor = (clientId) => brokerRows().find((r) => r.client_id === clientId);
@@ -90,9 +91,11 @@ async function brokerRenderMailerStatus() {
   if (!target) return;
   try {
     const s = await Api.mailerStatus();
-    target.innerHTML = s.configured
-      ? `<div class="panel-head"><div><h3>Email sending is on</h3><p>Sent through ${esc(s.host)}:${esc(s.port)} from ${esc(s.from)}.</p></div><span class="status green">Live</span></div>`
-      : '<div class="panel-head"><div><h3>Email sending is not set up yet</h3><p>Emails are logged in the portal only (status Simulated). Add the SMTP secrets to the mailer Edge Function to send them.</p></div><span class="status gold">Simulated</span></div>';
+    target.innerHTML =
+      (s.configured
+        ? `<div class="panel-head"><div><h3>Email sending is on</h3><p>Sent through ${esc(s.host)}:${esc(s.port)} from ${esc(s.from)}.</p></div><span class="status green">Live</span></div>`
+        : '<div class="panel-head"><div><h3>Email sending is not set up yet</h3><p>Emails are logged in the portal only (status Simulated). Add the SMTP secrets to the mailer Edge Function to send them.</p></div><span class="status gold">Simulated</span></div>') +
+      `<form id="mailTestForm" class="broker-test"><label class="field">Send a test email to<input name="to" type="email" required value="${esc(state.user.email)}"></label><button class="btn secondary">Send test email</button></form><p id="mailTestMessage" class="research-message" role="status">${esc(brokerMailTestNote)}</p>`;
   } catch (error) {
     target.innerHTML = `<p class="muted">${esc(error.message)} Deploy the mailer Edge Function.</p>`;
   }
@@ -108,7 +111,12 @@ for (const role of ['admin', 'sales']) {
 const brokerOriginalShow = show;
 show = function (page) {
   brokerOriginalShow(page);
-  if (page === 'brokerEmail') brokerRenderMailerStatus();
+  // Admin sees whether sending is on (and can send a test) on both mail pages.
+  if (page === 'emails' && state.role === 'admin')
+    document
+      .querySelector('#content')
+      .insertAdjacentHTML('afterbegin', '<article class="card panel" id="mailerStatus"></article>');
+  if (page === 'brokerEmail' || page === 'emails') brokerRenderMailerStatus();
 };
 
 async function brokerAfterChange(message, text) {
@@ -143,6 +151,26 @@ document.querySelector('#content').addEventListener('click', async (event) => {
 
 document.querySelector('#content').addEventListener('submit', async (event) => {
   const form = event.target;
+  if (form.id === 'mailTestForm') {
+    event.preventDefault();
+    const button = form.querySelector('button'),
+      message = document.querySelector('#mailTestMessage');
+    button.disabled = true;
+    message.textContent = 'Sending…';
+    try {
+      const result = await Api.sendTestEmail(form.elements.to.value.trim());
+      await refreshWorkspace();
+      const mail = state.emails.find((m) => m.id === result.mail_ref);
+      brokerMailTestNote =
+        result.mail_ref + ' to ' + result.to + ': ' + (mail ? mail.status : 'queued') +
+        (mail?.note ? ' (' + mail.note + ')' : '');
+      show(state.page);
+    } catch (error) {
+      message.textContent = error.message;
+      button.disabled = false;
+    }
+    return;
+  }
   if (form.id !== 'brokerEmailForm' && form.id !== 'brokerTestForm') return;
   event.preventDefault();
   const button = form.querySelector('button:not([type=button])'),
