@@ -518,6 +518,7 @@
     clientEsign('start', { documentId, mobile, returnUrl });
   const clientEsignVerify = (documentId) => clientEsign('verify', { documentId });
 
+  const sendTestEmail = withMail((to) => rpc('send_test_email', { p_to: to }));
   async function mailerStatus() {
     const { data, error } = await sb.functions.invoke('mailer', { body: { action: 'status' } });
     if (error) throw new Error('The mailer service is not reachable.');
@@ -627,6 +628,7 @@
     revokeBrokerEmail,
     sendBrokerTestEmail,
     mailerStatus,
+    sendTestEmail,
     flushMail,
     riskQuestionnaire,
     submitRiskProfile,
