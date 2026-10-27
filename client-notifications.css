@@ -12,9 +12,9 @@
   height: 19px;
   padding: 0 5px;
   border-radius: 20px;
-  background: #d8424f;
+  background: var(--red-fill);
   color: #fff;
-  border: 2px solid #fff;
+  border: 2px solid var(--surface);
   font-size: 10px;
   font-weight: 900;
   line-height: 15px;

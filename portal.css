@@ -94,7 +94,7 @@ select {
   margin-top: 35px;
 }
 .login-box {
-  background: #fff;
+  background: var(--surface);
   padding: 4.5vw;
   display: flex;
   flex-direction: column;
@@ -112,7 +112,7 @@ select {
 }
 .role-card {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   padding: 14px;
   text-align: left;
@@ -121,7 +121,7 @@ select {
 .role-card:hover,
 .role-card.active {
   border-color: var(--blue);
-  background: #eef5ff;
+  background: var(--selected-bg);
   box-shadow: 0 0 0 3px #0969e815;
 }
 .role-card b,
@@ -141,14 +141,14 @@ select {
   font-size: 13px;
   font-weight: 750;
   margin: 13px 0;
-  color: #33465e;
+  color: var(--ink);
 }
 input,
 select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fbfdff;
+  background: var(--surface);
   padding: 12px 14px;
   margin-top: 6px;
   outline: none;
@@ -175,12 +175,12 @@ select:focus {
   cursor: pointer;
 }
 .btn.primary {
-  color: #fff;
+  color: var(--on-blue);
   background: linear-gradient(135deg, #126fe9, #064baa);
   box-shadow: 0 8px 20px #0969e82b;
 }
 .btn.secondary {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   color: var(--ink);
 }
@@ -281,7 +281,7 @@ select:focus {
   z-index: 5;
   height: 86px;
   padding: 14px 28px;
-  background: #fff;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
@@ -307,20 +307,20 @@ select:focus {
 }
 .live,
 .status.green {
-  background: #e7f7f0;
+  background: color-mix(in srgb, var(--green) 12%, var(--surface));
   color: var(--green);
 }
 .badge {
-  background: #eaf3ff;
+  background: var(--tint-blue);
   color: var(--blue);
 }
 .status.gold {
-  background: #fff4dc;
-  color: #99650b;
+  background: color-mix(in srgb, var(--gold) 16%, var(--surface));
+  color: color-mix(in srgb, var(--gold) 72%, var(--ink));
 }
 .status.red {
-  background: #ffeaec;
-  color: #aa2935;
+  background: color-mix(in srgb, var(--red) 12%, var(--surface));
+  color: var(--red);
 }
 .icon,
 .menu {
@@ -328,7 +328,7 @@ select:focus {
   height: 40px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
 }
 .menu {
   display: none;
@@ -353,8 +353,8 @@ select:focus {
   gap: 15px;
 }
 .card {
-  background: #fff;
-  border: 1px solid #e2eaf3;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 15px;
   box-shadow: 0 7px 24px #0927520d;
 }
@@ -405,7 +405,7 @@ select:focus {
   height: 220px;
   border-left: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: repeating-linear-gradient(to top, transparent 0, transparent 53px, #edf2f7 54px);
+  background: repeating-linear-gradient(to top, transparent 0, transparent 53px, var(--chart-grid) 54px);
   display: flex;
   align-items: flex-end;
   gap: 12px;
@@ -426,7 +426,7 @@ select:focus {
   gap: 10px;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #edf1f5;
+  border-bottom: 1px solid var(--line);
 }
 .activity-icon {
   width: 35px;
@@ -434,7 +434,7 @@ select:focus {
   display: grid;
   place-items: center;
   border-radius: 9px;
-  background: #edf5ff;
+  background: var(--tint-blue);
   color: var(--blue);
 }
 .activity-row b,
@@ -456,7 +456,7 @@ select:focus {
 .filters label {
   font-size: 12px;
   font-weight: 800;
-  color: #44566d;
+  color: var(--muted);
 }
 .filters input,
 .filters select {
@@ -475,7 +475,7 @@ select:focus {
 .table td {
   padding: 13px 11px;
   text-align: left;
-  border-bottom: 1px solid #e8edf3;
+  border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
 .table th {
@@ -483,7 +483,7 @@ select:focus {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: #f8fafc;
+  background: var(--surface-2);
 }
 .table td small {
   display: block;
@@ -525,7 +525,7 @@ select:focus {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: #fbfdff;
+  background: var(--surface-2);
 }
 .detail small,
 .detail b {
@@ -572,13 +572,13 @@ select:focus {
 }
 .stamp {
   font-family: ui-monospace, Consolas, monospace;
-  color: #50627a;
+  color: var(--muted);
   font-size: 12px;
 }
 .progress {
   height: 8px;
   border-radius: 10px;
-  background: #e6edf5;
+  background: var(--chart-track);
   overflow: hidden;
 }
 .progress span {
@@ -589,9 +589,9 @@ select:focus {
 .notice {
   padding: 14px;
   border-radius: 11px;
-  background: #edf5ff;
+  background: var(--tint-blue);
   border-left: 3px solid var(--blue);
-  color: #36516e;
+  color: var(--ink);
 }
 .toast {
   position: fixed;

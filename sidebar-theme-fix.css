@@ -10,42 +10,6 @@ body {
   --side-border: #ffffff20;
   --side-panel: #ffffff0b;
 }
-body[data-theme='onyx'] {
-  --side-start: #673b21;
-  --side-mid: #2d1c13;
-  --side-end: #120c09;
-  --side-text: #ead5c5;
-  --side-muted: #b99b87;
-  --side-active: #b7652f;
-  --side-active-soft: #b7652f42;
-  --side-accent: #e0ad68;
-  --side-border: #e0ad683d;
-  --side-panel: #fffaf20c;
-}
-body[data-theme='emerald'] {
-  --side-start: #0a715d;
-  --side-mid: #073e34;
-  --side-end: #031c18;
-  --side-text: #c3e7df;
-  --side-muted: #83afa5;
-  --side-active: #0c9278;
-  --side-active-soft: #0c927842;
-  --side-accent: #d1bd72;
-  --side-border: #d1bd7238;
-  --side-panel: #edfff90c;
-}
-body[data-theme='ivory'] {
-  --side-start: #2b5b90;
-  --side-mid: #102e55;
-  --side-end: #07192f;
-  --side-text: #d4e0ee;
-  --side-muted: #91a7c0;
-  --side-active: #315f98;
-  --side-active-soft: #315f9848;
-  --side-accent: #c49a4b;
-  --side-border: #c49a4b3b;
-  --side-panel: #ffffff0c;
-}
 .sidebar {
   background:
     radial-gradient(circle at 15% 0, var(--side-start), transparent 30%),

@@ -3,12 +3,23 @@
 // between stacked segments, solid hairline grid, no load animation (people read this data), one
 // HTML tooltip per x that lists every series with the value first, a legend for two or more
 // series, and a table view twin for every chart (the accessible equivalent).
-// Series colours are fixed, not themed: sapphire then gold, which pass the colour-vision checks
-// (dataviz validate_palette: lightness, chroma, CVD ΔE 31.4, normal ΔE 35.7, contrast ≥ 3:1).
-const CHART_SERIES = ['#1556d0', '#b8862b'];
-const CHART_INK = { text: '#13233a', muted: '#5b6b80', grid: '#e8edf3', surface: '#ffffff' };
+// Series colours: sapphire then gold (dataviz validate_palette: lightness, chroma, CVD ΔE 31.4,
+// normal ΔE 35.7, contrast ≥ 3:1), as the --chart-1/--chart-2 tokens, with a lighter step of each
+// in dark mode. Canvas needs real colours, so they are read from the tokens at draw time and
+// every chart on the page is redrawn when the mode changes.
 let chartLibrary;
 const chartInstances = new Map();
+const chartData = new Map();
+function chartColours() {
+  const style = getComputedStyle(document.body),
+    token = (name) => style.getPropertyValue(name).trim();
+  return {
+    series: [token('--chart-1'), token('--chart-2')],
+    muted: token('--muted'),
+    grid: token('--chart-grid'),
+    surface: token('--surface'),
+  };
+}
 
 function loadChartLibrary() {
   if (window.Chart) return Promise.resolve(window.Chart);
@@ -34,6 +45,7 @@ function chartCard({ id, title, subtitle = '', height = 240 }) {
 async function drawColumnChart(id, data) {
   const figure = document.getElementById(id);
   if (!figure) return;
+  chartData.set(id, data);
   const canvas = figure.querySelector('canvas'),
     tip = figure.querySelector('.viz-tip'),
     total = (i) => data.series.reduce((sum, s) => sum + (s.values[i] || 0), 0);
@@ -45,7 +57,7 @@ async function drawColumnChart(id, data) {
     data.series.forEach((s, i) => {
       const item = document.createElement('span');
       const swatch = document.createElement('i');
-      swatch.style.background = CHART_SERIES[i];
+      swatch.style.background = `var(--chart-${i + 1})`;
       item.append(swatch, document.createTextNode(s.name));
       legend.append(item);
     });
@@ -95,6 +107,7 @@ async function drawColumnChart(id, data) {
     return;
   }
   chartInstances.get(id)?.destroy();
+  const ink = chartColours();
   const font = { family: getComputedStyle(document.body).getPropertyValue('--font') || 'sans-serif', size: 12 };
   const last = data.series.length - 1;
   // The topmost non-zero segment of each column gets the rounded data-end.
@@ -109,12 +122,12 @@ async function drawColumnChart(id, data) {
       datasets: data.series.map((s, d) => ({
         label: s.name,
         data: s.values,
-        backgroundColor: CHART_SERIES[d],
-        hoverBackgroundColor: CHART_SERIES[d] + 'd9',
+        backgroundColor: ink.series[d],
+        hoverBackgroundColor: ink.series[d] + 'd9',
         maxBarThickness: 24,
         categoryPercentage: 0.6,
         borderSkipped: false,
-        borderColor: CHART_INK.surface,
+        borderColor: ink.surface,
         borderWidth: (ctx) => (d > 0 ? { bottom: 2 } : 0),
         borderRadius: (ctx) =>
           topIndex[ctx.dataIndex] === d ? { topLeft: 4, topRight: 4 } : 0,
@@ -141,7 +154,7 @@ async function drawColumnChart(id, data) {
             data.series.forEach((s, d) => {
               const row = document.createElement('div');
               const key = document.createElement('i');
-              key.style.background = CHART_SERIES[d];
+              key.style.background = `var(--chart-${d + 1})`;
               const value = document.createElement('strong');
               value.textContent = String(s.values[i] || 0);
               row.append(key, value, document.createTextNode(' ' + s.name));
@@ -164,15 +177,15 @@ async function drawColumnChart(id, data) {
         x: {
           stacked: true,
           grid: { display: false },
-          border: { color: CHART_INK.grid },
-          ticks: { color: CHART_INK.muted, font },
+          border: { color: ink.grid },
+          ticks: { color: ink.muted, font },
         },
         y: {
           stacked: true,
           beginAtZero: true,
           border: { display: false },
-          grid: { color: CHART_INK.grid, lineWidth: 1, drawTicks: false },
-          ticks: { color: CHART_INK.muted, font, precision: 0, maxTicksLimit: 5, padding: 8 },
+          grid: { color: ink.grid, lineWidth: 1, drawTicks: false },
+          ticks: { color: ink.muted, font, precision: 0, maxTicksLimit: 5, padding: 8 },
         },
       },
     },
@@ -181,7 +194,7 @@ async function drawColumnChart(id, data) {
   canvas.addEventListener('mouseleave', () => (tip.hidden = true));
 }
 
-// Meter: one ratio against its whole; the track is a light step of the same blue.
+// Meter: one ratio against its whole; the track is a quiet step of the same blue.
 function meterRow(label, part, whole) {
   const share = whole ? Math.round((part / whole) * 100) : 0;
   return `<div class="meter"><div class="meter-head"><span>${esc(label)}</span><b>${part} of ${whole}</b><small>${share}%</small></div><div class="meter-track" role="meter" aria-valuemin="0" aria-valuemax="${whole}" aria-valuenow="${part}" aria-label="${esc(label)}"><span style="width:${share}%"></span></div></div>`;
@@ -196,4 +209,12 @@ document.addEventListener('click', (event) => {
   table.hidden = !showing;
   toggle.setAttribute('aria-pressed', String(showing));
   toggle.textContent = showing ? 'Hide table' : 'Show table';
+});
+
+// Light/dark switch (theme-mode.js): redraw the charts that are on the page in the new colours.
+window.addEventListener('sampadha:mode', () => {
+  for (const [id, data] of chartData) {
+    if (document.getElementById(id)) drawColumnChart(id, data);
+    else chartData.delete(id);
+  }
 });

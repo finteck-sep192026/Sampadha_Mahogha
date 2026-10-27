@@ -1165,7 +1165,7 @@ async function researchConfirmSign(reportId) {
   }
   researchShow([reportId]);
   $('#researchHistory').innerHTML = researchHistory();
-  toast('Report signed with Aadhaar eSign.');
+  toast('Report signed with Aadhaar eSign.', 'seal');
 }
 // Signing happens on the gateway's hosted page; it sends the signer back to this address.
 const ESIGN_RETURN_PARAM = 'esign_report';

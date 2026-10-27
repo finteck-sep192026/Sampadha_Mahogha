@@ -253,6 +253,7 @@ async function complianceRefresh(message) {
 
 async function complianceVerify(documentId) {
   const result = await Api.clientEsignVerify(documentId);
+  if (result.status === 'Signed') toast('Signed with Aadhaar eSign. Your copy is saved.', 'seal');
   await complianceRefresh(
     result.status === 'Signed'
       ? 'Signed. The signed copy is saved.'
@@ -338,7 +339,7 @@ riskContent.addEventListener('click', async (event) => {
       riskReset();
       await complianceRefresh();
       document.querySelector('#riskProfileCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toast('Risk profile saved: ' + result.category);
+      toast('Risk profile saved: ' + result.category, 'seal');
     } catch (error) {
       message.textContent = error.message;
       button.disabled = false;
