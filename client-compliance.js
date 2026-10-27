@@ -14,6 +14,19 @@ const DOC_STATUS_TONE ={ Signed: 'green', 'Awaiting signature': 'gold', Signing:
 let complianceQuestions = null;
 let complianceRetake = false;
 let complianceAnswersFor = '';
+// Questionnaire in progress: picked option index by question key, and the step on screen
+// (0…n-1 a question, n the review). riskBackToReview: the client came from "Change" on the review.
+let riskDraft = {};
+let riskStep = 0;
+let riskBackToReview = false;
+let riskPointerChoice = false;
+const RISK_CATEGORIES = ['Conservative', 'Moderate', 'Growth', 'Aggressive'];
+const RISK_MEANING = {
+  Conservative: 'Protecting your money comes first. Steady, lower-risk investments suit you best.',
+  Moderate: 'You accept some ups and downs for better returns than deposits, over a medium term.',
+  Growth: 'You aim for long-term growth and can ride out sizeable falls along the way.',
+  Aggressive: 'You aim for the highest returns and accept large, sometimes sharp, losses.',
+};
 
 const complianceRows = () => state.ws?.compliance || [];
 const complianceRow = (clientId) => complianceRows().find((r) => r.client_id === clientId);
@@ -53,15 +66,23 @@ function documentActions(d, client) {
 const documentStatus = (d) =>
   `<span class="status ${DOC_STATUS_TONE[d.status] || 'red'}">${esc(d.status)}</span>${d.signed_at ? `<small>${esc(complianceDate(d.signed_at))}</small>` : ''}`;
 
-function riskSummary(rp) {
-  return `<div class="notice"><b>${esc(rp.category)}</b> · score ${rp.score} of 36 · ${esc(complianceDate(rp.submitted_at))}<br>${
+// A saved profile: the category and what it means, where it sits on the scale, F&O suitability and
+// the answers. own: the client's own page (the answers start folded away).
+function riskSummary(rp, own = false) {
+  const at = RISK_CATEGORIES.indexOf(rp.category),
+    answers = Object.entries(rp.answers || {})
+      .sort(([a], [b]) => RISK_ORDER.indexOf(a) - RISK_ORDER.indexOf(b))
+      .map(([, a]) => `<dt>${esc(a.question)}</dt><dd>${esc(a.answer)}</dd>`)
+      .join('');
+  return `<div class="risk-result"><div class="risk-result-head"><div><p class="risk-result-label">${own ? 'Your risk profile' : 'Risk profile'}</p><p class="risk-category">${esc(rp.category)}</p></div><p class="risk-meta">Score <b>${rp.score}</b> of 36<small>Saved ${esc(complianceDate(rp.submitted_at))}</small></p></div><p class="risk-meaning">${esc(RISK_MEANING[rp.category] || '')}</p><ol class="risk-scale" aria-label="Risk scale, lowest to highest">${RISK_CATEGORIES.map((c, i) => `<li${i === at ? ' class="on" aria-current="true"' : ''}><span></span>${c}</li>`).join('')}</ol><p class="risk-fo ${rp.derivatives_suitable ? 'ok' : 'warn'}">${
     rp.derivatives_suitable
       ? 'Futures and options (Multi) research can suit this profile.'
-      : 'Futures and options (Multi) research may not suit this profile.'
-  }</div><dl class="risk-answers">${Object.entries(rp.answers || {})
-    .sort(([a], [b]) => RISK_ORDER.indexOf(a) - RISK_ORDER.indexOf(b))
-    .map(([, a]) => `<dt>${esc(a.question)}</dt><dd>${esc(a.answer)}</dd>`)
-    .join('')}</dl>`;
+      : `Futures and options (Multi) research may not suit this profile.${own ? ' Your adviser takes this into account before sending it to you.' : ''}`
+  }</p>${
+    own
+      ? `<details class="risk-answers-toggle"><summary>See your answers</summary><dl class="risk-answers">${answers}</dl></details>`
+      : `<dl class="risk-answers">${answers}</dl>`
+  }</div>`;
 }
 
 // ───────────── client page ─────────────
@@ -84,32 +105,79 @@ function clientCompliancePage() {
           )
           .join('')}</tbody></table></div>`
       : '<p class="muted">Nothing to sign right now.</p>'
-  }<p id="complianceDocMessage" class="research-message" role="status"></p></article><article class="card panel" id="riskProfileCard"><div class="panel-head"><div><h3>Risk profile</h3><p>Nine questions about your goals, experience and how much risk you can take.</p></div>${rp ? `<span class="status green">${esc(rp.category)}</span>` : '<span class="status gold">To do</span>'}</div>${
+  }<p id="complianceDocMessage" class="research-message" role="status"></p></article><article class="card panel" id="riskProfileCard"><div class="panel-head"><div><h3>Risk profile</h3><p>${
     rp && !complianceRetake
-      ? riskSummary(rp) + '<div class="actions"><button type="button" class="btn secondary" data-risk-retake>Answer again</button></div>'
-      : '<form id="riskForm"><div id="riskQuestions"><p class="muted">Loading the questionnaire…</p></div><label class="consent"><input type="checkbox" name="confirm" required><span><b>I confirm these answers are true and complete *</b><small>Your adviser uses them to judge which research suits you.</small></span></label><div class="actions"><button class="btn primary">Save my risk profile</button></div><p id="riskMessage" class="research-message" role="status"></p></form>'
+      ? 'Worked out from your answers. Answer again whenever your money situation or goals change.'
+      : complianceRetake
+        ? 'Your saved answers are filled in. Change the ones that are different now.'
+        : 'Nine short questions about your goals, experience and how much risk you can take. About two minutes.'
+  }</p></div>${rp ? `<span class="status green">${esc(rp.category)}</span>` : '<span class="status gold">To do</span>'}</div>${
+    rp && !complianceRetake
+      ? riskSummary(rp, true) + '<div class="actions"><button type="button" class="btn secondary" data-risk-retake>Answer again</button></div>'
+      : '<div id="riskWizard" class="risk-wizard"><p class="muted">Loading the questionnaire…</p></div>'
   }</article>`;
 }
 
-async function renderRiskQuestions() {
-  const target = document.querySelector('#riskQuestions');
+// One question at a time, then a review of every answer, then save. Picking an answer with the mouse
+// or a finger moves on by itself; with the keyboard, arrow keys pick and Enter moves on.
+async function renderRiskQuestions(moved = false) {
+  const target = document.querySelector('#riskWizard');
   if (!target) return;
   try {
     complianceQuestions ||= await Api.riskQuestionnaire();
-    target.innerHTML = complianceQuestions.questions
-      .map(
-        (q, i) =>
-          `<fieldset class="risk-question"><legend>${i + 1}. ${esc(q.text)} *</legend>${q.options
-            .map(
-              (o, j) =>
-                `<label><input type="radio" name="${esc(q.key)}" value="${j}" required> ${esc(o[0])}</label>`,
-            )
-            .join('')}</fieldset>`,
-      )
-      .join('');
   } catch (error) {
     target.textContent = error.message;
+    return;
   }
+  const qs = complianceQuestions.questions,
+    n = qs.length,
+    answered = qs.filter((q) => q.key in riskDraft).length,
+    bar = `<div class="risk-progress-track" aria-hidden="true"><span style="width:${(answered / n) * 100}%"></span></div>`,
+    cancel = complianceRetake
+      ? '<button type="button" class="btn ghost" data-risk-cancel>Keep my saved profile</button>'
+      : '';
+  riskStep = Math.min(Math.max(riskStep, 0), n);
+  if (riskStep < n) {
+    const q = qs[riskStep],
+      picked = riskDraft[q.key];
+    target.innerHTML = `<div class="risk-progress"><span>Question ${riskStep + 1} of ${n}</span>${cancel}</div>${bar}<fieldset class="risk-step"><legend tabindex="-1">${esc(q.text)}</legend><div class="risk-options">${q.options
+      .map(
+        (o, j) =>
+          `<label class="risk-option"><input type="radio" name="riskChoice" value="${j}"${picked === j ? ' checked' : ''}><span>${esc(o[0])}</span></label>`,
+      )
+      .join('')}</div></fieldset><div class="risk-nav"><button type="button" class="btn secondary" data-risk-back${riskStep === 0 ? ' disabled' : ''}>Back</button><button type="button" class="btn primary" data-risk-next${picked === undefined ? ' disabled' : ''}>${riskBackToReview ? 'Back to review' : riskStep === n - 1 ? 'Review answers' : 'Next'}</button></div>`;
+  } else {
+    target.innerHTML = `<div class="risk-progress"><span>Review · ${answered} of ${n} answered</span>${cancel}</div>${bar}<div class="risk-step"><h4 class="risk-review-title" tabindex="-1">Check your answers, then save</h4><ol class="risk-review">${qs
+      .map(
+        (q, i) =>
+          `<li><span class="risk-review-q">${esc(q.text)}</span><b class="${q.key in riskDraft ? '' : 'missing'}">${q.key in riskDraft ? esc(q.options[riskDraft[q.key]][0]) : 'Not answered'}</b><button type="button" class="btn ghost" data-risk-edit="${i}" aria-label="Change: ${esc(q.text)}">Change</button></li>`,
+      )
+      .join('')}</ol><label class="consent"><input type="checkbox" id="riskConfirm"><span><b>I confirm these answers are true and complete</b><small>Your adviser uses them to judge which research suits you. You can answer again at any time.</small></span></label></div><div class="risk-nav"><button type="button" class="btn secondary" data-risk-back>Back</button><button type="button" class="btn primary" data-risk-save>Save my risk profile</button></div><p id="riskMessage" class="research-message" role="status"></p>`;
+  }
+  if (!moved) return;
+  // Screen readers hear the new question; the card is scrolled back into view on small screens.
+  target.querySelector('legend, .risk-review-title')?.focus({ preventScroll: true });
+  if (target.getBoundingClientRect().top < 90) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function riskGo(step) {
+  riskStep = step;
+  renderRiskQuestions(true);
+}
+// "Answer again" starts from the saved answers, so only what changed needs a new answer.
+function riskPrefill(rp) {
+  riskDraft = {};
+  for (const q of complianceQuestions?.questions || []) {
+    const index = q.options.findIndex((o) => o[0] === rp?.answers?.[q.key]?.answer);
+    if (index >= 0) riskDraft[q.key] = index;
+  }
+  riskStep = 0;
+  riskBackToReview = false;
+}
+function riskReset() {
+  riskDraft = {};
+  riskStep = 0;
+  riskBackToReview = false;
+  complianceRetake = false;
 }
 
 // ───────────── Admin / Sales page ─────────────
@@ -208,14 +276,88 @@ async function complianceResumeSign() {
 }
 const complianceOriginalEnterPortal = enterPortal;
 enterPortal = async function (profile) {
+  riskReset();
   await complianceOriginalEnterPortal(profile);
   await complianceResumeSign();
 };
 
+// ───────────── questionnaire steps ─────────────
+const riskContent = document.querySelector('#content');
+riskContent.addEventListener('pointerdown', (event) => {
+  riskPointerChoice = Boolean(event.target.closest('.risk-option'));
+});
+riskContent.addEventListener('keydown', (event) => {
+  riskPointerChoice = false;
+  if (event.key === 'Enter' && event.target.name === 'riskChoice') {
+    event.preventDefault();
+    document.querySelector('[data-risk-next]:not(:disabled)')?.click();
+  }
+});
+riskContent.addEventListener('change', (event) => {
+  if (event.target.name !== 'riskChoice') return;
+  riskDraft[complianceQuestions.questions[riskStep].key] = Number(event.target.value);
+  const next = document.querySelector('[data-risk-next]');
+  next.disabled = false;
+  if (!riskPointerChoice) return;
+  riskPointerChoice = false;
+  const step = riskStep;
+  // A short pause so the choice is seen before the next question takes its place.
+  setTimeout(() => {
+    if (riskStep === step && next.isConnected) next.click();
+  }, 280);
+});
+riskContent.addEventListener('click', async (event) => {
+  const n = complianceQuestions?.questions.length || 0,
+    edit = event.target.closest('[data-risk-edit]');
+  if (event.target.closest('[data-risk-next]')) {
+    riskGo(riskBackToReview ? n : riskStep + 1);
+    riskBackToReview = false;
+  } else if (event.target.closest('[data-risk-back]')) {
+    riskBackToReview = false;
+    riskGo(riskStep - 1);
+  } else if (edit) {
+    riskBackToReview = true;
+    riskGo(Number(edit.dataset.riskEdit));
+  } else if (event.target.closest('[data-risk-save]')) {
+    const button = event.target.closest('[data-risk-save]'),
+      message = document.querySelector('#riskMessage');
+    if (complianceQuestions.questions.some((q) => !(q.key in riskDraft))) {
+      message.textContent = 'Answer every question first: use Change next to the ones marked Not answered.';
+      return;
+    }
+    if (!document.querySelector('#riskConfirm').checked) {
+      message.textContent = 'Tick the confirmation above to save.';
+      document.querySelector('#riskConfirm').focus();
+      return;
+    }
+    button.disabled = true;
+    message.textContent = 'Saving…';
+    try {
+      const result = await Api.submitRiskProfile(riskDraft);
+      state.user.risk = result.category;
+      riskReset();
+      await complianceRefresh();
+      document.querySelector('#riskProfileCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('Risk profile saved: ' + result.category);
+    } catch (error) {
+      message.textContent = error.message;
+      button.disabled = false;
+    }
+  }
+});
+
 document.querySelector('#content').addEventListener('click', async (event) => {
   const target = event.target;
   if (target.closest('[data-risk-retake]')) {
+    complianceQuestions ||= await Api.riskQuestionnaire().catch(() => null);
+    riskPrefill(latestRiskProfile(state.user.uid));
     complianceRetake = true;
+    show('compliance');
+    document.querySelector('#riskProfileCard')?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (target.closest('[data-risk-cancel]')) {
+    riskReset();
     show('compliance');
     document.querySelector('#riskProfileCard')?.scrollIntoView({ behavior: 'smooth' });
     return;
@@ -253,28 +395,6 @@ document.querySelector('#content').addEventListener('click', async (event) => {
 
 document.querySelector('#content').addEventListener('submit', async (event) => {
   const form = event.target;
-  if (form.id === 'riskForm') {
-    event.preventDefault();
-    const button = form.querySelector('button'),
-      message = form.querySelector('#riskMessage'),
-      answers = {};
-    for (const q of complianceQuestions?.questions || []) {
-      const picked = form.querySelector(`[name="${q.key}"]:checked`);
-      if (picked) answers[q.key] = Number(picked.value);
-    }
-    button.disabled = true;
-    try {
-      const result = await Api.submitRiskProfile(answers);
-      state.user.risk = result.category;
-      complianceRetake = false;
-      await complianceRefresh();
-      toast('Risk profile saved: ' + result.category);
-    } catch (error) {
-      message.textContent = error.message;
-      button.disabled = false;
-    }
-    return;
-  }
   if (form.matches('[data-doc-sign]')) {
     event.preventDefault();
     const button = form.querySelector('button'),

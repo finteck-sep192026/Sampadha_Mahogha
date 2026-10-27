@@ -913,9 +913,28 @@ textarea:focus {
   box-shadow: var(--focus-ring);
   outline: none;
 }
+/* portal.css gives every input full width and padding; radios and checkboxes keep their own size.
+   :where() keeps this at element weight so component rules still win. */
+input:where([type='checkbox'], [type='radio']) {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  flex: none;
+}
 input[type='checkbox'],
 input[type='radio'] {
   accent-color: var(--blue);
+}
+.btn.ghost {
+  min-height: 34px;
+  padding: 6px 10px;
+  color: var(--blue);
+  background: transparent;
+  border: 1px solid transparent;
+}
+.btn.ghost:hover {
+  background: var(--tint-blue);
 }
 input[type='file'] {
   font-size: 13.5px;
