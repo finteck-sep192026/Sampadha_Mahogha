@@ -369,6 +369,12 @@ h3,
   gap: 8px;
   margin-top: 10px;
 }
+/* Password or email code: the quiet second way in, under the main button. */
+.btn.wide.login-mode-switch {
+  min-height: 40px;
+  margin-top: 8px;
+  font-size: 14px;
+}
 
 /* ───────────── shell ───────────── */
 .portal {
