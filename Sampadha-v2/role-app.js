@@ -747,26 +747,95 @@ $('#loginForm').onsubmit = async (e) => {
   error.textContent = '';
   try {
     await Api.login($('#email').value, $('#password').value);
-    const profile = await Api.currentProfile();
-    if (!profile) {
-      await Api.logout();
-      throw new Error('This account has no portal access. Contact an administrator.');
-    }
     $('#password').value = '';
-    await enterPortal(profile);
+    await continueSignIn();
   } catch (err) {
     error.textContent = err.message;
   } finally {
     submit.disabled = false;
   }
 };
+
+// ───────────── sign-in code (second step) ─────────────
+// After the password the database refuses the session until the 6-digit code emailed to the
+// person is entered. Sessions opened from an emailed link (set-password) already count.
+async function continueSignIn() {
+  const status = await Api.loginCodeStatus();
+  if (!status?.verified) return showLoginCode(status?.sentTo);
+  closeLoginCode();
+  const profile = await Api.currentProfile();
+  if (!profile) {
+    await Api.logout();
+    throw new Error('This account has no portal access. Contact an administrator.');
+  }
+  await enterPortal(profile);
+}
+async function sendLoginCode() {
+  const message = $('#loginCodeMessage');
+  try {
+    const sent = await Api.loginCode('send');
+    message.textContent = `We emailed a 6-digit code to ${sent.sentTo}. It expires in 10 minutes.`;
+  } catch (err) {
+    message.textContent = err.message;
+  }
+}
+function showLoginCode(sentTo) {
+  const box = $('.login-box');
+  $('#loginForm').hidden = true;
+  box.querySelector('h2').textContent = 'Enter your sign-in code';
+  box.querySelector('h2 + .muted').textContent =
+    'For your security, sign-in has a second step: a code sent to your email.';
+  if (!$('#loginCodeForm'))
+    $('#loginForm').insertAdjacentHTML(
+      'beforebegin',
+      `<form id="loginCodeForm"><p id="loginCodeMessage" class="login-code-message" role="status">Sending a code${sentTo ? ' to ' + esc(sentTo) : ''}…</p><label>6-digit code<input name="code" class="login-code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><p class="error" role="alert"></p><button class="btn primary wide">Verify and continue</button><div class="login-code-links"><button type="button" class="btn ghost" data-login-code-resend>Send a new code</button><button type="button" class="btn ghost" data-login-code-cancel>Use a different account</button></div></form>`,
+    );
+  $('#loginCodeForm .error').textContent = '';
+  $('#loginCodeForm').elements.code.value = '';
+  $('#loginCodeForm').elements.code.focus();
+  return sendLoginCode();
+}
+function closeLoginCode() {
+  if (!$('#loginCodeForm')) return;
+  $('#loginCodeForm').remove();
+  const box = $('.login-box');
+  box.querySelector('h2').textContent = 'Sign in';
+  box.querySelector('h2 + .muted').textContent = 'Use your client ID, staff ID or email address.';
+  $('#loginForm').hidden = false;
+}
+document.addEventListener('submit', async (e) => {
+  if (e.target.id !== 'loginCodeForm') return;
+  e.preventDefault();
+  const form = e.target,
+    error = form.querySelector('.error'),
+    button = form.querySelector('button:not([type=button])');
+  button.disabled = true;
+  error.textContent = '';
+  try {
+    await Api.loginCode('verify', { code: form.elements.code.value });
+    await continueSignIn();
+  } catch (err) {
+    error.textContent = err.message;
+    button.disabled = false;
+  }
+});
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-login-code-resend]')) {
+    $('#loginCodeMessage').textContent = 'Sending a new code…';
+    await sendLoginCode();
+  } else if (e.target.closest('[data-login-code-cancel]')) {
+    await Api.logout();
+    closeLoginCode();
+  }
+});
+
 // Restore an existing session after a refresh, and drop to the login screen if it expires.
 document.addEventListener('DOMContentLoaded', async () => {
   // A set-password link carries its own session; accounts.js handles it.
   if (/access_token=|error=/.test(location.hash)) return;
   try {
-    const profile = await Api.currentProfile();
-    if (profile) await enterPortal(profile);
+    const { data } = await Api.sb.auth.getSession();
+    if (data.session) await continueSignIn();
   } catch {
     /* stay on the login screen */
   }

@@ -343,6 +343,32 @@ h3,
   margin-top: 18px;
   font-size: 13px;
 }
+/* Sign-in code (second step): six spaced digits, then the two ways out. */
+#loginCodeForm {
+  max-width: 400px;
+}
+.login-code-message {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  background: var(--tint-blue);
+  color: var(--ink);
+  font-size: 14px;
+}
+.login-code-input {
+  font-family: var(--font);
+  font-size: 24px !important;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.login-code-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
 
 /* ───────────── shell ───────────── */
 .portal {

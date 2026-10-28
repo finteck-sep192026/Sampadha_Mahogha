@@ -78,10 +78,29 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join('') || '?';
 
+// The sign-in code (login-code function) must be done for this session, unless the session was
+// opened from an emailed link: the same rule the database applies (migration 20261028010000).
+async function signInCodeDone(token: string, userId: string) {
+  const part = token.split('.')[1] ?? '';
+  const claims = JSON.parse(
+    atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')),
+  );
+  const viaEmail = ['otp', 'recovery', 'magiclink', 'invite', 'email/signup'];
+  if ((claims.amr ?? []).some((a: { method?: string }) => viaEmail.includes(a.method ?? '')))
+    return true;
+  const { data } = await v2.rpc('login_session_verified', {
+    p_session: claims.session_id,
+    p_user: userId,
+  });
+  return data === true;
+}
+
 async function caller(req: Request) {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) throw new HttpError(401, 'Sign in again.');
+  if (!(await signInCodeDone(token, data.user.id)))
+    throw new HttpError(401, 'Enter the sign-in code we emailed you, then try again.');
   const { data: profile } = await v2
     .from('profiles')
     .select('id, login_id, role, is_active')
