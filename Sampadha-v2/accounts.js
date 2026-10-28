@@ -15,31 +15,49 @@ const STAFF_ROLE_OPTIONS = [
 let accountsCreateFor = '';
 
 // ───────────── set-password screen ─────────────
-function showSetPassword(message) {
+// From an emailed link, or "Change password" in the portal (change: true), which can go back.
+function showSetPassword(message, change = false) {
   const box = document.querySelector('.login-box'),
     form = document.querySelector('#loginForm');
   form.hidden = true;
-  box.querySelector('h2').textContent = 'Set your password';
+  box.querySelector('.demo-hint').hidden = true;
+  box.querySelector('h2').textContent = change ? 'Change your password' : 'Set your password';
   box.querySelector('h2 + .muted').textContent =
     `Choose a password of at least ${PASSWORD_MIN} characters. You will use it with your login ID or email.`;
   form.insertAdjacentHTML(
     'beforebegin',
-    `<form id="setPasswordForm"><label>New password<input name="password" type="password" autocomplete="new-password" minlength="${PASSWORD_MIN}" required></label><label>Repeat the password<input name="repeat" type="password" autocomplete="new-password" minlength="${PASSWORD_MIN}" required></label><p class="error" role="alert">${esc(message || '')}</p><button class="btn primary wide">Save password and sign in</button></form>`,
+    `<form id="setPasswordForm"><label>New password<input name="password" type="password" autocomplete="new-password" minlength="${PASSWORD_MIN}" required></label><label>Repeat the password<input name="repeat" type="password" autocomplete="new-password" minlength="${PASSWORD_MIN}" required></label><p class="error" role="alert">${esc(message || '')}</p><button class="btn primary wide">${change ? 'Save the new password' : 'Save password and sign in'}</button>${change ? '<button type="button" class="btn ghost wide login-mode-switch" data-password-back>Back to the portal</button>' : ''}</form>`,
   );
+  document.querySelector('#setPasswordForm').elements.password.focus();
 }
 function closeSetPassword() {
   document.querySelector('#setPasswordForm')?.remove();
   const box = document.querySelector('.login-box');
   box.querySelector('h2').textContent = 'Sign in';
   box.querySelector('h2 + .muted').textContent = 'Use your client ID, staff ID or email address.';
+  box.querySelector('.demo-hint').hidden = false;
   document.querySelector('#loginForm').hidden = false;
 }
+// The portal and the sign-in screen swap places while the password is changed.
+function showPortalScreen(portal) {
+  document.querySelector('#portal').classList.toggle('hidden', !portal);
+  document.querySelector('#login').classList.toggle('hidden', portal);
+}
+document.addEventListener('click', (event) => {
+  if (event.target.closest('#changePassword')) {
+    showPortalScreen(false);
+    showSetPassword('', true);
+  } else if (event.target.closest('[data-password-back]')) {
+    closeSetPassword();
+    showPortalScreen(true);
+  }
+});
 document.addEventListener('DOMContentLoaded', async () => {
   const link = await Api.sessionFromLink();
   if (!link) return;
   if (link.error) {
     document.querySelector('#loginError').textContent =
-      'This set-password link has expired or was already used. Ask your Sampadha administrator to send a new one.';
+      'This set-password link has expired or was already used. Sign in with an email code instead, then set a password from Change password.';
     return;
   }
   showSetPassword();
@@ -66,6 +84,7 @@ document.addEventListener('submit', async (event) => {
     if (!profile) throw new Error('Your password is saved, but this account has no portal access yet.');
     closeSetPassword();
     await enterPortal(profile);
+    showPortalScreen(true);
     toast('Password saved');
   } catch (err) {
     error.textContent = err.message;

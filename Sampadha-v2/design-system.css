@@ -490,6 +490,30 @@ h3,
   color: #fff;
   background: color-mix(in srgb, var(--side-mid, var(--navy)) 88%, white);
 }
+/* A quiet text button above Sign out; together they sit at the foot of the menu. */
+.sidebar .change-password {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: auto;
+  min-height: 34px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--side-text);
+  font: inherit;
+  font-size: 13px;
+  opacity: 0.8;
+  cursor: pointer;
+}
+.sidebar .change-password:hover {
+  opacity: 1;
+  color: #fff;
+}
+.sidebar .change-password + .logout {
+  margin-top: 6px;
+}
 .sidebar {
   scrollbar-color: rgb(255 255 255 / 18%) transparent;
 }
