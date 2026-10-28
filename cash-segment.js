@@ -473,30 +473,96 @@ function cashPdfPanel(report) {
     ' PDF preview"></iframe></article>'
   );
 }
+// Unsigned: choose CARE PaRRVA and clients first, then one button signs and, once the signature is
+// confirmed, sends (one-click Sign & Send, as for Multi). Signed: the send form for what is left.
 function cashSignPanel(report) {
+  const clients =
+    '<section id="cashClientSection" class="cash-client-section">' +
+    cashClientSelection(report) +
+    '</section>';
   if (report.esignStatus === 'Signed')
     return (
       '<article class="card panel cash-otp-card"><h3>Aadhaar eSign</h3><p class="research-notice">Signed with Aadhaar eSign by <strong>' +
       cashEscape(report.signerName) +
       '</strong> on ' +
       cashEscape(report.signed) +
-      '. Clients receive this signed PDF.</p></article><section id="cashClientSection" class="cash-client-section">' +
-      cashClientSelection(report) +
-      '</section>'
+      '. Clients receive this signed PDF.</p></article>' +
+      clients
     );
   return (
-    '<article class="card panel cash-otp-card"><h3>Aadhaar eSign</h3><p class="research-notice">Review the PDF above, then sign it with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. You are normally brought back here when signing is done; if the eSign page ends on the signed PDF instead, come back to this report and click Check signing status.</p><form id="cashSignForm" data-report="' +
+    clients +
+    '<article class="card panel cash-otp-card"><h3>Aadhaar eSign</h3><p class="research-notice">Sign the PDF above with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. As soon as the signature is confirmed, the report is sent to what you chose above. If the eSign page ends on the signed PDF instead of bringing you back, return to this report and click Check signing status: sending continues from there.</p><form id="cashSignForm" data-report="' +
     report.id +
     '"><label class="research-check"><input type="checkbox" name="consent">I have reviewed this Cash Segment report and will sign it with my Aadhaar eSign.</label><label class="field">Your mobile number<input name="mobile" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" required placeholder="10-digit mobile" value="' +
     cashEscape(researchRememberedMobile()) +
-    '"></label><div class="cash-otp-actions"><button class="btn primary">Sign with Aadhaar eSign</button><button type="button" class="btn secondary" data-cash-esign-check="' +
+    '"></label><div class="cash-otp-actions"><button class="btn primary" id="cashSignButton">' +
+    (sendPlanHasWork(cashSendChoices(null, report)) ? 'Sign with Aadhaar & send' : 'Sign with Aadhaar eSign') +
+    '</button><button type="button" class="btn secondary" data-cash-esign-check="' +
     report.id +
     '">Check signing status</button></div><p id="cashSignStatus" class="research-message" role="status">' +
     (report.esignStatus === 'Requested'
       ? 'A signing request is open. Finish it on the eSign page, or start again.'
       : 'Not signed yet.') +
-    '</p></form></article><section id="cashClientSection" class="cash-client-section"><p class="research-lock">Client selection appears after the Aadhaar eSign is confirmed.</p></section>'
+    '</p></form></article>'
   );
+}
+// What the send form asks for: { toParrva, ids } (client login IDs). Without a form (while the
+// page is being built) it reports the defaults the form starts with.
+function cashSendChoices(form, report) {
+  if (!form)
+    return { toParrva: report.parrvaStatus !== 'Submitted' && !cashParrvaProblem(report).text, ids: [] };
+  return {
+    toParrva: !!form.elements.parrva?.checked && !form.elements.parrva.disabled,
+    ids: [...form.querySelectorAll('[name=client]:checked:not(:disabled)')].map((input) => input.value),
+  };
+}
+function cashSignLabel() {
+  const button = document.querySelector('#cashSignButton'),
+    form = document.querySelector('#cashSendForm');
+  if (button && form)
+    button.textContent = sendPlanHasWork(cashSendChoices(form))
+      ? 'Sign with Aadhaar & send'
+      : 'Sign with Aadhaar eSign';
+}
+// Sends a signed Cash report as planned: CARE PaRRVA first, clients only once PaRRVA has accepted
+// it. On failure the error message also says what had already gone out.
+async function cashDispatch(report, plan) {
+  const say = (text) => {
+      const status = document.querySelector('#cashSendStatus');
+      if (status) status.textContent = text;
+    },
+    done = [];
+  try {
+    if (plan.toParrva) {
+      say('Sending to CARE PaRRVA...');
+      const parrva = await Api.parrvaSubmit(report.id);
+      done.push(
+        'CARE PaRRVA accepted ' +
+          parrva.portfolios +
+          ' portfolio(s) with ' +
+          parrva.holdings +
+          ' holdings.',
+      );
+      cashTrackRa('Cash Segment', 'Sent to CARE PaRRVA', report.title);
+    }
+    if (plan.ids.length) {
+      say('Delivering to clients...');
+      const result = await Api.sendCashReport(report.id, plan.ids);
+      done.push('Delivered to ' + result.delivered + ' client(s).');
+      cashTrackRa(
+        'Cash Segment',
+        'Sent report',
+        report.title + ' to ' + result.delivered + ' client(s)',
+      );
+    }
+  } catch (error) {
+    await refreshWorkspace().catch(() => {});
+    cashShowReport(report.id);
+    throw new Error((done.length ? done.join(' ') + ' ' : '') + error.message);
+  }
+  await refreshWorkspace();
+  cashShowReport(report.id);
+  toast(done.join(' '), 'seal');
 }
 // CARE PaRRVA, Portfolio API: rows sharing a PortfolioName are one portfolio. PaRRVA refuses a
 // portfolio unless its weightages add up to 1 and it holds 2 to 100 distinct securities.
@@ -555,14 +621,19 @@ function cashClientSelection(report) {
   const received = new Set(report.recipients),
     clients = cashClients();
   return (
-    '<article class="card panel"><h3>Send to CARE PaRRVA & clients</h3><p>' +
+    '<article class="card panel"><h3>' +
+    (report.esignStatus === 'Signed' ? 'Send to CARE PaRRVA & clients' : 'Where should this report go?') +
+    '</h3><p>' +
     (report.recipients.length
       ? 'Delivered to ' +
         report.recipients.length +
         ' client(s) on ' +
         cashEscape(report.sent) +
         '. You can also send it to more clients.'
-      : 'Report signed. Choose CARE PaRRVA, clients whose plan includes Cash, or both. When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.') +
+      : (report.esignStatus === 'Signed'
+          ? 'Report signed. Choose CARE PaRRVA, clients whose plan includes Cash, or both.'
+          : 'Choose CARE PaRRVA, clients whose plan includes Cash, or both. It is sent automatically as soon as your Aadhaar signature is confirmed.') +
+        ' When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.') +
     '</p><form id="cashSendForm" data-report="' +
     report.id +
     '">' +
@@ -590,14 +661,16 @@ function cashClientSelection(report) {
       )
       .join('') +
     (clients.length ? '' : '<p class="muted">No clients with a Cash plan.</p>') +
-    '</div><p id="cashSendStatus" class="research-message" role="status"></p><button class="btn primary">Send</button></form></article>'
+    '</div><p id="cashSendStatus" class="research-message" role="status"></p>' +
+    (report.esignStatus === 'Signed' ? '<button class="btn primary">Send</button>' : '') +
+    '</form></article>'
   );
 }
 function cashStrategyPage() {
   if (!['ra', 'admin'].includes(state.role)) return segmentPage('Cash');
   const report = cashSelectedId ? cashFindReport(cashSelectedId) : null;
   return (
-    '<section class="cash-hero card"><div><h3>Cash reports</h3><p>Create LC, MC or SC reports from a CSV and file them by monthly, quarterly or half-yearly frequency.</p></div><button type="button" class="btn primary" id="cashNewStrategy">New report</button></section><div class="research-steps cash-steps"><span>1. Product, frequency and CSV</span><span>2. Create and preview the PDF</span><span>3. Aadhaar eSign</span><span>4. Choose clients and send</span></div>' +
+    '<section class="cash-hero card"><div><h3>Cash reports</h3><p>Create LC, MC or SC reports from a CSV and file them by monthly, quarterly or half-yearly frequency.</p></div><button type="button" class="btn primary" id="cashNewStrategy">New report</button></section><div class="research-steps cash-steps"><span>1. Product, frequency and CSV</span><span>2. Create and preview the PDF</span><span>3. Choose CARE PaRRVA & clients</span><span>4. Sign with Aadhaar & send</span></div>' +
     cashCreateForm() +
     '<section class="cash-library-heading"><div><h3>Report library</h3></div><p>The latest two reports for each strategy and period.</p></section>' +
     cashReportGroups() +
@@ -696,6 +769,16 @@ async function cashConfirmSign(reportId) {
   const report = cashFindReport(reportId);
   if (report) cashTrackRa('Cash Segment', 'Signed with Aadhaar eSign', report.title);
   toast('Cash report signed with Aadhaar eSign.', 'seal');
+  // One-click Sign & Send: send what was chosen before signing, now that the signature is confirmed.
+  const plan = sendPlanTake(reportId);
+  if (!plan || !report) return;
+  const sendStatus = document.querySelector('#cashSendStatus');
+  if (sendStatus) sendStatus.textContent = 'Signed. Sending now...';
+  await cashDispatch(report, plan).catch((error) => {
+    const after = document.querySelector('#cashSendStatus');
+    if (after)
+      after.textContent = error.message + ' Check the choices above and press Send to try again.';
+  });
 }
 async function cashStartSign(report, form) {
   const status = document.querySelector('#cashSignStatus'),
@@ -706,6 +789,8 @@ async function cashStartSign(report, form) {
   }
   buttons.forEach((b) => (b.disabled = true));
   try {
+    const choices = document.querySelector('#cashSendForm');
+    sendPlanSave(report.id, choices ? cashSendChoices(choices) : null);
     status.textContent = 'Preparing the PDF for signing...';
     await Api.uploadPreviewPdf(report.id, await cashCreatePdfBlob(report));
     status.textContent = 'Opening the eSign page...';
@@ -887,49 +972,21 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
       report = cashFindReport(form.dataset.report),
       status = document.querySelector('#cashSendStatus'),
       button = form.querySelector('button:not([type=button])'),
-      toParrva = !!form.elements.parrva?.checked && !form.elements.parrva.disabled,
-      selected = [...form.querySelectorAll('[name=client]:checked:not(:disabled)')].map(
-        (input) => input.value,
-      );
-    if (!report) return;
-    if (!toParrva && !selected.length) {
+      plan = cashSendChoices(form);
+    // Before signing there is no Send button: the sign button sends.
+    if (!report || !button) return;
+    if (!sendPlanHasWork(plan)) {
       status.textContent = 'Choose CARE PaRRVA, at least one client, or both.';
       return;
     }
     button.disabled = true;
-    const done = [];
-    try {
-      // PaRRVA first: clients receive the report only once PaRRVA has accepted it.
-      if (toParrva) {
-        status.textContent = 'Sending to CARE PaRRVA...';
-        const parrva = await Api.parrvaSubmit(report.id);
-        done.push(
-          'CARE PaRRVA accepted ' +
-            parrva.portfolios +
-            ' portfolio(s) with ' +
-            parrva.holdings +
-            ' holdings.',
-        );
-        cashTrackRa('Cash Segment', 'Sent to CARE PaRRVA', report.title);
-      }
-      if (selected.length) {
-        status.textContent = 'Delivering to clients...';
-        const result = await Api.sendCashReport(report.id, selected);
-        done.push('Delivered to ' + result.delivered + ' client(s).');
-        cashTrackRa(
-          'Cash Segment',
-          'Sent report',
-          report.title + ' to ' + result.delivered + ' client(s)',
-        );
-      }
-      await refreshWorkspace();
-      cashShowReport(report.id);
-      toast(done.join(' '), 'seal');
-    } catch (error) {
-      await refreshWorkspace().catch(() => {});
-      cashShowReport(report.id);
+    await cashDispatch(report, plan).catch((error) => {
       const after = document.querySelector('#cashSendStatus');
-      if (after) after.textContent = (done.length ? done.join(' ') + ' ' : '') + error.message;
-    }
+      if (after) after.textContent = error.message;
+    });
   }
+});
+// The sign button says what it will do: sign only, or sign and send.
+document.querySelector('#content').addEventListener('change', (event) => {
+  if (event.target.closest('#cashSendForm')) cashSignLabel();
 });
