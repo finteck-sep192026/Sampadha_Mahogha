@@ -30,6 +30,10 @@ create table v2_private.login_verified (
 );
 revoke all on v2_private.login_codes, v2_private.login_code_sends, v2_private.login_verified
   from public, anon, authenticated;
+-- No policies: only the SECURITY DEFINER functions below read or write these tables.
+alter table v2_private.login_codes enable row level security;
+alter table v2_private.login_code_sends enable row level security;
+alter table v2_private.login_verified enable row level security;
 
 -- Has the current request's session passed the sign-in code (or come from an emailed link)?
 create function v2_private.session_verified() returns boolean
