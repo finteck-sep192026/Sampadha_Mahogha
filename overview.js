@@ -8,6 +8,7 @@
 
 const OVERVIEW_MONTHS = 6;
 const AUDIT_LABELS = {
+  'login.code_verified': 'Signed in with an email code',
   'report.created': 'Report created',
   'report.esign_requested': 'Aadhaar eSign started',
   'report.esigned': 'Report signed with Aadhaar eSign',

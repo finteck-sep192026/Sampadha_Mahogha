@@ -98,6 +98,24 @@
     if (error) throw new Error('Incorrect ID/email or password. Please try again.');
   }
   const logout = () => sb.auth.signOut();
+  // Sign-in code (login-code Edge Function): after the password, the database refuses this
+  // session until the code emailed to the person is verified.
+  const loginCodeStatus = async () => (await sb.rpc('login_code_status')).data;
+  async function loginCode(action, body = {}) {
+    const { data, error } = await sb.functions.invoke('login-code', { body: { action, ...body } });
+    if (error) {
+      let message = error.message;
+      try {
+        message = (await error.context.json()).error || message;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new Error(
+        error.name === 'FunctionsFetchError' ? 'The sign-in code service is not reachable.' : message,
+      );
+    }
+    return data;
+  }
   async function currentProfile() {
     const { data } = await sb.auth.getSession();
     if (!data.session) return null;
@@ -670,6 +688,8 @@
     sb,
     login,
     logout,
+    loginCodeStatus,
+    loginCode,
     currentProfile,
     loadWorkspace,
     submitApplication,

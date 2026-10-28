@@ -8,7 +8,7 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
 
 | Area | How it works |
 |---|---|
-| Sign-in | Supabase Auth; access in v2 is decided by `v2.profiles` (an account with access turned off cannot sign in). |
+| Sign-in | Supabase Auth; access in v2 is decided by `v2.profiles` (an account with access turned off cannot sign in). Two steps for everyone: the password, then a 6-digit code emailed to the account's own address by the `login-code` Edge Function (10 minutes, 5 tries, at most one code per 30 s and five per 15 min). The database enforces it (`20261028010000_v2_login_code.sql`): a PostgREST pre-request check refuses every v2 API request of a session that has not passed the code, a restrictive policy does the same for files in `v2-research`, and `esign`, `client-esign`, `parrva` and `accounts` check it too. Sessions opened from an emailed link (set-password, recovery) count as passed. To switch it off: `alter role authenticator reset pgrst.db_pre_request; notify pgrst, 'reload config';`. |
 | Accounts | Admin → *Users & access* adds staff; Admin → *Client approvals* → *Create login* turns an approved application into a client login with its plan, products and Multi tier. The `accounts` Edge Function creates the login and emails a one-time link to set the password (never stored, never shown to staff); the link lands on the portal's *Set your password* screen. Admin can resend the link or turn access off and on. |
 | Data | Read through RLS on `v2.*` tables; every write is a `SECURITY DEFINER` function in schema `v2`. |
 | Report attachments | Storage bucket `v2-research` (private), max 3 files per report, 5 MB each, image or PDF. |
