@@ -2,8 +2,14 @@
 //
 //   POST { action: 'send' }          → emails a 6-digit code to the signed-in person's own address.
 //   POST { action: 'verify', code }  → checks it; on success this session may use the portal.
+//   POST { action: 'request', identifier }
+//        → sign in with an email code, no password: nobody is signed in yet. Emails a one-time
+//          Supabase Auth code to the active account with that login ID or email; the sign-in page
+//          verifies it itself (auth.verifyOtp). The answer is the same whether or not an account
+//          matched. This caller has only the publishable key (the gateway lets it through);
+//          'send' and 'verify' check the person's JWT themselves.
 //
-// The caller is the person who has just signed in with their password (their JWT). The code is
+// For 'send' and 'verify' the caller has just signed in with their password (their JWT). The code is
 // sent by SMTP with the mailer's secrets (SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD,
 // MAIL_FROM) and stored only as an HMAC; it lasts 10 minutes and allows 5 tries. Enforcement is in
 // the database (migration 20261028010000_v2_login_code.sql): until verify succeeds, every v2 API
@@ -137,12 +143,51 @@ async function verify(who: Awaited<ReturnType<typeof caller>>, body: Record<stri
   );
 }
 
+// Sign in with an email code (no password). Supabase Auth makes the code (a magic-link OTP, so it
+// works once and lasts Auth's email OTP expiry: 8 digits, 5 minutes on this project); we email it
+// from the Sampadha mailbox.
+async function request(body: Record<string, unknown>) {
+  const identifier = String(body.identifier ?? '').trim();
+  if (!identifier || identifier.length > 200)
+    throw new HttpError(400, 'Enter your client ID, staff ID or email address.');
+  if (!transport) throw new HttpError(503, 'Email is not set up on the server, so no code can be sent.');
+  const answer = { requested: true };
+  const { data: email } = await v2.rpc('resolve_login', { identifier });
+  if (!email) return answer;
+  const { data: profile } = await v2
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('email', email)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (!profile) return answer;
+  const { data: allowed, error } = await v2.rpc('login_email_send', { p_user: profile.id });
+  if (error) throw new HttpError(500, 'Could not prepare a sign-in code.');
+  if (allowed !== 'ok') return answer;
+  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+    type: 'magiclink',
+    email: profile.email,
+  });
+  const code = link?.properties?.email_otp;
+  if (linkError || !code) throw new HttpError(500, 'Could not prepare a sign-in code.');
+  const subject = `${code} is your Sampadha sign-in code`;
+  const text = `Hello ${profile.full_name},\n\nYour Sampadha sign-in code is ${code}. Enter it on the sign-in page; it works once and expires in 5 minutes.\n\nIf you did not ask to sign in, ignore this email: nobody can use the code without your mailbox.\n\nSampadha`;
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#13233a"><p>Hello ${profile.full_name.replace(/[&<>"]/g, '')},</p><p>Your Sampadha sign-in code is</p><p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:8px 0 14px">${code}</p><p style="color:#5b6b80">Enter it on the sign-in page; it works once and expires in 5 minutes. If you did not ask to sign in, ignore this email: nobody can use the code without your mailbox.</p><p>Sampadha</p></div>`;
+  try {
+    await transport.sendMail({ from: FROM, to: { name: profile.full_name, address: profile.email }, subject, text, html });
+  } catch (err) {
+    console.error('email sign-in code not sent', err);
+  }
+  return answer;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return reply(405, { error: 'Use POST.' });
   try {
-    const who = await caller(req);
     const body = await req.json().catch(() => ({}));
+    if (body.action === 'request') return reply(200, await request(body));
+    const who = await caller(req);
     if (body.action === 'send') return reply(200, await send(who));
     if (body.action === 'verify') return reply(200, await verify(who, body));
     return reply(400, { error: 'Unknown action.' });

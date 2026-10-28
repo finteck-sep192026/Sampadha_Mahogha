@@ -746,6 +746,7 @@ $('#loginForm').onsubmit = async (e) => {
   submit.disabled = true;
   error.textContent = '';
   try {
+    if (e.target.dataset.mode === 'email') return await requestEmailCode($('#email').value.trim());
     await Api.login($('#email').value, $('#password').value);
     $('#password').value = '';
     await continueSignIn();
@@ -758,10 +759,14 @@ $('#loginForm').onsubmit = async (e) => {
 
 // ───────────── sign-in code (second step) ─────────────
 // After the password the database refuses the session until the 6-digit code emailed to the
-// person is entered. Sessions opened from an emailed link (set-password) already count.
+// person is entered. Sessions opened from an emailed link (set-password) already count, and so do
+// sessions from an email code alone (below).
 async function continueSignIn() {
   const status = await Api.loginCodeStatus();
-  if (!status?.verified) return showLoginCode(status?.sentTo);
+  if (!status?.verified) {
+    showLoginCode('step', `Sending a code${status?.sentTo ? ' to ' + status.sentTo : ''}…`);
+    return sendLoginCode();
+  }
   closeLoginCode();
   const profile = await Api.currentProfile();
   if (!profile) {
@@ -779,21 +784,26 @@ async function sendLoginCode() {
     message.textContent = err.message;
   }
 }
-function showLoginCode(sentTo) {
-  const box = $('.login-box');
+// flow 'step': the second step after the password; flow 'email': signing in with an email code alone.
+function showLoginCode(flow, message) {
+  const box = $('.login-box'),
+    email = flow === 'email';
   $('#loginForm').hidden = true;
-  box.querySelector('h2').textContent = 'Enter your sign-in code';
-  box.querySelector('h2 + .muted').textContent =
-    'For your security, sign-in has a second step: a code sent to your email.';
+  box.querySelector('h2').textContent = email ? 'Check your email' : 'Enter your sign-in code';
+  box.querySelector('h2 + .muted').textContent = email
+    ? 'Enter the one-time code we emailed you. No password is needed.'
+    : 'For your security, sign-in has a second step: a code sent to your email.';
   if (!$('#loginCodeForm'))
     $('#loginForm').insertAdjacentHTML(
       'beforebegin',
-      `<form id="loginCodeForm"><p id="loginCodeMessage" class="login-code-message" role="status">Sending a code${sentTo ? ' to ' + esc(sentTo) : ''}…</p><label>6-digit code<input name="code" class="login-code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><p class="error" role="alert"></p><button class="btn primary wide">Verify and continue</button><div class="login-code-links"><button type="button" class="btn ghost" data-login-code-resend>Send a new code</button><button type="button" class="btn ghost" data-login-code-cancel>Use a different account</button></div></form>`,
+      `<form id="loginCodeForm"><p id="loginCodeMessage" class="login-code-message" role="status"></p><label>Code from the email<input name="code" class="login-code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" maxlength="10" required></label><p class="error" role="alert"></p><button class="btn primary wide">Verify and continue</button><div class="login-code-links"><button type="button" class="btn ghost" data-login-code-resend>Send a new code</button><button type="button" class="btn ghost" data-login-code-cancel>Use a different account</button></div></form>`,
     );
-  $('#loginCodeForm .error').textContent = '';
-  $('#loginCodeForm').elements.code.value = '';
-  $('#loginCodeForm').elements.code.focus();
-  return sendLoginCode();
+  const form = $('#loginCodeForm');
+  form.dataset.flow = flow;
+  $('#loginCodeMessage').textContent = message;
+  form.querySelector('.error').textContent = '';
+  form.elements.code.value = '';
+  form.elements.code.focus();
 }
 function closeLoginCode() {
   if (!$('#loginCodeForm')) return;
@@ -803,6 +813,34 @@ function closeLoginCode() {
   box.querySelector('h2 + .muted').textContent = 'Use your client ID, staff ID or email address.';
   $('#loginForm').hidden = false;
 }
+
+// ───────────── sign in with an email code (no password) ─────────────
+// The login-code function emails a one-time code to the account's own address; the code itself
+// signs the person in, so there is no second step.
+let emailCodeFor = '';
+function setSignInMode(mode) {
+  const form = $('#loginForm'),
+    email = mode === 'email',
+    password = $('#password'),
+    toggle = form.querySelector('[data-sign-in-mode]');
+  form.dataset.mode = mode;
+  password.closest('label').hidden = email;
+  password.required = !email;
+  form.querySelector('button.primary').textContent = email ? 'Email me a code' : 'Sign in';
+  toggle.dataset.signInMode = email ? 'password' : 'email';
+  toggle.textContent = email ? 'Sign in with my password instead' : 'Sign in with an email code instead';
+  $('#loginError').textContent = '';
+  $('#email').focus();
+}
+async function requestEmailCode(identifier) {
+  await Api.loginCode('request', { identifier });
+  emailCodeFor = identifier;
+  showLoginCode(
+    'email',
+    `If ${identifier} has portal access, a sign-in code is on its way to that account's email. It works once and expires in 5 minutes.`,
+  );
+}
+
 document.addEventListener('submit', async (e) => {
   if (e.target.id !== 'loginCodeForm') return;
   e.preventDefault();
@@ -812,7 +850,8 @@ document.addEventListener('submit', async (e) => {
   button.disabled = true;
   error.textContent = '';
   try {
-    await Api.loginCode('verify', { code: form.elements.code.value });
+    if (form.dataset.flow === 'email') await Api.loginWithEmailCode(emailCodeFor, form.elements.code.value);
+    else await Api.loginCode('verify', { code: form.elements.code.value });
     await continueSignIn();
   } catch (err) {
     error.textContent = err.message;
@@ -820,9 +859,18 @@ document.addEventListener('submit', async (e) => {
   }
 });
 document.addEventListener('click', async (e) => {
+  const mode = e.target.closest('[data-sign-in-mode]');
+  if (mode) return setSignInMode(mode.dataset.signInMode);
   if (e.target.closest('[data-login-code-resend]')) {
-    $('#loginCodeMessage').textContent = 'Sending a new code…';
-    await sendLoginCode();
+    const message = $('#loginCodeMessage');
+    message.textContent = 'Sending a new code…';
+    if ($('#loginCodeForm').dataset.flow !== 'email') return sendLoginCode();
+    try {
+      await Api.loginCode('request', { identifier: emailCodeFor });
+      message.textContent = `A new code is on its way (at most one every 30 seconds). Use the latest email; earlier codes stop working.`;
+    } catch (err) {
+      message.textContent = err.message;
+    }
   } else if (e.target.closest('[data-login-code-cancel]')) {
     await Api.logout();
     closeLoginCode();
