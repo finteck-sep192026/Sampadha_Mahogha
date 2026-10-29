@@ -742,11 +742,16 @@ function leavePortal(message = '') {
 $('#loginForm').onsubmit = async (e) => {
   e.preventDefault();
   const submit = e.target.querySelector('button'),
-    error = $('#loginError');
+    error = $('#loginError'),
+    label = submit.textContent;
   submit.disabled = true;
   error.textContent = '';
   try {
-    if (e.target.dataset.mode === 'email') return await requestEmailCode($('#email').value.trim());
+    if (e.target.dataset.mode === 'email') {
+      // Sending can take a few seconds (the function may be starting up, then the email goes out).
+      submit.textContent = 'Sending…';
+      return await requestEmailCode($('#email').value.trim());
+    }
     await Api.login($('#email').value, $('#password').value);
     $('#password').value = '';
     await continueSignIn();
@@ -754,6 +759,7 @@ $('#loginForm').onsubmit = async (e) => {
     error.textContent = err.message;
   } finally {
     submit.disabled = false;
+    submit.textContent = label;
   }
 };
 
@@ -790,9 +796,11 @@ function showLoginCode(flow, message) {
     email = flow === 'email';
   $('#loginForm').hidden = true;
   box.querySelector('h2').textContent = email ? 'Check your email' : 'Enter your sign-in code';
-  box.querySelector('h2 + .muted').textContent = email
-    ? 'Enter the one-time code we emailed you. No password is needed.'
-    : 'For your security, sign-in has a second step: a code sent to your email.';
+  box.querySelector('h2 + .muted').textContent = !email
+    ? 'For your security, sign-in has a second step: a code sent to your email.'
+    : passwordReset
+      ? 'Enter the code we emailed you, then choose a new password.'
+      : 'Enter the one-time code we emailed you. No password is needed.';
   if (!$('#loginCodeForm'))
     $('#loginForm').insertAdjacentHTML(
       'beforebegin',
@@ -817,18 +825,32 @@ function closeLoginCode() {
 // ───────────── sign in with an email code (no password) ─────────────
 // The login-code function emails a one-time code to the account's own address; the code itself
 // signs the person in, so there is no second step.
-let emailCodeFor = '';
-function setSignInMode(mode) {
+// Forgot password is the same code, followed straight away by the set-password screen
+// (accounts.js), so it needs no emailed link (Auth's links expire after 5 minutes here).
+let emailCodeFor = '',
+  passwordReset = false;
+function setSignInMode(mode, reset = false) {
   const form = $('#loginForm'),
+    box = $('.login-box'),
     email = mode === 'email',
     password = $('#password'),
     toggle = form.querySelector('[data-sign-in-mode]');
+  passwordReset = email && reset;
   form.dataset.mode = mode;
   password.closest('label').hidden = email;
   password.required = !email;
   form.querySelector('button.primary').textContent = email ? 'Email me a code' : 'Sign in';
   toggle.dataset.signInMode = email ? 'password' : 'email';
-  toggle.textContent = email ? 'Sign in with my password instead' : 'Sign in with an email code instead';
+  toggle.textContent = passwordReset
+    ? 'Back to sign in'
+    : email
+      ? 'Sign in with my password instead'
+      : 'Sign in with an email code instead';
+  box.querySelector('h2').textContent = passwordReset ? 'Reset your password' : 'Sign in';
+  box.querySelector('h2 + .muted').textContent = passwordReset
+    ? "Enter your client ID, staff ID or email. We'll email you a code, then you choose a new password."
+    : 'Use your client ID, staff ID or email address.';
+  box.querySelector('.demo-hint').hidden = passwordReset;
   $('#loginError').textContent = '';
   $('#email').focus();
 }
@@ -837,7 +859,7 @@ async function requestEmailCode(identifier) {
   emailCodeFor = identifier;
   showLoginCode(
     'email',
-    `If ${identifier} has portal access, a sign-in code is on its way to that account's email. It works once and expires in 5 minutes.`,
+    `If ${identifier} has portal access, a ${passwordReset ? 'code to reset its password' : 'sign-in code'} is on its way to that account's email. It works once and expires in 5 minutes.`,
   );
 }
 
@@ -852,6 +874,12 @@ document.addEventListener('submit', async (e) => {
   try {
     if (form.dataset.flow === 'email') await Api.loginWithEmailCode(emailCodeFor, form.elements.code.value);
     else await Api.loginCode('verify', { code: form.elements.code.value });
+    if (form.dataset.flow === 'email' && passwordReset) {
+      // Signed in by the code: now the new password (saving it opens the portal).
+      closeLoginCode();
+      setSignInMode('password');
+      return showSetPassword();
+    }
     await continueSignIn();
   } catch (err) {
     error.textContent = err.message;
@@ -861,6 +889,7 @@ document.addEventListener('submit', async (e) => {
 document.addEventListener('click', async (e) => {
   const mode = e.target.closest('[data-sign-in-mode]');
   if (mode) return setSignInMode(mode.dataset.signInMode);
+  if (e.target.closest('[data-forgot-password]')) return setSignInMode('email', true);
   if (e.target.closest('[data-login-code-resend]')) {
     const message = $('#loginCodeMessage');
     message.textContent = 'Sending a new code…';
@@ -874,6 +903,7 @@ document.addEventListener('click', async (e) => {
   } else if (e.target.closest('[data-login-code-cancel]')) {
     await Api.logout();
     closeLoginCode();
+    if (passwordReset) setSignInMode('password');
   }
 });
 
