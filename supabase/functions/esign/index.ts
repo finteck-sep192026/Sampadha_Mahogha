@@ -166,11 +166,16 @@ async function start(profile: Awaited<ReturnType<typeof caller>>, body: Record<s
   if (pdf.length > MAX_PDF_BYTES) throw new HttpError(400, 'The report PDF is larger than 10 MB.');
   if (new TextDecoder().decode(pdf.subarray(0, 5)) !== '%PDF-')
     throw new HttpError(400, 'The uploaded preview is not a PDF.');
-  // The signature goes at the bottom right of the last page.
-  const pages = Math.max(
-    1,
-    (new TextDecoder().decode(pdf).match(/\/Type \/Page\b(?!s)/g) ?? []).length,
-  );
+  // The signature goes at the bottom right of the last page. Our own PDFs write "/Type /Page";
+  // Word and others write "/Type/Page", and the page tree's /Count covers compressed ones.
+  const text = new TextDecoder().decode(pdf),
+    pages = Math.max(
+      1,
+      (text.match(/\/Type\s*\/Page\b(?!s)/g) ?? []).length,
+      ...[...text.matchAll(/<<[^<>]*\/Type\s*\/Pages\b[^<>]*>>/g)].map((m) =>
+        Number(m[0].match(/\/Count\s+(\d+)/)?.[1] ?? 0),
+      ),
+    );
 
   const session = await gateway('/initiate', {
     method: 'POST',

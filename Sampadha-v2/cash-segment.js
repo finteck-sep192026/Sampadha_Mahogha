@@ -395,7 +395,10 @@ const cashStatusLabel = (report) =>
 // ───────────── library: Strategy × Monthly / Quarterly / Half-Yearly ─────────────
 function cashReportCell(frequency, product) {
   const reports = cashReports()
-    .filter((report) => report.frequency === frequency && report.product === product)
+    .filter(
+      (report) =>
+        report.cashKind !== 'pack' && report.frequency === frequency && report.product === product,
+    )
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
     .slice(0, 2);
   if (!reports.length) return '<p class="muted">No reports yet.</p>';
@@ -463,8 +466,10 @@ function cashPdfPanel(report) {
     ' · ' +
     cashEscape(report.product) +
     ' · ' +
-    report.rows.length +
-    ' recommendations</p></div><button type="button" class="btn secondary" data-cash-download="' +
+    (report.cashKind === 'pack'
+      ? report.packStocks.length + ' stocks · research pack (' + cashEscape(report.fileName) + ')'
+      : report.rows.length + ' recommendations') +
+    '</p></div><button type="button" class="btn secondary" data-cash-download="' +
     report.id +
     '">Download PDF</button></div><p id="cashPdfStatus" class="research-message" role="status">Generating PDF preview...</p><iframe id="cashPdfViewer" data-report="' +
     report.id +
@@ -510,7 +515,13 @@ function cashSignPanel(report) {
 // page is being built) it reports the defaults the form starts with.
 function cashSendChoices(form, report) {
   if (!form)
-    return { toParrva: report.parrvaStatus !== 'Submitted' && !cashParrvaProblem(report).text, ids: [] };
+    return {
+      toParrva:
+        report.cashKind !== 'pack' &&
+        report.parrvaStatus !== 'Submitted' &&
+        !cashParrvaProblem(report).text,
+      ids: [],
+    };
   return {
     toParrva: !!form.elements.parrva?.checked && !form.elements.parrva.disabled,
     ids: [...form.querySelectorAll('[name=client]:checked:not(:disabled)')].map((input) => input.value),
@@ -589,6 +600,8 @@ function cashParrvaProblem(report) {
   return { portfolios, text: '' };
 }
 function cashParrvaChoice(report) {
+  if (report.cashKind === 'pack')
+    return '<p class="research-notice">Research packs are not sent to CARE PaRRVA: they hold no buy or sell recommendations.</p>';
   if (report.parrvaStatus === 'Submitted')
     return (
       '<p class="research-parrva research-parrva-done"><strong>CARE PaRRVA:</strong> submitted on ' +
@@ -622,7 +635,13 @@ function cashClientSelection(report) {
     clients = cashClients();
   return (
     '<article class="card panel"><h3>' +
-    (report.esignStatus === 'Signed' ? 'Send to CARE PaRRVA & clients' : 'Where should this report go?') +
+    (report.cashKind === 'pack'
+      ? report.esignStatus === 'Signed'
+        ? 'Send to clients'
+        : 'Who should receive this pack?'
+      : report.esignStatus === 'Signed'
+        ? 'Send to CARE PaRRVA & clients'
+        : 'Where should this report go?') +
     '</h3><p>' +
     (report.recipients.length
       ? 'Delivered to ' +
@@ -630,10 +649,14 @@ function cashClientSelection(report) {
         ' client(s) on ' +
         cashEscape(report.sent) +
         '. You can also send it to more clients.'
-      : (report.esignStatus === 'Signed'
-          ? 'Report signed. Choose CARE PaRRVA, clients whose plan includes Cash, or both.'
-          : 'Choose CARE PaRRVA, clients whose plan includes Cash, or both. It is sent automatically as soon as your Aadhaar signature is confirmed.') +
-        ' When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.') +
+      : report.cashKind === 'pack'
+        ? report.esignStatus === 'Signed'
+          ? 'Pack signed. Choose the clients whose plan includes Cash.'
+          : 'Choose the clients whose plan includes Cash. It is sent automatically as soon as your Aadhaar signature is confirmed.'
+        : (report.esignStatus === 'Signed'
+            ? 'Report signed. Choose CARE PaRRVA, clients whose plan includes Cash, or both.'
+            : 'Choose CARE PaRRVA, clients whose plan includes Cash, or both. It is sent automatically as soon as your Aadhaar signature is confirmed.') +
+          ' When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.') +
     '</p><form id="cashSendForm" data-report="' +
     report.id +
     '">' +
@@ -672,6 +695,7 @@ function cashStrategyPage() {
   return (
     '<section class="cash-hero card"><div><h3>Cash reports</h3><p>Create LC, MC or SC reports from a CSV and file them by monthly, quarterly or half-yearly frequency.</p></div><button type="button" class="btn primary" id="cashNewStrategy">New report</button></section><div class="research-steps cash-steps"><span>1. Product, frequency and CSV</span><span>2. Create and preview the PDF</span><span>3. Choose CARE PaRRVA & clients</span><span>4. Sign with Aadhaar & send</span></div>' +
     cashCreateForm() +
+    (typeof cashPackCard === 'function' ? cashPackCard() : '') +
     '<section class="cash-library-heading"><div><h3>Report library</h3></div><p>The latest two reports for each strategy and period.</p></section>' +
     cashReportGroups() +
     '<section id="cashPreviewRegion" class="cash-preview-region">' +
@@ -684,7 +708,9 @@ function cashStrategyPage() {
 const cashPdfBlob = (report) =>
   report.esignStatus === 'Signed'
     ? Api.downloadFile(report.signedPdfPath)
-    : cashCreatePdfBlob(report);
+    : report.cashKind === 'pack'
+      ? Api.downloadFile(report.id + '/preview.pdf')
+      : cashCreatePdfBlob(report);
 function cashReleasePdf() {
   if (cashPdfUrl) {
     URL.revokeObjectURL(cashPdfUrl);
@@ -792,7 +818,9 @@ async function cashStartSign(report, form) {
     const choices = document.querySelector('#cashSendForm');
     sendPlanSave(report.id, choices ? cashSendChoices(choices) : null);
     status.textContent = 'Preparing the PDF for signing...';
-    await Api.uploadPreviewPdf(report.id, await cashCreatePdfBlob(report));
+    // A research pack's uploaded PDF is already the file to sign.
+    if (report.cashKind !== 'pack')
+      await Api.uploadPreviewPdf(report.id, await cashCreatePdfBlob(report));
     status.textContent = 'Opening the eSign page...';
     const returnUrl = new URL(
       location.pathname,

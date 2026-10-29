@@ -10,6 +10,8 @@ const OVERVIEW_MONTHS = 6;
 const AUDIT_LABELS = {
   'login.code_verified': 'Passed the sign-in code after the password',
   'login.email_code_sent': 'Asked for an email code to sign in without a password',
+  'cash.stock_list_saved': 'Saved the monthly research pack stock list',
+  'report.pdf_replaced': 'Replaced a research pack PDF',
   'report.created': 'Report created',
   'report.esign_requested': 'Aadhaar eSign started',
   'report.esigned': 'Report signed with Aadhaar eSign',
