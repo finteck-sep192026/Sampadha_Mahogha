@@ -1,8 +1,10 @@
 // Multi Segment Quick input: one compact line per option leg plus the weekly contract master,
 // turned into the 19 CARE PaRRVA columns and fed into the same preview → eSign → send flow as the
-// CSV upload. Based on the Careparva generator (27 Oct 2026), with PaRRVA's rules applied:
+// CSV format (the basket is the only way in; there is no CSV upload). Based on the Careparva
+// generator (27 Oct 2026), with PaRRVA's rules applied:
 //   - AdviceName gets a unique suffix (a repeated AdviceName is a modification at PaRRVA)
-//   - entry, target and stop-loss are part of the line and must be > 0
+//   - entry, target and stop-loss are part of the line and must be > 0, intraday or not
+//     (Strategy API section 6 makes all of them mandatory); PriceType is always CMP
 //   - expiry is sent as YYYY-MM-DD, ContractName is the underlying, BSE codes are IDO/STO
 // The weekly master is uploaded on the Uploads page and stored privately on the server.
 //
@@ -11,8 +13,8 @@
 const QUICK_PREFIXES = {
   CB: 'CALL BUY',
   PB: 'PUT BUY',
-  BC: 'BUY CALL',
-  BP: 'BUY PUT',
+  BC: 'BULL CALL',
+  BP: 'BULL PUT',
   RP: 'RATIO PUT',
   RC: 'RATIO CALL',
 };
@@ -205,14 +207,60 @@ function quickInstrument(profile, symbol) {
   const index = QUICK_INDEX_SYMBOLS.has(symbol) || QUICK_INDEX_SYMBOLS.has(profile.ticker);
   return profile.exchange === 'BSE' ? (index ? 'IDO' : 'STO') : index ? 'OPTIDX' : 'OPTSTK';
 }
-const QUICK_LINE =
-  /^(CB|PB|BC|BP|RP|RC)\s*([A-Za-z0-9._&-]+)\s+(\d{1,2})([A-Za-z]{3})\s+(\d+(?:\.\d+)?)\s*([CP])\s*([+-])\s*(\d+)\s*@\s*(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s+T\s*(\d+(?:\.\d+)?)\s+SL\s*(\d+(?:\.\d+)?)$/i;
+const QUICK_EXAMPLE = 'CB Nifty 03Nov 24000C+3 @120-125 T180 SL95';
+// prefix · symbol · expiry · strike C/P(E) · +/- lots · then the prices, read separately below.
+const QUICK_LEG =
+  /^(CB|PB|BC|BP|RP|RC) ?([A-Z0-9._&-]+?) (\d{1,2}) ?([A-Z]{3}) (\d+(?:\.\d+)?) ?([CP])E? ?([+-]) ?(\d+)(.*)$/;
+// One leg per entry, however it was typed: several legs on one line, or prices on the next line.
+function quickBasketLines(text) {
+  const legs = [];
+  String(text)
+    .toUpperCase()
+    .replace(/[−–—]/g, '-')
+    .replace(/(\d),(?=\d{3}\b)/g, '$1')
+    .replace(/₹/g, '')
+    .replace(/\b(?:TGT|TARGET)\b/g, 'T')
+    .replace(/\bSTOP ?-? ?LOSS\b/g, 'SL')
+    .replace(/[:=,;|\\]/g, ' ')
+    // A new leg can start on the same line, straight after the previous leg's stop-loss.
+    .replace(/(\bSL\s*\d+(?:\.\d+)?)\s+(?=(?:CB|PB|BC|BP|RP|RC)\s*[A-Z])/g, '$1\n')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      if (legs.length && /^(?:@|T ?\d|SL ?\d)/.test(line)) legs[legs.length - 1] += ' ' + line;
+      else legs.push(line);
+    });
+  return legs;
+}
+function quickParseLeg(text, line) {
+  const match = text.match(QUICK_LEG);
+  if (!match) throw new Error(line + 'use the format ' + QUICK_EXAMPLE);
+  const [, code, symbol, day, month, strike, cp, direction, lots, rest] = match,
+    // Each price ends at a space or the line's end, so a typo such as T18O is reported, not read as 18.
+    entry = rest.match(/@ ?(\d+(?:\.\d+)?)(?: ?- ?(\d+(?:\.\d+)?))?(?= |$)/),
+    target = rest.match(/(?:^| )T ?(\d+(?:\.\d+)?)(?= |$)/),
+    stop = rest.match(/(?:^| )SL ?(\d+(?:\.\d+)?)(?= |$)/),
+    missing = [!entry && '@ entry price', !target && 'T target', !stop && 'SL stop-loss'].filter(
+      Boolean,
+    );
+  if (missing.length)
+    throw new Error(
+      line +
+        'add the ' +
+        missing.join(', ') +
+        '. CARE PaRRVA needs entry, target and stop-loss on every leg, intraday or not, e.g. ' +
+        QUICK_EXAMPLE,
+    );
+  let leftover = rest;
+  for (const part of [entry, target, stop]) leftover = leftover.replace(part[0], ' ');
+  if (/\d/.test(leftover))
+    throw new Error(line + 'could not read "' + leftover.trim() + '". Use the format ' + QUICK_EXAMPLE);
+  return [code, symbol, day, month, strike, cp, direction, lots, entry[1], entry[2], target[1], stop[1]];
+}
 async function quickGenerate(panel) {
   const field = (name) => panel.querySelector('[data-quick=' + name + ']').value,
-    lines = field('basket')
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/\\+$/, '').trim())
-    .filter(Boolean);
+    lines = quickBasketLines(field('basket'));
   if (!lines.length) throw new Error('Enter at least one basket line.');
   if (lines.length > 50) throw new Error('A report can have at most 50 legs.');
   const { master, fileName } = await quickLatestMaster(),
@@ -220,16 +268,9 @@ async function quickGenerate(panel) {
     stamp = researchDefaultPublished().replace(/-/g, '').slice(2).replace('T', '-').replace(':', ''),
     groups = new Map(),
     legs = lines.map((text, index) => {
-      const line = 'Line ' + (index + 1) + ': ',
-        match = text.match(QUICK_LINE);
-      if (!match && !(/\sT\s*\d/i.test(text) && /\sSL\s*\d/i.test(text)))
-        throw new Error(
-          line + 'add the target and stop-loss, e.g. CB Nifty 03Nov 24000C+3 @120-125 T180 SL95',
-        );
-      if (!match)
-        throw new Error(line + 'use the format CB Nifty 03Nov 24000C+3 @120-125 T180 SL95');
-      const [, code, rawSymbol, day, month, strike, cp, direction, lots, from, to, target, stop] =
-          match,
+      const line = 'Leg ' + (index + 1) + ': ',
+        [code, rawSymbol, day, month, strike, cp, direction, lots, from, to, target, stop] =
+          quickParseLeg(text, line),
         symbol = quickNormalize(rawSymbol),
         expiry = quickExpiry(day, month, line),
         profile = quickContract(master, symbol, expiry, line),
@@ -246,7 +287,7 @@ async function quickGenerate(panel) {
         exchangeName: profile.exchange,
         strategyName: prefix,
         ifIntraday: field('intraday'),
-        priceType: field('priceType'),
+        priceType: 'CMP',
         buyOrSell: side,
         instrument: quickInstrument(profile, symbol),
         ceOrPe: cp.toUpperCase() === 'C' ? 'CE' : 'PE',
@@ -290,11 +331,11 @@ function multiQuickInputMarkup() {
       .join('') +
     '</select></label>';
   return (
-    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Quick input</p><h4>Or type a compact basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Lot sizes, exchange and instrument come from the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
+    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Multi recommendations</p><h4>Type the advice basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Every leg needs all three prices, intraday or not, because CARE PaRRVA requires them. Several legs on one line, or the prices on the next line, are read too. Lot sizes, exchange and instrument come from the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
     select('product', 'Product', MULTI_TYPES, 'Giga') +
     select('intraday', 'Intraday', ['NO', 'YES'], 'NO') +
-    select('priceType', 'Price type', ['CMP', 'PR', 'FP'], 'CMP') +
-    '</div><label class="field">Basket<textarea class="research-textarea" data-quick="basket" rows="5" spellcheck="false" placeholder="CB Nifty 03Nov 24000C+3 @120-125 T180 SL95&#10;PB Nifty 10Nov 24200P-1 @85 T40 SL110"></textarea></label><small class="research-notice">CB = CALL BUY, PB = PUT BUY, BC = BUY CALL, BP = BUY PUT, RP = RATIO PUT, RC = RATIO CALL. Lines with the same prefix and symbol form one strategy; each basket gets its own AdviceName so CARE PaRRVA records it as a new advice.</small><div class="quick-basket-actions"><button type="button" class="btn secondary" data-quick-generate>Generate legs</button><span id="quickBasketMaster" class="research-notice"></span></div></div>'
+    '<label class="field">Price type<input value="CMP" readonly></label>' +
+    '</div><label class="field">Basket<textarea class="research-textarea" data-quick="basket" rows="5" spellcheck="false" placeholder="CB Nifty 03Nov 24000C+3 @120-125 T180 SL95&#10;PB Nifty 10Nov 24200P-1 @85 T40 SL110"></textarea></label><small class="research-notice">CB = CALL BUY, PB = PUT BUY, BC = BULL CALL, BP = BULL PUT, RP = RATIO PUT, RC = RATIO CALL. Lines with the same prefix and symbol form one strategy; each basket gets its own AdviceName so CARE PaRRVA records it as a new advice.</small><div class="quick-basket-actions"><button type="button" class="btn secondary" data-quick-generate>Generate legs</button><span id="quickBasketMaster" class="research-notice"></span></div></div>'
   );
 }
 
@@ -390,7 +431,7 @@ document.querySelector('#content').addEventListener('click', async (event) => {
   try {
     const { rows, fileName } = await quickGenerate(button.closest('#quickBasket'));
     researchCsvRows = rows;
-    researchCsvFileName = 'Quick input (master: ' + fileName + ')';
+    researchCsvFileName = 'Advice basket (master: ' + fileName + ')';
     researchRenderCsvPreview();
     document
       .querySelector('#researchCsvPreview')
