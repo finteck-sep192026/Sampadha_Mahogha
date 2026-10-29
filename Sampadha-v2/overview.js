@@ -12,6 +12,7 @@ const AUDIT_LABELS = {
   'login.email_code_sent': 'Asked for an email code to sign in without a password',
   'cash.stock_list_saved': 'Saved the monthly research pack stock list',
   'report.pdf_replaced': 'Replaced a research pack PDF',
+  'account.temp_password_set': 'Temporary password set (to be changed by the person)',
   'report.created': 'Report created',
   'report.esign_requested': 'Aadhaar eSign started',
   'report.esigned': 'Report signed with Aadhaar eSign',

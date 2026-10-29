@@ -4,3 +4,6 @@
 node_modules/
 .DS_Store
 demo-credentials*
+
+# Local-only secrets (temporary staff passwords etc.) — never commit
+*.local.txt
