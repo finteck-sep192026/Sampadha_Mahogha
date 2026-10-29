@@ -302,6 +302,10 @@
     signed: r.signed_at ? stamp(r.signed_at, true) + ' IST' : '',
     signerName: r.signer_name || '',
     signedPdfPath: r.signed_pdf_path,
+    // Cash: 'portfolio' (from the 12-column CSV) or 'pack' (an uploaded monthly research pack PDF).
+    cashKind: r.cash_kind || 'portfolio',
+    packMonth: r.pack_month || '',
+    packStocks: r.pack_stocks || [],
     rows: legs
       .filter((l) => l.report_id === r.id)
       .sort((a, b) => a.position - b.position)
@@ -630,6 +634,27 @@
     upload(`${reportId}/preview.pdf`, blob, 'application/pdf');
   const downloadFile = async (path) => must(await sb.storage.from(BUCKET).download(path));
 
+  // ───────────── Cash monthly research packs (made on the analyst's PC by the generator) ─────────────
+  const listCashStockLists = async () =>
+    must(await sb.from('cash_stock_lists').select('*').order('month', { ascending: false }).limit(24));
+  const saveCashStockList = (month, fileName, lists) =>
+    rpc('save_cash_stock_list', {
+      p_month: month,
+      p_file_name: fileName,
+      p_lc: lists.LC,
+      p_mc: lists.MC,
+      p_sc: lists.SC,
+    });
+  const createCashPackDraft = (product, month, fileName, sha256) =>
+    rpc('create_cash_pack_draft', {
+      p_product: product,
+      p_month: month,
+      p_file_name: fileName,
+      p_pdf_sha256: sha256,
+    });
+  const replaceCashPackPdf = (reportId, fileName, sha256) =>
+    rpc('replace_cash_pack_pdf', { p_report_id: reportId, p_file_name: fileName, p_pdf_sha256: sha256 });
+
   // ───────────── weekly contract master (Uploads page → Multi Segment Quick input) ─────────────
   // Newest first; the first entry is the master Quick input uses. At most 50 per call.
   const listSymbolMasters = async (limit = 10) =>
@@ -711,6 +736,10 @@
     createDraft,
     sendReport,
     createCashDraft,
+    listCashStockLists,
+    saveCashStockList,
+    createCashPackDraft,
+    replaceCashPackPdf,
     sendCashReport,
     closeLeg,
     saveBrokerEmail,

@@ -906,7 +906,12 @@ function researchHistory() {
           reportEscape(r.title) +
           '<small>' +
           (r.segment === 'Cash'
-            ? 'Cash ' + reportEscape(r.cashProduct) + ' · ' + r.cashRows.length + ' stocks'
+            ? 'Cash ' +
+              reportEscape(r.cashProduct) +
+              ' · ' +
+              (r.cashKind === 'pack'
+                ? 'research pack · ' + r.packStocks.length + ' stocks'
+                : r.cashRows.length + ' stocks')
             : r.rows.length + ' recommendations') +
           ' · ' +
           reportEscape(r.ref) +

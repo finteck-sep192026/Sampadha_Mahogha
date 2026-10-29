@@ -369,6 +369,44 @@ h3,
   gap: 8px;
   margin-top: 10px;
 }
+/* Cash Segment → Monthly research pack: stock list in, generator PDFs out. */
+.cash-pack-card .panel-head {
+  align-items: flex-end;
+  gap: 16px;
+}
+.cash-pack-month {
+  min-width: 180px;
+}
+.cash-pack-step {
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--line);
+}
+.cash-pack-step h4 {
+  margin: 0 0 6px;
+}
+.cash-pack-file {
+  cursor: pointer;
+}
+.cash-pack-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+.cash-pack-chips b {
+  min-width: 28px;
+}
+.cash-pack-chips span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tint-blue);
+  color: var(--ink);
+}
+.cash-pack-table small {
+  display: block;
+  color: var(--muted);
+}
 /* Password or email code: the quiet second way in, under the main button. */
 .btn.wide.login-mode-switch {
   min-height: 40px;
