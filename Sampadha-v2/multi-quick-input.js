@@ -188,16 +188,21 @@ function quickContract(master, symbol, expiry, line) {
     );
   const dated = profiles.filter((p) => p.expiry);
   if (!dated.length) return profiles[0];
+  // The master lists the monthly contracts, so a weekly expiry (e.g. 03Nov) takes its lot size,
+  // exchange and instrument from the same month's contract; the typed date is still the expiry sent.
   const exact = dated.find((p) => p.expiry === expiry);
   if (exact) return exact;
-  const nearest = dated
-    .map((p) => p.expiry)
-    .filter((value, index, all) => all.indexOf(value) === index)
-    .sort((a, b) => Math.abs(Date.parse(a) - Date.parse(expiry)) - Math.abs(Date.parse(b) - Date.parse(expiry)))
-    .slice(0, 3);
+  const month = expiry.slice(0, 7),
+    sameMonth = dated.filter((p) => p.expiry.slice(0, 7) === month).sort((a, b) => (a.expiry < b.expiry ? 1 : -1));
+  if (sameMonth.length) return sameMonth[0];
+  const months = [...new Set(dated.map((p) => p.expiry.slice(0, 7)))]
+    .sort()
+    .map((m) => QUICK_MONTHS[Number(m.slice(5, 7)) - 1] + ' ' + m.slice(0, 4))
+    .slice(0, 4);
   throw new Error(
-    line + 'the weekly master has no ' + symbol + ' contract expiring ' + expiry +
-      '. Nearest expiries: ' + nearest.join(', ') + '.',
+    line + 'the weekly master has no ' + symbol + ' contract for ' +
+      QUICK_MONTHS[Number(month.slice(5, 7)) - 1] + ' ' + month.slice(0, 4) +
+      '. Months in the master: ' + months.join(', ') + '.',
   );
 }
 function quickInstrument(profile, symbol) {
@@ -331,7 +336,7 @@ function multiQuickInputMarkup() {
       .join('') +
     '</select></label>';
   return (
-    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Multi recommendations</p><h4>Type the advice basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Every leg needs all three prices, intraday or not, because CARE PaRRVA requires them. Several legs on one line, or the prices on the next line, are read too. Lot sizes, exchange and instrument come from the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
+    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Multi recommendations</p><h4>Type the advice basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Every leg needs all three prices, intraday or not, because CARE PaRRVA requires them. Several legs on one line, or the prices on the next line, are read too. Lot sizes, exchange and instrument come from the expiry month\'s contract in the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
     select('product', 'Product', MULTI_TYPES, 'Giga') +
     select('intraday', 'Intraday', ['NO', 'YES'], 'NO') +
     '<label class="field">Price type<input value="CMP" readonly></label>' +
