@@ -705,36 +705,15 @@ function researchRenderCsvPreview() {
   if (message)
     message.textContent = researchCsvRows.length
       ? researchCsvRows.length + ' recommendation row(s) imported from ' + researchCsvFileName + '.'
-      : 'Upload the 19-column CSV to generate recommendation rows.';
+      : 'Type the basket and press Generate legs.';
   target.innerHTML = researchCsvRows.length
     ? '<div class="research-csv-summary"><div><strong>' +
       reportEscape(researchCsvFileName) +
       '</strong><small>' +
       researchCsvRows.length +
-      ' advice leg(s) ready for PDF</small></div><button type="button" class="btn secondary" id="researchClearCsv">Remove CSV</button></div>' +
+      ' advice leg(s) ready for PDF</small></div><button type="button" class="btn secondary" id="researchClearCsv">Clear legs</button></div>' +
       researchCsvTable(researchCsvRows)
-    : '<div class="research-csv-empty"><strong>No advice-leg CSV uploaded</strong><span>Download the template, fill ProductName through LegId, and upload it here.</span></div>';
-}
-async function researchImportCsv(file) {
-  const message = $('#researchCsvMessage');
-  try {
-    if (!file) throw new Error('Choose a CSV file.');
-    if (file.size > 5 * 1024 * 1024) throw new Error('CSV file must be 5 MB or smaller.');
-    if (!(
-      file.name.toLowerCase().endsWith('.csv') ||
-      file.type === 'text/csv' ||
-      file.type === 'application/vnd.ms-excel'
-    ))
-      throw new Error('Upload a .csv file.');
-    researchCsvRows = researchCsvRowsFromText(await file.text());
-    researchCsvFileName = file.name;
-    researchRenderCsvPreview();
-  } catch (error) {
-    researchCsvRows = [];
-    researchCsvFileName = '';
-    researchRenderCsvPreview();
-    if (message) message.textContent = error.message;
-  }
+    : '<div class="research-csv-empty"><strong>No advice legs yet</strong><span>Type one leg per line in the basket above, then press Generate legs.</span></div>';
 }
 function researchOrdinal(day) {
   const remainder = day % 100;
@@ -1049,7 +1028,7 @@ function researchPage() {
 }
 function researchAttachmentsMarkup() {
   return (
-    '<section class="research-attachments"><div class="research-attachments-heading"><div><h4>Attachments</h4><p>Everything after the CSV import stays the same. Add up to three images or PDFs; uploaded images appear in the generated report PDF.</p></div><strong>3 slots</strong></div><div class="research-upload-tabs" role="tablist" aria-label="Attachment uploads">' +
+    '<section class="research-attachments"><div class="research-attachments-heading"><div><h4>Attachments</h4><p>Everything after the advice basket stays the same. Add up to three images or PDFs; uploaded images appear in the generated report PDF.</p></div><strong>3 slots</strong></div><div class="research-upload-tabs" role="tablist" aria-label="Attachment uploads">' +
     [1, 2, 3]
       .map(
         (number, index) =>
@@ -1069,8 +1048,9 @@ function researchAttachmentsMarkup() {
 }
 researchPage = function () {
   return (
-    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">Research workspace</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Upload CSV & research</span><span>2. Preview & choose recipients</span><span>3. Sign with Aadhaar & send</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import"><div class="research-csv-heading"><div><p class="overline">Multi recommendations</p><h3>Upload advice-leg CSV</h3><p>Upload the exact 19-column format from ProductName through LegId. Each CSV row becomes one recommendation in the preview, PDF and Positions. Published date is stamped automatically at import time.</p></div><a class="btn secondary" href="multi-recommendations-template.csv" download>Download 19-column template</a></div><label class="research-csv-upload" for="researchCsvInput"><span class="research-csv-icon">CSV</span><strong>Choose advice-leg CSV</strong><small>CSV only · 19 required headers · maximum 5 MB · up to 50 rows</small><input id="researchCsvInput" type="file" accept=".csv,text/csv"></label><p id="researchCsvMessage" class="research-message" role="status">Upload the 19-column CSV to generate recommendation rows.</p>' +
+    '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">Research workspace</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Advice basket & research</span><span>2. Preview & choose recipients</span><span>3. Sign with Aadhaar & send</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import">' +
     (typeof multiQuickInputMarkup === 'function' ? multiQuickInputMarkup() : '') +
+    '<p id="researchCsvMessage" class="research-message" role="status">Type the basket and press Generate legs.</p>' +
     '<div id="researchCsvPreview"></div></section>' +
     researchAttachmentsMarkup() +
     '<div class="form-grid research-section">' +
@@ -1872,8 +1852,6 @@ $('#content').addEventListener('click', (e) => {
   if (clearCsv && reportAllowed()) {
     researchCsvRows = [];
     researchCsvFileName = '';
-    const input = $('#researchCsvInput');
-    if (input) input.value = '';
     researchRenderCsvPreview();
     return;
   }
@@ -1951,11 +1929,6 @@ $('#content').addEventListener('click', (e) => {
   }
 });
 $('#content').addEventListener('change', (e) => {
-  if (e.target.id === 'researchCsvInput' && reportAllowed()) {
-    researchImportCsv(e.target.files[0]);
-    e.target.value = '';
-    return;
-  }
   if (e.target.matches('[data-position-filter]') && reportAllowed()) {
     const key = e.target.dataset.positionFilter;
     researchPositionFilters[key] = [
