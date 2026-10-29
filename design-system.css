@@ -369,6 +369,18 @@ h3,
   gap: 8px;
   margin-top: 10px;
 }
+/* "Forgot your password?" under the sign-in form: a plain text link. */
+.login-forgot {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent, var(--blue));
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
 /* Cash Segment → Monthly research pack: stock list in, generator PDFs out. */
 .cash-pack-card .panel-head {
   align-items: flex-end;
