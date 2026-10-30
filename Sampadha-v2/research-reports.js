@@ -383,6 +383,27 @@ const RESEARCH_IMPORT_COLUMNS = [
   ['optionStrikePrice', 'OptionStrikePrice'],
   ['legId', 'LegId'],
 ];
+// What people read in the tables: the same words as the report PDF, not the API field names.
+const RESEARCH_PLAIN_LABELS = {
+  ProductName: 'Product name',
+  AdviceName: 'Advice name',
+  ExchangeName: 'Exchange',
+  StrategyName: 'Strategy',
+  IfIntraday: 'Intraday',
+  PriceType: 'Price type',
+  BuyOrSell: 'Buy/Sell',
+  CEorPE: 'CE/PE',
+  ContractName: 'Contract',
+  ContractExpiryDate: 'Expiry date',
+  EntryPriceStart: 'Entry start',
+  EntryPriceEnd: 'Entry end',
+  TargetPrice: 'Target',
+  StopLoss: 'Stop loss',
+  ExitPrice: 'Exit price',
+  OptionStrikePrice: 'Strike',
+  LegId: 'Leg ID',
+};
+const researchLabel = (label) => RESEARCH_PLAIN_LABELS[label] || label;
 const RESEARCH_COLUMNS = [
   ...RESEARCH_IMPORT_COLUMNS,
   ['published', 'Published date'],
@@ -702,7 +723,7 @@ const RESEARCH_LEG_COLUMNS = RESEARCH_IMPORT_COLUMNS.flatMap((column) =>
 function researchCsvTable(rows) {
   return (
     '<div class="table-wrap"><table class="table research-csv-table"><thead><tr><th>Row</th>' +
-    RESEARCH_LEG_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
+    RESEARCH_LEG_COLUMNS.map(([, label]) => '<th>' + researchLabel(label) + '</th>').join('') +
     '</tr></thead><tbody>' +
     rows
       .map(
@@ -728,7 +749,7 @@ function researchRenderCsvPreview() {
   if (message)
     message.textContent = researchCsvRows.length
       ? researchCsvRows.length + ' recommendation row(s) imported from ' + researchCsvFileName + '.'
-      : 'Type the basket and press Generate legs.';
+      : '';
   target.innerHTML = researchCsvRows.length
     ? '<div class="research-csv-summary"><div><strong>' +
       reportEscape(researchCsvFileName) +
@@ -792,7 +813,7 @@ function researchRecipients(text, checked) {
 function researchTable(rows) {
   return (
     '<div class="table-wrap"><table class="table research-order-table"><thead><tr>' +
-    RESEARCH_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
+    RESEARCH_COLUMNS.map(([, label]) => '<th>' + researchLabel(label) + '</th>').join('') +
     '</tr></thead><tbody>' +
     rows
       .map(
@@ -1693,7 +1714,7 @@ function researchOrdersPage() {
     '</strong> ' +
     researchOrderFilter.toLowerCase() +
     ' position(s) match the selected filters.</p><h4>Multi recommendations</h4><div class="table-wrap"><table class="table research-order-table"><thead><tr><th>Client IDs</th>' +
-    RESEARCH_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
+    RESEARCH_COLUMNS.map(([, label]) => '<th>' + researchLabel(label) + '</th>').join('') +
     '<th>Closing price</th><th>Closed lots</th><th>Remaining lots</th><th>Remaining quantity</th><th>Last exit</th><th>Action</th></tr></thead><tbody>' +
     positionRows +
     (!rows.length

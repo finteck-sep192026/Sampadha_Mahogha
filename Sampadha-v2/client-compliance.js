@@ -199,11 +199,11 @@ function staffCompliancePage() {
           `<tr><td><b>${esc(r.full_name)}</b><small>${esc(r.login_id)}${r.is_active ? '' : ' · inactive'}</small></td><td>${
             r.risk_category
               ? `<span class="status ${r.derivatives_suitable ? 'green' : 'gold'}">${esc(r.risk_category)}</span><small>${r.risk_score}/36 · ${esc(complianceDate(r.risk_at))}${r.derivatives_suitable ? '' : ' · F&O may not suit'}</small>`
-              : '<span class="status red">Not done</span>'
+              : '<span class="status gray">Not done</span>'
           }</td><td>${
             r.agreement_signed_at
               ? `<span class="status green">Signed</span><small>${esc(complianceDate(r.agreement_signed_at))}</small>`
-              : `<span class="status ${r.documents_pending ? 'gold' : 'red'}">${r.documents_pending ? 'Sent, not signed' : 'Not sent'}</span>`
+              : `<span class="status ${r.documents_pending ? 'gold' : 'gray'}">${r.documents_pending ? 'Sent, not signed' : 'Not sent'}</span>`
           }</td><td>${
             admin
               ? `<form class="kyc-form" data-kyc="${esc(r.login_id)}"><select name="status">${['Verified', 'Pending', 'Rejected'].map((s) => `<option ${String(r.kyc_status || '').startsWith(s) ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn secondary">Save</button></form><small>${esc(r.kyc_status || '—')}</small>`
