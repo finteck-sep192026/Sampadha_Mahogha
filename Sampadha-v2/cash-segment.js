@@ -468,7 +468,7 @@ function cashPdfPanel(report) {
     ' · ' +
     (report.cashKind === 'pack'
       ? report.packStocks.length + ' stocks · research pack (' + cashEscape(report.fileName) + ')'
-      : report.rows.length + ' recommendations') +
+      : report.rows.length + (report.rows.length === 1 ? ' recommendation' : ' recommendations')) +
     '</p></div><button type="button" class="btn secondary" data-cash-download="' +
     report.id +
     '">Download PDF</button></div><p id="cashPdfStatus" class="research-message" role="status">Generating PDF preview...</p><iframe id="cashPdfViewer" data-report="' +
