@@ -1752,3 +1752,17 @@ a.btn {
   height: 40px;
   min-height: 40px;
 }
+
+/* Light/dark switch: the new palette is revealed by a circle from the switch (theme-mode.js), so
+   the browser's default cross-fade is turned off for that one transition. */
+:root.mode-switching::view-transition-old(root),
+:root.mode-switching::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root.mode-switching::view-transition-old(root) {
+  z-index: 1;
+}
+:root.mode-switching::view-transition-new(root) {
+  z-index: 2;
+}

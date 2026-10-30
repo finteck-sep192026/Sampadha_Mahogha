@@ -40,9 +40,24 @@
     try {
       localStorage.setItem(KEY, next);
     } catch {}
-    // A short cross-fade between the two palettes where the browser supports it.
+    // The new palette spreads out from the switch as a circle (View Transitions, where the
+    // browser has it); with reduced motion, or without the API, it changes at once.
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (document.startViewTransition && !still) document.startViewTransition(() => apply(next));
-    else apply(next);
+    if (!document.startViewTransition || still) return apply(next);
+    const box = event.target.closest('[data-mode-toggle]').getBoundingClientRect(),
+      x = box.left + box.width / 2,
+      y = box.top + box.height / 2,
+      radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    root.classList.add('mode-switching');
+    const transition = document.startViewTransition(() => apply(next));
+    transition.ready
+      .then(() =>
+        root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 620, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', pseudoElement: '::view-transition-new(root)' },
+        ),
+      )
+      .catch(() => {});
+    transition.finished.finally(() => root.classList.remove('mode-switching'));
   });
 })();
