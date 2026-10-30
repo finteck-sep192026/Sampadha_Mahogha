@@ -1687,3 +1687,40 @@ a.btn {
     min-width: 0;
   }
 }
+
+/* ───────────── refinement, round 4 (30 Oct 2026) ───────────── */
+
+/* Figures: Mona Sans draws a slashed zero in its tabular (equal-width) figures, so IDs, dates
+   and amounts read "CL-1Ø01". Its proportional figures have a plain zero; use them everywhere.
+   Right-aligned amount columns still line up on their last digit. */
+:where(*) {
+  font-variant-numeric: lining-nums proportional-nums !important;
+}
+
+/* Recommendation details pop-up: space under the header (its logo line is gone), and two
+   columns of facts on a phone instead of fourteen stacked boxes. */
+#pdfBody .detail-grid {
+  padding: 20px 22px 0;
+}
+@media (max-width: 760px) {
+  .pdf-modal {
+    padding: 12px;
+  }
+  #pdfBody .detail-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 16px 16px 0;
+  }
+  #pdfBody .detail {
+    padding: 10px 12px;
+  }
+  #pdfBody .pdf-disclaimer {
+    margin: 16px;
+  }
+}
+/* The line under a workflow heading is muted, like every card head. */
+.research-workflow-header > div > p:not(.overline) {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}

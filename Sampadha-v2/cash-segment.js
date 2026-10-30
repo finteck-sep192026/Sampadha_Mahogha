@@ -461,7 +461,7 @@ function cashPdfPanel(report) {
     cashEscape(report.ref) +
     ' · ' +
     cashEscape(cashStatusLabel(report)) +
-    '</p><h3>View PDF</h3><p>' +
+    '</p><h3>Report PDF</h3><p>' +
     cashEscape(report.title) +
     ' · ' +
     cashEscape(report.product) +
