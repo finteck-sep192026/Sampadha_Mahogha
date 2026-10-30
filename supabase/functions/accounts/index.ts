@@ -29,7 +29,7 @@ const PREFIX: Record<string, [string, number, number]> = {
   client: ['CL', 1001, 4],
 };
 const PRODUCTS = ['Cash', 'Multi', 'All'];
-const TIERS = ['Nano', 'Micro', 'Mini', 'Mega', 'Giga'];
+const TIERS = ['Bronze', 'Silver', 'Palladium', 'Platinum', 'Gold', 'Rhodium'];
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',

@@ -371,7 +371,7 @@ function multiQuickInputMarkup() {
     '</select></label>';
   return (
     '<div id="quickBasket" class="quick-basket"><div><p class="overline">Multi recommendations</p><h4>Type the advice basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, @ entry price (or range), T target and SL stop-loss. Every leg needs all three prices, intraday or not, because CARE PaRRVA requires them. Several legs on one line, or the prices on the next line, are read too. Lot sizes, exchange and instrument come from the expiry month\'s contract in the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
-    select('product', 'Product', MULTI_TYPES, 'Giga') +
+    select('product', 'Product', MULTI_TYPES, MULTI_TYPES[0]) +
     select('intraday', 'Intraday', ['NO', 'YES'], 'NO') +
     '<label class="field">Price type<input value="CMP" readonly></label>' +
     '</div><label class="field">Basket<textarea class="research-textarea" data-quick="basket" rows="5" spellcheck="false" placeholder="CB Nifty 03Nov 24000C+3 @120-125 T180 SL95&#10;PB Nifty 10Nov 24200P-1 @85 T40 SL110"></textarea></label><small class="research-notice">CB = CALL BUY, PB = PUT BUY, BC = BULL CALL, BP = BULL PUT, RP = RATIO PUT, RC = RATIO CALL. Lines with the same prefix and symbol form one strategy; each basket gets its own AdviceName so CARE PaRRVA records it as a new advice.</small><div class="quick-basket-actions"><button type="button" class="btn secondary" data-quick-generate>Generate legs</button><span id="quickBasketMaster" class="research-notice"></span></div></div>'

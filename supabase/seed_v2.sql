@@ -67,19 +67,19 @@ select p.id, s.plan, case s.plan when 'Essential' then '{Cash}'::text[] when 'Gr
                                  else '{Cash,Multi,All}' end,
        s.tier, 'Quarterly', '2026-04-01', '2027-03-31', 'Active'
 from (values
-  ('CL-1001', 'Premium', 'Nano'),
-  ('CL-1002', 'Growth', 'Micro'),
-  ('CL-1003', 'Essential', 'Mini'),
-  ('CL-1004', 'Premium', 'Mega'),
-  ('CL-1005', 'Growth', 'Giga'),
-  ('CL-1006', 'Premium', 'Nano'),
-  ('CL-1007', 'Essential', 'Micro'),
-  ('CL-1008', 'Growth', 'Mini'),
-  ('CL-1009', 'Premium', 'Mega'),
-  ('CL-1010', 'Essential', 'Giga'),
-  ('CL-1011', 'Growth', 'Nano'),
-  ('CL-1012', 'Premium', 'Micro'),
-  ('CL-1013', 'Essential', 'Mini')
+  ('CL-1001', 'Premium', 'Bronze'),
+  ('CL-1002', 'Growth', 'Silver'),
+  ('CL-1003', 'Essential', 'Palladium'),
+  ('CL-1004', 'Premium', 'Platinum'),
+  ('CL-1005', 'Growth', 'Gold'),
+  ('CL-1006', 'Premium', 'Bronze'),
+  ('CL-1007', 'Essential', 'Silver'),
+  ('CL-1008', 'Growth', 'Palladium'),
+  ('CL-1009', 'Premium', 'Platinum'),
+  ('CL-1010', 'Essential', 'Gold'),
+  ('CL-1011', 'Growth', 'Bronze'),
+  ('CL-1012', 'Premium', 'Silver'),
+  ('CL-1013', 'Essential', 'Palladium')
 ) as s (login_id, plan, tier)
 join v2.profiles p on p.login_id = s.login_id;
 
