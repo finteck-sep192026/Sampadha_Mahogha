@@ -415,7 +415,8 @@ const reportEscape = (value) =>
   );
 const reportTime = () => new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
 const reportAllowed = () => ['ra', 'admin'].includes(state.role);
-const MULTI_TYPES = ['Nano', 'Micro', 'Mini', 'Mega', 'Giga'];
+// Multi products (tiers), lowest to highest. Older reports may still show Nano … Giga.
+const MULTI_TYPES = ['Bronze', 'Silver', 'Palladium', 'Platinum', 'Gold', 'Rhodium'];
 const RESEARCH_SECTIONS = ['Technical', 'Derivatives', 'Quantitative', 'Risks'];
 // CARE PaRRVA instrument codes per exchange; options carry CE/PE and a strike, futures do not.
 const RESEARCH_INSTRUMENTS = {
@@ -1046,7 +1047,7 @@ function researchHistory() {
 }
 function researchEntry() {
   const fields = [
-    ['product', 'Product', 'text', 'Nano / Micro / Mini / Mega / Giga'],
+    ['product', 'Product', 'text', 'Bronze / Silver / Palladium / Platinum / Gold / Rhodium'],
     ['symbol', 'Symbol', 'text', 'NIFTY / SENSEX'],
     ['expiry', 'Expiry date', 'date', 'YYYY-MM-DD'],
     ['strike', 'Strike price', 'number', 'e.g. 25000'],
@@ -1517,7 +1518,7 @@ function researchSendChoices(form) {
     eligible = new Set(researchEligible(types).map((c) => c.id)),
     selected = researchRecipients(d.get('recipients'), d.getAll('client'));
   if (selected.ids.length || selected.invalid.length) {
-    if (!types.length) return { error: 'Choose Nano, Micro, Mini, Mega or Giga to show clients.' };
+    if (!types.length) return { error: 'Choose a Multi product (Bronze, Silver, Palladium, Platinum, Gold or Rhodium) to show clients.' };
     if (selected.invalid.length)
       return { error: 'Unknown client IDs/emails: ' + selected.invalid.join(', ') };
     if (selected.ids.some((id) => !eligible.has(id)))

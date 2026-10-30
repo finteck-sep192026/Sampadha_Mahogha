@@ -152,7 +152,7 @@ function clientOverview() {
     ['Unread alerts', String(unread), 'In the portal and by email'],
     ['Reports received', String(received), 'Signed research sent to you'],
     ['Cash ideas', String(cashRecommendations.length), 'LC, MC, SC and All'],
-    ['Multi updates', String(multiRecommendations.length), 'Nano to Giga'],
+    ['Multi updates', String(multiRecommendations.length), 'Bronze to Rhodium'],
   ])}<section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Your checklist</h3><p>${done === 3 ? 'All done. Thank you.' : `${done} of 3 done`}</p></div><button class="btn secondary" data-go="compliance">Open</button></div><div class="compliance-checklist single">${tick(Boolean(rp), 'Risk profile', rp ? rp.category : 'Answer nine questions')}${tick(agreement, 'Client agreement', agreement ? 'Signed' : 'Sign it with Aadhaar eSign')}${tick(kyc, 'KYC', state.user.kyc)}</div></article><article class="card panel"><div class="panel-head"><div><h3>Latest notifications</h3><p>The three most recent</p></div><button class="btn secondary" data-go="notifications">View all</button></div>${alertRows(clientAlerts.slice(0, 3))}</article></section>`;
 }
 
