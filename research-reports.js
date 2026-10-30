@@ -874,10 +874,8 @@ function researchRenderAttachments() {
   });
   list.innerHTML = file
     ? researchAttachmentCards([file], true)
-    : '<div class="research-attachment-empty"><strong>Upload ' +
-      (researchAttachmentTab + 1) +
-      ' is empty</strong><span>Choose, drag and drop, or paste an image into this tab.</span></div>';
-  if (message) message.textContent = ready + ' of 3 upload tabs ready.';
+    : '';
+  if (message) message.textContent = ready ? ready + ' of 3 attachments ready.' : '';
 }
 function researchReadFile(file) {
   return new Promise((resolve, reject) => {
@@ -956,7 +954,7 @@ function researchHistory() {
               (r.cashKind === 'pack'
                 ? 'research pack · ' + r.packStocks.length + ' stocks'
                 : r.cashRows.length + ' stocks')
-            : r.rows.length + ' recommendations') +
+            : r.rows.length + (r.rows.length === 1 ? ' recommendation' : ' recommendations')) +
           ' · ' +
           reportEscape(r.ref) +
           '</small></td><td>' +
@@ -1099,7 +1097,7 @@ researchPage = function () {
   return (
     '<article class="card panel"><div class="research-workflow-header"><div><p class="overline">Research workspace</p><h3>Create Multi Segment report</h3></div><span class="badge">Multi</span></div><div class="research-steps"><span>1. Advice basket & research</span><span>2. Preview & choose recipients</span><span>3. Sign with Aadhaar & send</span><span>4. Manage positions</span></div><form id="researchCreate"><div class="form-grid"><label class="field">Report title<input name="title" required maxlength="150" placeholder="Enter report title"></label><label class="field">Product<input value="Multi" readonly></label></div><section class="research-csv-import">' +
     (typeof multiQuickInputMarkup === 'function' ? multiQuickInputMarkup() : '') +
-    '<p id="researchCsvMessage" class="research-message" role="status">Type the basket and press Generate legs.</p>' +
+    '<p id="researchCsvMessage" class="research-message" role="status"></p>' +
     '<div id="researchCsvPreview"></div></section>' +
     researchAttachmentsMarkup() +
     '<div class="form-grid research-section">' +
