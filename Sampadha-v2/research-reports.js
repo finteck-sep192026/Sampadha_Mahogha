@@ -628,8 +628,10 @@ function researchCsvRowsFromText(text) {
       entryPriceStart = optional('entryPriceStart'),
       entryPriceEnd = optional('entryPriceEnd'),
       lot = Number(get('lot')),
-      targetPrice = optional('targetPrice'),
-      stopLoss = optional('stopLoss'),
+      // Target and stop-loss are never required; 0 means none, like a blank.
+      none = (key) => (Number(get(key)) === 0 ? '' : optional(key)),
+      targetPrice = none('targetPrice'),
+      stopLoss = none('stopLoss'),
       exitText = get('exitPrice'),
       exitPrice = exitText ? Number(exitText) : '',
       strikeText = get('optionStrikePrice'),
@@ -680,9 +682,8 @@ function researchCsvRowsFromText(text) {
       fail('EntryPriceStart and EntryPriceEnd must both be positive numbers, or both blank.');
     if (!positive(targetPrice) || !positive(stopLoss))
       fail('TargetPrice and StopLoss must be blank or positive numbers.');
-    // Intraday legs need an entry and a target; the stop-loss stays optional (user's rule).
-    if (ifIntraday === 'YES' && (!given(entryPriceStart) || !given(targetPrice)))
-      fail('an intraday leg needs an entry price and a target.');
+    // Intraday legs need an entry price; target and stop-loss stay optional (user's rule).
+    if (ifIntraday === 'YES' && !given(entryPriceStart)) fail('an intraday leg needs an entry price.');
     if (given(entryPriceStart)) {
       if (buyOrSell === 'BUY' && entryPriceStart > entryPriceEnd)
         fail('for BUY, EntryPriceStart is the lower price (start must not exceed end).');
