@@ -70,12 +70,15 @@
     ];
     return `${day} ${names[Number(m) - 1]} ${y}`;
   };
+  // A price left blank (a non-intraday Multi leg) reads "—", not ₹0.
   const rupee = (n, decimals = 0) =>
-    '₹' +
-    Number(n).toLocaleString('en-IN', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    });
+    n === '' || n == null
+      ? '—'
+      : '₹' +
+        Number(n).toLocaleString('en-IN', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
   const must = ({ data, error }) => {
     if (error) throw new Error(error.message);
     return data;
@@ -211,7 +214,7 @@
     lots: l.lots,
     lotSize: l.lot_size,
     quantity: l.quantity,
-    price: Number(l.initiation_price),
+    price: l.initiation_price == null ? '' : Number(l.initiation_price),
     t1: l.t1 == null ? '' : Number(l.t1),
     t2: l.t2 == null ? '' : Number(l.t2),
     t3: l.t3 == null ? '' : Number(l.t3),
@@ -227,7 +230,7 @@
     ceOrPe: l.option_type || '',
     contractName: l.contract_name || '',
     contractExpiryDate: l.expiry,
-    entryPriceStart: Number(l.initiation_price),
+    entryPriceStart: l.initiation_price == null ? '' : Number(l.initiation_price),
     entryPriceEnd: l.entry_price_end == null ? '' : Number(l.entry_price_end),
     lot: l.lots,
     targetPrice: l.t1 == null ? '' : Number(l.t1),

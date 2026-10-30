@@ -623,11 +623,13 @@ function researchCsvRowsFromText(text) {
       ceText = get('ceOrPe').toUpperCase(),
       contractName = get('contractName').toUpperCase(),
       contractExpiryDate = get('contractExpiryDate'),
-      entryPriceStart = Number(get('entryPriceStart')),
-      entryPriceEnd = Number(get('entryPriceEnd')),
+      // Prices may be blank (''): all of them when Intraday is NO, the stop-loss when it is YES.
+      optional = (key) => (get(key) === '' ? '' : Number(get(key))),
+      entryPriceStart = optional('entryPriceStart'),
+      entryPriceEnd = optional('entryPriceEnd'),
       lot = Number(get('lot')),
-      targetPrice = Number(get('targetPrice')),
-      stopLoss = Number(get('stopLoss')),
+      targetPrice = optional('targetPrice'),
+      stopLoss = optional('stopLoss'),
       exitText = get('exitPrice'),
       exitPrice = exitText ? Number(exitText) : '',
       strikeText = get('optionStrikePrice'),
@@ -672,40 +674,34 @@ function researchCsvRowsFromText(text) {
     if (contractExpiryDate < researchDefaultPublished().slice(0, 10))
       fail('ContractExpiryDate is in the past.');
     if (!Number.isSafeInteger(lot) || lot < 1) fail('Lot must be a positive whole number.');
-    if (
-      !Number.isFinite(entryPriceStart) ||
-      entryPriceStart <= 0 ||
-      !Number.isFinite(entryPriceEnd) ||
-      entryPriceEnd <= 0
-    )
-      fail('EntryPriceStart and EntryPriceEnd must be positive numbers.');
-    if (buyOrSell === 'BUY' && entryPriceStart > entryPriceEnd)
-      fail('for BUY, EntryPriceStart is the lower price (start must not exceed end).');
-    if (buyOrSell === 'SELL' && entryPriceStart < entryPriceEnd)
-      fail('for SELL, EntryPriceStart is the higher price (start must not be below end).');
-    if (
-      !Number.isFinite(targetPrice) ||
-      targetPrice <= 0 ||
-      !Number.isFinite(stopLoss) ||
-      stopLoss <= 0
-    )
-      fail('TargetPrice and StopLoss must be positive numbers.');
-    // PaRRVA only asks for prices above zero, so a swapped target and stop-loss would be signed
-    // and filed as typed. A BUY profits above its entry range, a SELL below it.
-    const entryLow = Math.min(entryPriceStart, entryPriceEnd),
-      entryHigh = Math.max(entryPriceStart, entryPriceEnd);
-    if (buyOrSell === 'BUY' && !(targetPrice > entryHigh && stopLoss < entryLow))
-      fail(
-        'for BUY the target must be above the entry price and the stop-loss below it (entry ' +
-          (entryLow === entryHigh ? entryLow : entryLow + '-' + entryHigh) +
-          ', target ' + targetPrice + ', stop-loss ' + stopLoss + ').',
-      );
-    if (buyOrSell === 'SELL' && !(targetPrice < entryLow && stopLoss > entryHigh))
-      fail(
-        'for SELL the target must be below the entry price and the stop-loss above it (entry ' +
-          (entryLow === entryHigh ? entryLow : entryLow + '-' + entryHigh) +
-          ', target ' + targetPrice + ', stop-loss ' + stopLoss + ').',
-      );
+    const given = (value) => value !== '',
+      positive = (value) => !given(value) || (Number.isFinite(value) && value > 0);
+    if (!positive(entryPriceStart) || !positive(entryPriceEnd) || given(entryPriceStart) !== given(entryPriceEnd))
+      fail('EntryPriceStart and EntryPriceEnd must both be positive numbers, or both blank.');
+    if (!positive(targetPrice) || !positive(stopLoss))
+      fail('TargetPrice and StopLoss must be blank or positive numbers.');
+    // Intraday legs need an entry and a target; the stop-loss stays optional (user's rule).
+    if (ifIntraday === 'YES' && (!given(entryPriceStart) || !given(targetPrice)))
+      fail('an intraday leg needs an entry price and a target.');
+    if (given(entryPriceStart)) {
+      if (buyOrSell === 'BUY' && entryPriceStart > entryPriceEnd)
+        fail('for BUY, EntryPriceStart is the lower price (start must not exceed end).');
+      if (buyOrSell === 'SELL' && entryPriceStart < entryPriceEnd)
+        fail('for SELL, EntryPriceStart is the higher price (start must not be below end).');
+      // A swapped target or stop-loss would be signed and filed as typed: a BUY profits above its
+      // entry range, a SELL below it. Only the prices that were given are checked.
+      const entryLow = Math.min(entryPriceStart, entryPriceEnd),
+        entryHigh = Math.max(entryPriceStart, entryPriceEnd),
+        entry = entryLow === entryHigh ? entryLow : entryLow + '-' + entryHigh;
+      if (buyOrSell === 'BUY' && given(targetPrice) && !(targetPrice > entryHigh))
+        fail('for BUY the target must be above the entry price (entry ' + entry + ', target ' + targetPrice + ').');
+      if (buyOrSell === 'BUY' && given(stopLoss) && !(stopLoss < entryLow))
+        fail('for BUY the stop-loss must be below the entry price (entry ' + entry + ', stop-loss ' + stopLoss + ').');
+      if (buyOrSell === 'SELL' && given(targetPrice) && !(targetPrice < entryLow))
+        fail('for SELL the target must be below the entry price (entry ' + entry + ', target ' + targetPrice + ').');
+      if (buyOrSell === 'SELL' && given(stopLoss) && !(stopLoss > entryHigh))
+        fail('for SELL the stop-loss must be above the entry price (entry ' + entry + ', stop-loss ' + stopLoss + ').');
+    }
     if (exitPrice !== '' && (!Number.isFinite(exitPrice) || exitPrice <= 0))
       fail('ExitPrice must be blank or a positive number.');
     if (!/^\d{1,9}$/.test(legId) || Number(legId) < 1)
