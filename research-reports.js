@@ -1296,7 +1296,11 @@ function researchReleasePdfPreview() {
 }
 function researchPdfPanel(r) {
   return (
-    '<article class="card panel research-section research-pdf-shell"><div class="research-workflow-header"><div><p class="overline">Report preview</p><h3>View PDF</h3><p>The report PDF appears here above the Aadhaar eSign step.</p></div><button type="button" class="btn secondary" data-research-pdf="' +
+    '<article class="card panel research-section research-pdf-shell"><div class="research-workflow-header"><div><p class="overline">' +
+    reportEscape(r.ref || 'Report preview') +
+    '</p><h3>Report PDF</h3><p>' +
+    reportEscape(r.title) +
+    '</p></div><button type="button" class="btn secondary" data-research-pdf="' +
     r.id +
     '">Download PDF</button></div><p id="researchPdfStatus" class="research-message" role="status">Generating PDF preview...</p><iframe id="researchPdfViewer" data-report="' +
     r.id +
