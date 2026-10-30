@@ -272,8 +272,8 @@ function quickBasketLines(text) {
     });
   return legs;
 }
-// Prices by Intraday (user's rule, 30 Oct 2026): YES needs @ entry and T target (SL optional);
-// NO needs none of them. Any price that is typed must still be a clean number.
+// Prices (user's rules, 30 Oct 2026): target and stop-loss are never required (blank or 0 = none);
+// an Intraday YES leg needs its @ entry price. Any price that is typed must be a clean number.
 function quickParseLeg(text, line, intraday = 'NO') {
   const match = text.match(QUICK_LEG);
   if (!match) throw new Error(line + 'use the format ' + QUICK_EXAMPLE);
@@ -284,7 +284,7 @@ function quickParseLeg(text, line, intraday = 'NO') {
     stop = rest.match(/(?:^| )SL ?(\d+(?:\.\d+)?)(?= |$)/),
     missing =
       intraday === 'YES'
-        ? [!entry && '@ entry price', !target && 'T target'].filter(Boolean)
+        ? [!entry && '@ entry price'].filter(Boolean)
         : [];
   if (missing.length)
     throw new Error(line + 'an intraday leg needs ' + missing.join(' and ') + ', e.g. ' + QUICK_EXAMPLE);
@@ -294,7 +294,7 @@ function quickParseLeg(text, line, intraday = 'NO') {
     throw new Error(line + 'could not read "' + leftover.trim() + '". Use the format ' + QUICK_EXAMPLE);
   return [code, symbol, day, month, strike, cp, direction, lots, entry?.[1], entry?.[2], target?.[1], stop?.[1]];
 }
-// Legs whose entry, target or stop-loss is missing: [{ index, text, side, entry, target, stop }].
+// Intraday legs without an entry price: [{ index, text, side, entry, target, stop }].
 // Lines that are not in the basket format at all are left to quickParseLeg's message.
 function quickMissingPrices(lines, intraday) {
   if (intraday !== 'YES') return [];
@@ -306,7 +306,7 @@ function quickMissingPrices(lines, intraday) {
         entry = rest.match(/@ ?(\d+(?:\.\d+)?)(?: ?- ?(\d+(?:\.\d+)?))?(?= |$)/),
         target = rest.match(/(?:^| )T ?(\d+(?:\.\d+)?)(?= |$)/),
         stop = rest.match(/(?:^| )SL ?(\d+(?:\.\d+)?)(?= |$)/);
-      if (entry && target) return null;
+      if (entry) return null;
       return {
         index,
         text,
@@ -327,17 +327,16 @@ function quickRenderMissing(panel, missing) {
       '" inputmode="decimal" autocomplete="off" placeholder="' + hint + '"' + (value ? ' readonly' : '') + '>';
   box.hidden = false;
   box.innerHTML =
-    '<p class="research-notice"><b>Add the missing prices.</b> An intraday leg needs an entry price and a target (stop-loss is optional). BUY: target above the entry. SELL: target below it.</p>' +
-    '<div class="table-wrap"><table class="table quick-prices-table"><thead><tr><th>Leg</th><th>Basket line</th><th>Entry</th><th>Target</th></tr></thead><tbody>' +
+    '<p class="research-notice"><b>Add the entry price.</b> An intraday leg needs its entry price (one price, or a range like 120-125). Target and stop-loss stay optional.</p>' +
+    '<div class="table-wrap"><table class="table quick-prices-table"><thead><tr><th>Leg</th><th>Basket line</th><th>Entry</th></tr></thead><tbody>' +
     missing
       .map(
         (leg) =>
           '<tr><td>' + (leg.index + 1) + '</td><td><code>' + reportEscape(leg.text) + '</code><small>' + leg.side +
-          '</small></td><td>' + input(leg, 'entry', leg.entry, 'e.g. 120 or 120-125') + '</td><td>' +
-          input(leg, 'target', leg.target, 'Target') + '</td></tr>',
+          '</small></td><td>' + input(leg, 'entry', leg.entry, 'e.g. 120 or 120-125') + '</td></tr>',
       )
       .join('') +
-    '</tbody></table></div><p class="error" id="quickPricesError" role="alert"></p><div class="quick-basket-actions"><button type="button" class="btn primary" data-quick-apply-prices>Add prices and generate legs</button><button type="button" class="btn secondary" data-quick-cancel-prices>Cancel</button></div>';
+    '</tbody></table></div><p class="error" id="quickPricesError" role="alert"></p><div class="quick-basket-actions"><button type="button" class="btn primary" data-quick-apply-prices>Add entry and generate legs</button><button type="button" class="btn secondary" data-quick-cancel-prices>Cancel</button></div>';
   box.querySelector('input:not([readonly])')?.focus();
 }
 async function quickGenerate(panel) {
@@ -380,8 +379,9 @@ async function quickGenerate(panel) {
         entryPriceStart: side === 'BUY' ? low : high,
         entryPriceEnd: side === 'BUY' ? high : low,
         lot: Number(lots),
-        targetPrice: target == null ? '' : Number(target),
-        stopLoss: stop == null ? '' : Number(stop),
+        // Target and stop-loss: blank or 0 both mean none.
+        targetPrice: target == null || Number(target) === 0 ? '' : Number(target),
+        stopLoss: stop == null || Number(stop) === 0 ? '' : Number(stop),
         exitPrice: '',
         optionStrikePrice: Number(strike),
         legId,
@@ -414,11 +414,11 @@ function multiQuickInputMarkup() {
       .join('') +
     '</select></label>';
   return (
-    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Multi recommendations</p><h4>Type the advice basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, then the prices. Intraday NO: prices are optional (e.g. CB Nifty 03Nov 24000C+3). Intraday YES: @ entry price (or range) and T target are needed; SL stop-loss is optional. Several legs on one line, or the prices on the next line, are read too. Lot sizes, exchange and instrument come from the expiry month\'s contract in the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
+    '<div id="quickBasket" class="quick-basket"><div><p class="overline">Multi recommendations</p><h4>Type the advice basket</h4><p class="research-notice">One option leg per line: prefix, symbol, expiry, strike with C/P, + buy or − sell with lots, then the prices. Intraday NO: prices are optional (e.g. CB Nifty 03Nov 24000C+3). Intraday YES: the @ entry price (or range) is needed. T target and SL stop-loss are always optional (blank or 0). Several legs on one line, or the prices on the next line, are read too. Lot sizes, exchange and instrument come from the expiry month\'s contract in the latest weekly master on the Uploads page.</p></div><div class="form-grid quick-basket-settings">' +
     select('product', 'Product', MULTI_TYPES, MULTI_TYPES[0]) +
     select('intraday', 'Intraday', ['NO', 'YES'], 'NO') +
     '<label class="field">Price type<input value="CMP" readonly></label>' +
-    '</div><label class="field">Basket<textarea class="research-textarea" data-quick="basket" rows="5" spellcheck="false" placeholder="Intraday NO:  CB Nifty 03Nov 24000C+3&#10;Intraday YES: CB Nifty 03Nov 24000C+3 @120-125 T180"></textarea></label><small class="research-notice">CB = CALL BUY, PB = PUT BUY, BC = BULL CALL, BP = BULL PUT, RP = RATIO PUT, RC = RATIO CALL. Lines with the same prefix and symbol form one strategy; each basket gets its own AdviceName so CARE PaRRVA records it as a new advice.</small><div class="quick-basket-actions"><button type="button" class="btn secondary" data-quick-generate>Generate legs</button><span id="quickBasketMaster" class="research-notice"></span></div><div id="quickPrices" class="quick-prices" hidden></div></div>'
+    '</div><label class="field">Basket<textarea class="research-textarea" data-quick="basket" rows="5" spellcheck="false" placeholder="Intraday NO:  CB Nifty 03Nov 24000C+3&#10;Intraday YES: CB Nifty 03Nov 24000C+3 @120-125"></textarea></label><small class="research-notice">CB = CALL BUY, PB = PUT BUY, BC = BULL CALL, BP = BULL PUT, RP = RATIO PUT, RC = RATIO CALL. Lines with the same prefix and symbol form one strategy; each basket gets its own AdviceName so CARE PaRRVA records it as a new advice.</small><div class="quick-basket-actions"><button type="button" class="btn secondary" data-quick-generate>Generate legs</button><span id="quickBasketMaster" class="research-notice"></span></div><div id="quickPrices" class="quick-prices" hidden></div></div>'
   );
 }
 
@@ -523,7 +523,7 @@ document.querySelector('#content').addEventListener('click', async (event) => {
     quickRenderMissing(panel, missing);
     if (message)
       message.textContent =
-        missing.length + (missing.length === 1 ? ' leg needs' : ' legs need') + ' prices: fill them in below.';
+        missing.length + (missing.length === 1 ? ' leg needs' : ' legs need') + ' an entry price: fill it in below.';
     return;
   }
   prices.hidden = true;
@@ -566,15 +566,14 @@ document.querySelector('#content').addEventListener('click', (event) => {
     error = panel.querySelector('#quickPricesError'),
     value = (leg, key) => panel.querySelector('[data-leg="' + leg + '"][data-price="' + key + '"]')?.value.trim() ?? '';
   for (const leg of quickMissingPrices(lines, panel.querySelector('[data-quick=intraday]').value)) {
-    const entry = value(leg.index, 'entry'),
-      target = value(leg.index, 'target');
-    if (!/^\d+(\.\d+)?( ?- ?\d+(\.\d+)?)?$/.test(entry) || !/^\d+(\.\d+)?$/.test(target)) {
-      error.textContent = 'Leg ' + (leg.index + 1) + ': enter the entry (or a range like 120-125) and the target as numbers.';
+    const entry = value(leg.index, 'entry');
+    if (!/^\d+(\.\d+)?( ?- ?\d+(\.\d+)?)?$/.test(entry)) {
+      error.textContent = 'Leg ' + (leg.index + 1) + ': enter the entry price as a number, or a range like 120-125.';
       panel.querySelector('[data-leg="' + leg.index + '"]:not([readonly])')?.focus();
       return;
     }
     lines[leg.index] =
-      leg.text + (leg.entry ? '' : ' @' + entry.replace(/ /g, '')) + (leg.target ? '' : ' T' + target);
+      leg.text + ' @' + entry.replace(/ /g, '');
   }
   basket.value = lines.join('\n');
   panel.querySelector('[data-quick-generate]').click();
