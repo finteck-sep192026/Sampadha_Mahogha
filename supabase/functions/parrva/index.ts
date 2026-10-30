@@ -395,7 +395,9 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
     throw new HttpError(404, 'Report not found.');
   if (!['Multi', 'Cash'].includes(report.segment))
     throw new HttpError(400, 'Only Multi and Cash Segment reports are sent to CARE PaRRVA.');
-  if (report.esign_status !== 'Signed')
+  // Multi goes to CARE PaRRVA first, before the Aadhaar eSign (user's order, 30 Oct 2026); Cash
+  // reports are still signed first.
+  if (report.segment === 'Cash' && report.esign_status !== 'Signed')
     throw new HttpError(409, 'Complete the Aadhaar eSign before sending to CARE PaRRVA.');
   if (report.parrva_status === 'Submitted')
     throw new HttpError(409, 'This report was already submitted to CARE PaRRVA.');
