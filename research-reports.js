@@ -15,52 +15,68 @@ async function createResearchPdfBlob(report) {
         }),
     ),
   );
-  const canvas = document.createElement('canvas');
-  canvas.width = 1754;
-  canvas.height = 1240;
-  const ctx = canvas.getContext('2d'),
-    images = [];
-  let y = 0,
-    page = 0;
-  const left = 60,
-    right = 1694,
-    bottom = 1140;
-  const begin = () => {
-    page++;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, 1754, 1240);
-    ctx.fillStyle = '#071a35';
-    ctx.fillRect(0, 0, 1754, 105);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 28px Arial';
-    ctx.fillText('SAMPADHA RESEARCH', left, 66);
-    ctx.fillStyle = '#14243b';
-    y = 145;
-  };
-  const finish = () => {
-    ctx.font = '18px Arial';
-    ctx.fillStyle = '#6b7c91';
-    ctx.fillText('Multi research report | Page ' + page, left, 1190);
-    images.push(
-      Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.94).split(',')[1]), (c) =>
-        c.charCodeAt(0),
+  const images = [];
+  // A4 landscape at 150 dpi, one canvas per page, turned into JPEG pages below. Layout: a navy
+  // band with the logo, the title block and a strip of report facts, then each strategy (one
+  // AdviceName) with its legs, the attachments and the research analysis, and on the last page a
+  // framed box where the Aadhaar eSign stamp lands (the esign function places it 560 pt from the
+  // left and 40 pt from the bottom of the last page). Every page has a footer with "Page n of N".
+  const logo = await new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = 'assets/sampadha-logo.png';
+  });
+  try {
+    await Promise.all(
+      ['500 38px Newsreader', '500 24px Newsreader', '400 17px "Mona Sans"', '600 17px "Mona Sans"'].map(
+        (font) => document.fonts.load(font),
       ),
     );
+  } catch {
+    // Georgia / Arial stand in if the brand fonts cannot load.
+  }
+  const SERIF = 'Newsreader, Georgia, serif',
+    SANS = '"Mona Sans", Arial, sans-serif',
+    W = 1754,
+    H = 1240,
+    left = 72,
+    right = W - 72,
+    width = right - left,
+    bottom = 1150,
+    ink = '#13233a',
+    muted = '#5b6b80',
+    navy = '#0b1f3a',
+    gold = '#b8862b',
+    hairline = '#d9e1ea',
+    tint = '#f4f7fb';
+  const pages = [];
+  let ctx,
+    y = 0;
+  const font = (size, weight = 400, family = SANS) => `${weight} ${size}px ${family}`;
+  const text = (value, x, top, style, color = ink, align = 'left') => {
+    ctx.font = style;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(String(value), x, top);
+    ctx.textAlign = 'left';
   };
-  const wrap = (text, width, font) => {
-    ctx.font = font;
+  const rule = (x, top, length, color = hairline, thickness = 1) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, top, length, thickness);
+  };
+  const wrap = (value, max, style) => {
+    ctx.font = style;
     const words = [];
-    for (const word of String(text ?? '-')
-      .replaceAll('—', '-')
-      .split(/\s+/)) {
-      if (ctx.measureText(word).width <= width) {
+    for (const word of String(value ?? '-').replaceAll('—', '-').split(/\s+/)) {
+      if (ctx.measureText(word).width <= max) {
         words.push(word);
         continue;
       }
       let chunk = '';
       for (const char of word) {
         const next = chunk + char;
-        if (ctx.measureText(next).width > width && chunk) {
+        if (ctx.measureText(next).width > max && chunk) {
           words.push(chunk);
           chunk = char;
         } else chunk = next;
@@ -71,7 +87,7 @@ async function createResearchPdfBlob(report) {
     let current = '';
     for (const word of words) {
       const next = current ? current + ' ' + word : word;
-      if (ctx.measureText(next).width > width && current) {
+      if (ctx.measureText(next).width > max && current) {
         lines.push(current);
         current = word;
       } else current = next;
@@ -79,212 +95,257 @@ async function createResearchPdfBlob(report) {
     if (current) lines.push(current);
     return lines.length ? lines : ['-'];
   };
-  const write = (text, options = {}) => {
-    const font = options.font || '22px Arial',
-      color = options.color || '#14243b',
-      gap = options.gap || 32,
-      width = options.width || 1594;
-    for (const paragraph of String(text).split(/\r?\n/)) {
-      for (const value of wrap(paragraph, width, font)) {
-        if (y > bottom) {
-          finish();
-          begin();
-        }
-        ctx.fillStyle = color;
-        ctx.font = font;
-        ctx.fillText(value, left, y);
-        y += gap;
-      }
-    }
-  };
-  const pdfColumns = [
-    ['productName', 'Product name', 80],
-    ['adviceName', 'Advice name', 100],
-    ['exchangeName', 'Exchange', 80],
-    ['strategyName', 'Strategy', 100],
-    ['ifIntraday', 'Intraday', 70],
-    ['priceType', 'Price type', 75],
-    ['buyOrSell', 'Buy/Sell', 65],
-    ['instrument', 'Instrument', 80],
-    ['ceOrPe', 'CE/PE', 60],
-    ['contractName', 'Contract', 100],
-    ['contractExpiryDate', 'Expiry date', 95],
-    ['entryPriceStart', 'Entry start', 80],
-    ['entryPriceEnd', 'Entry end', 80],
-    ['lot', 'Lot', 45],
-    ['lotSize', 'Lot size', 50],
-    ['quantity', 'Qty', 55],
-    ['targetPrice', 'Target', 80],
-    ['stopLoss', 'Stop loss', 75],
-    ['exitPrice', 'Exit price', 75],
-    ['optionStrikePrice', 'Strike', 80],
-    ['legId', 'Leg ID', 60],
-  ];
-  const tableHeader = () => {
-    const height = 58;
-    ctx.fillStyle = '#0d3970';
-    ctx.fillRect(
-      left,
-      y,
-      pdfColumns.reduce((sum, c) => sum + c[2], 0),
-      height,
-    );
-    let x = left;
-    for (const [, label, width] of pdfColumns) {
-      ctx.strokeStyle = '#d6e2f0';
-      ctx.strokeRect(x, y, width, height);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 13px Arial';
-      const lines = wrap(label, width - 10, 'bold 13px Arial').slice(0, 3);
-      lines.forEach((line, i) => ctx.fillText(line, x + 5, y + 18 + i * 15));
-      x += width;
-    }
-    y += height;
-  };
-  const tableRow = (row, index) => {
-    const values = pdfColumns.map(([key, , width]) =>
-        wrap(researchValue(row, key), width - 10, '13px Arial'),
-      ),
-      height = Math.max(48, ...values.map((lines) => lines.length * 16 + 14));
-    if (y + height > bottom) {
-      finish();
-      begin();
-      write(report.title, { font: 'bold 24px Arial', gap: 30 });
-      write('MULTI RECOMMENDATIONS - continued', {
-        font: 'bold 18px Arial',
-        color: '#a06b12',
-        gap: 28,
-      });
-      tableHeader();
-    }
-    let x = left;
-    values.forEach((lines, i) => {
-      const width = pdfColumns[i][2];
-      ctx.fillStyle = index % 2 ? '#f6f9fc' : '#fff';
-      ctx.fillRect(x, y, width, height);
-      ctx.strokeStyle = '#c7d5e5';
-      ctx.strokeRect(x, y, width, height);
-      ctx.fillStyle = '#14243b';
-      ctx.font = '13px Arial';
-      lines.forEach((line, j) => ctx.fillText(line, x + 5, y + 19 + j * 16));
-      x += width;
-    });
-    y += height;
-  };
-  const researchSectionHeader = () => {
-    const height = 46,
-      sectionWidth = 260,
-      detailsWidth = 1334;
-    ctx.fillStyle = '#0d3970';
-    ctx.fillRect(left, y, sectionWidth + detailsWidth, height);
-    ctx.strokeStyle = '#d6e2f0';
-    ctx.strokeRect(left, y, sectionWidth, height);
-    ctx.strokeRect(left + sectionWidth, y, detailsWidth, height);
+  const begin = (continued) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    ctx = canvas.getContext('2d');
+    pages.push(canvas);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 17px Arial';
-    ctx.fillText('Research section', left + 12, y + 29);
-    ctx.fillText('Details', left + sectionWidth + 12, y + 29);
-    y += height;
-  };
-  const drawResearchSections = () => {
-    const sectionWidth = 260,
-      detailsWidth = 1334;
-    if (y + 46 > bottom) {
-      finish();
-      begin();
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = navy;
+    ctx.fillRect(0, 0, W, 96);
+    rule(0, 96, W, gold, 4);
+    let brandX = left;
+    if (logo) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.roundRect(left, 20, 56, 56, 12);
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(left + 3, 23, 50, 50, 10);
+      ctx.clip();
+      ctx.drawImage(logo, left + 3, 23, 50, 50);
+      ctx.restore();
+      brandX = left + 74;
     }
-    write('RESEARCH ANALYSIS', { font: 'bold 22px Arial', color: '#0d3970', gap: 32 });
-    researchSectionHeader();
-    RESEARCH_SECTIONS.forEach((name, index) => {
-      const lines = wrap(report.sections[name], detailsWidth - 24, '17px Arial'),
-        height = Math.max(52, lines.length * 22 + 20);
-      if (y + height > bottom) {
-        finish();
-        begin();
-        write('RESEARCH ANALYSIS - continued', {
-          font: 'bold 22px Arial',
-          color: '#0d3970',
-          gap: 32,
-        });
-        researchSectionHeader();
+    text('Sampadha Research', brandX, 58, font(31, 500, SERIF), '#fff');
+    text('Multi Segment research report', right, 44, font(16, 500), '#b9c6d8', 'right');
+    text(report.ref, right, 70, font(19, 600), '#fff', 'right');
+    y = 146;
+    if (continued) {
+      text(report.title + ' (continued)', left, y, font(20, 500, SERIF), muted);
+      y += 36;
+    }
+  };
+  const ensure = (height) => {
+    if (y + height <= bottom) return false;
+    begin(true);
+    return true;
+  };
+  // A heading never ends a page: it moves on with room for what follows it.
+  const heading = (label) => {
+    ensure(150);
+    y += 14;
+    text(label, left, y, font(26, 500, SERIF), navy);
+    rule(left, y + 14, 56, gold, 3);
+    y += 40;
+  };
+  const money = (value) =>
+    value === '' || value == null || !Number.isFinite(Number(value))
+      ? '—'
+      : '₹' +
+        Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const day = (value) => {
+    const date = new Date(String(value) + 'T00:00:00Z');
+    return Number.isNaN(date.getTime())
+      ? String(value || '—')
+      : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  };
+
+  // ── title block and facts ──
+  begin(false);
+  ctx.letterSpacing = '2px';
+  text('MULTI SEGMENT RECOMMENDATIONS', left, y, font(15, 600), gold);
+  ctx.letterSpacing = '0px';
+  y += 46;
+  for (const line of wrap(report.title, width, font(40, 500, SERIF))) {
+    text(line, left, y, font(40, 500, SERIF));
+    y += 48;
+  }
+  const groups = new Map();
+  for (const row of report.rows) {
+    const key = row.adviceName || row.strategyName || 'Recommendation';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const legs = report.rows.length;
+  text(
+    `${report.ref}   ·   Created ${report.created}   ·   ${legs} ${legs === 1 ? 'leg' : 'legs'} in ${groups.size} ${groups.size === 1 ? 'strategy' : 'strategies'}`,
+    left,
+    y,
+    font(18),
+    muted,
+  );
+  y += 34;
+
+  // ── recommendations: one block per strategy (AdviceName) ──
+  const columns = [
+    ['Leg', 70, (r) => String(r.legId || '—')],
+    ['Buy/Sell', 100, (r) => r.buyOrSell || r.side || '—'],
+    ['Instrument', 120, (r) => r.instrument || '—'],
+    ['Contract', 160, (r) => r.contractName || r.symbol || '—'],
+    ['Expiry', 160, (r) => day(r.contractExpiryDate || r.expiry)],
+    ['Strike', 120, (r) => (r.optionStrikePrice === '' || r.optionStrikePrice == null ? '—' : Number(r.optionStrikePrice).toLocaleString('en-IN')), 'right'],
+    ['CE/PE', 80, (r) => r.ceOrPe || '—'],
+    ['Entry', 190, (r) => (r.entryPriceEnd !== '' && r.entryPriceEnd != null && Number(r.entryPriceEnd) !== Number(r.entryPriceStart) ? money(r.entryPriceStart) + ' – ' + money(r.entryPriceEnd) : money(r.entryPriceStart)), 'right'],
+    ['Target', 110, (r) => money(r.targetPrice), 'right'],
+    ['Stop loss', 110, (r) => money(r.stopLoss), 'right'],
+    ['Lots', 80, (r) => String(r.lot ?? r.lots ?? '—'), 'right'],
+    ['Lot size', 100, (r) => String(r.lotSize ?? '—'), 'right'],
+    ['Qty', 100, (r) => String(r.quantity ?? '—'), 'right'],
+    ['Exit', 110, (r) => money(r.exitPrice), 'right'],
+  ];
+  const cell = (x, columnWidth, align) => (align === 'right' ? x + columnWidth - 14 : x + 14);
+  const legHeader = () => {
+    ctx.fillStyle = tint;
+    ctx.fillRect(left, y, width, 40);
+    rule(left, y + 40, width);
+    let x = left;
+    for (const [label, columnWidth, , align] of columns) {
+      text(label, cell(x, columnWidth, align), y + 26, font(15, 600), muted, align === 'right' ? 'right' : 'left');
+      x += columnWidth;
+    }
+    y += 40;
+  };
+  const strategyHeader = (name, rows, continued) => {
+    const first = rows[0];
+    ensure(50 + 40 + 46);
+    ctx.fillStyle = navy;
+    ctx.beginPath();
+    ctx.roundRect(left, y, width, 50, [12, 12, 0, 0]);
+    ctx.fill();
+    text(name + (continued ? ' (continued)' : ''), left + 20, y + 33, font(20, 600), '#fff');
+    text(
+      [first.strategyName, first.productName, first.exchangeName, 'Intraday ' + (first.ifIntraday || '—'), first.priceType]
+        .filter(Boolean)
+        .join('  ·  '),
+      right - 20,
+      y + 33,
+      font(16, 500),
+      '#c9d4e3',
+      'right',
+    );
+    y += 50;
+    legHeader();
+  };
+  heading('Recommendations');
+  for (const [name, rows] of groups) {
+    strategyHeader(name, rows, false);
+    rows.forEach((row, index) => {
+      if (y + 46 > bottom) {
+        begin(true);
+        strategyHeader(name, rows, true);
       }
-      ctx.fillStyle = index % 2 ? '#f6f9fc' : '#fff';
-      ctx.fillRect(left, y, sectionWidth + detailsWidth, height);
-      ctx.strokeStyle = '#c7d5e5';
-      ctx.strokeRect(left, y, sectionWidth, height);
-      ctx.strokeRect(left + sectionWidth, y, detailsWidth, height);
-      ctx.fillStyle = '#0d3970';
-      ctx.font = 'bold 17px Arial';
-      ctx.fillText(name, left + 12, y + 30);
-      ctx.fillStyle = '#14243b';
-      ctx.font = '17px Arial';
-      lines.forEach((line, lineIndex) =>
-        ctx.fillText(line, left + sectionWidth + 12, y + 28 + lineIndex * 22),
-      );
-      y += height;
+      if (index % 2) {
+        ctx.fillStyle = '#fafbfd';
+        ctx.fillRect(left, y, width, 46);
+      }
+      let x = left;
+      for (const [label, columnWidth, value, align] of columns) {
+        const shown = wrap(value(row), columnWidth - 20, font(17))[0];
+        const side = label === 'Buy/Sell' ? shown : '';
+        text(
+          shown,
+          cell(x, columnWidth, align),
+          y + 30,
+          font(17, side ? 600 : label === 'Qty' ? 600 : 400),
+          side === 'BUY' ? '#137a55' : side === 'SELL' ? '#9a6a12' : ink,
+          align === 'right' ? 'right' : 'left',
+        );
+        x += columnWidth;
+      }
+      rule(left, y + 46, width);
+      y += 46;
     });
-    y += 4;
-  };
-  begin();
-  write(report.title, { font: 'bold 30px Arial', gap: 40 });
-  write(report.ref + ' · ' + report.created, { font: '18px Arial', color: '#5b6d82', gap: 32 });
-  write('MULTI RECOMMENDATIONS', { font: 'bold 20px Arial', color: '#a06b12', gap: 34 });
-  tableHeader();
-  report.rows.forEach(tableRow);
-  y += 28;
+    y += 20;
+  }
+
+  // ── attachments ──
   if (attachmentMedia.length) {
-    const gap = 20,
-      cardHeight = 270,
-      blockHeight = 32 + cardHeight;
-    if (y + blockHeight > bottom) {
-      finish();
-      begin();
-    }
-    write('ATTACHMENTS', { font: 'bold 22px Arial', color: '#0d3970', gap: 32 });
+    const gap = 24,
+      cardHeight = 300;
+    heading('Attachments');
+    ensure(cardHeight + 20);
     const count = attachmentMedia.length,
-      cellWidth = Math.min(500, (1594 - gap * (count - 1)) / count),
-      totalWidth = cellWidth * count + gap * (count - 1),
-      startX = left + (1594 - totalWidth) / 2,
+      cellWidth = Math.min(520, (width - gap * (count - 1)) / count),
       top = y;
     attachmentMedia.forEach(({ file, image }, index) => {
-      const x = startX + index * (cellWidth + gap),
-        slot = Number.isInteger(file.slot) ? file.slot + 1 : index + 1,
-        nameLine = wrap(file.name, cellWidth - 24, '14px Arial')[0];
-      ctx.fillStyle = '#f7f9fc';
-      ctx.fillRect(x, top, cellWidth, cardHeight);
-      ctx.strokeStyle = '#c7d5e5';
-      ctx.strokeRect(x, top, cellWidth, cardHeight);
-      ctx.fillStyle = '#0d3970';
-      ctx.font = 'bold 16px Arial';
-      ctx.fillText('Upload ' + slot, x + 12, top + 22);
-      ctx.fillStyle = '#5b6d82';
-      ctx.font = '14px Arial';
-      ctx.fillText(nameLine, x + 12, top + 42);
+      const x = left + index * (cellWidth + gap),
+        slot = Number.isInteger(file.slot) ? file.slot + 1 : index + 1;
+      ctx.strokeStyle = hairline;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x, top, cellWidth, cardHeight, 12);
+      ctx.stroke();
+      const frameTop = top + 14,
+        frameHeight = cardHeight - 76;
+      ctx.fillStyle = tint;
+      ctx.fillRect(x + 14, frameTop, cellWidth - 28, frameHeight);
       if (image) {
-        const maxWidth = cellWidth - 30,
-          maxHeight = 210,
-          scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight),
-          width = Math.max(1, Math.round(image.naturalWidth * scale)),
-          height = Math.max(1, Math.round(image.naturalHeight * scale)),
-          imageX = x + (cellWidth - width) / 2,
-          imageY = top + 50 + (maxHeight - height) / 2;
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(imageX - 4, imageY - 4, width + 8, height + 8);
-        ctx.drawImage(image, imageX, imageY, width, height);
+        const scale = Math.min(1, (cellWidth - 44) / image.naturalWidth, (frameHeight - 16) / image.naturalHeight),
+          w = Math.max(1, Math.round(image.naturalWidth * scale)),
+          h = Math.max(1, Math.round(image.naturalHeight * scale));
+        ctx.drawImage(image, x + (cellWidth - w) / 2, frameTop + (frameHeight - h) / 2, w, h);
       } else {
-        ctx.fillStyle = '#082f5c';
-        ctx.fillRect(x + cellWidth / 2 - 55, top + 82, 110, 110);
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 28px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('PDF', x + cellWidth / 2, top + 148);
-        ctx.textAlign = 'left';
+        text('PDF attached', x + cellWidth / 2, frameTop + frameHeight / 2 + 8, font(22, 600), muted, 'center');
       }
+      text('Attachment ' + slot, x + 16, top + cardHeight - 34, font(16, 600));
+      text(wrap(file.name, cellWidth - 32, font(15))[0], x + 16, top + cardHeight - 12, font(15), muted);
     });
-    y = top + cardHeight + 18;
+    y = top + cardHeight + 10;
   }
-  drawResearchSections();
-  finish();
+
+  // ── research analysis ──
+  heading('Research analysis');
+  const labelWidth = 240;
+  RESEARCH_SECTIONS.forEach((name) => {
+    const lines = wrap(report.sections[name], width - labelWidth - 20, font(17));
+    let index = 0;
+    while (index < lines.length) {
+      if (y + 60 > bottom) begin(true);
+      const room = Math.max(1, Math.floor((bottom - y - 24) / 26)),
+        chunk = lines.slice(index, index + room);
+      text(index ? name + ' (cont.)' : name, left, y + 26, font(20, 500, SERIF), navy);
+      chunk.forEach((line, i) => text(line, left + labelWidth, y + 26 + i * 26, font(17)));
+      y += 26 + chunk.length * 26 + 2;
+      index += chunk.length;
+      rule(left, y, width);
+      y += 10;
+    }
+  });
+
+  // ── closing note and the signature box on the last page ──
+  const note =
+    'This report is research communication from Sampadha Research for its subscribed clients. It is not an order, an offer or a guarantee of returns; prices are indicative. Read it with your risk profile.';
+  const noteLines = wrap(note, 980, font(15));
+  // The note sits beside the signature box at the foot of the last page. When the content
+  // leaves no room there, the signature gets a page of its own with the note at the top.
+  if (y > 1026) {
+    begin(true);
+    heading('Disclosure and signature');
+    wrap(note, width, font(17)).forEach((line, i) => text(line, left, y + i * 26, font(17)));
+  } else noteLines.forEach((line, i) => text(line, left, 1066 + i * 22, font(15), muted));
+  ctx.strokeStyle = hairline;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.roundRect(1130, 1036, right - 1130, 136, 12);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  text('Research Analyst signature (Aadhaar eSign)', 1150, 1062, font(15, 600), muted);
+
+  // ── footer on every page, then each page becomes a JPEG ──
+  pages.forEach((canvas, index) => {
+    ctx = canvas.getContext('2d');
+    rule(left, 1186, width);
+    text('Sampadha Research  ·  Research communication for subscribed clients', left, 1214, font(15), muted);
+    text(`${report.ref}  ·  Page ${index + 1} of ${pages.length}`, right, 1214, font(15, 500), muted, 'right');
+    images.push(
+      Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]), (c) => c.charCodeAt(0)),
+    );
+  });
   const encoder = new TextEncoder(),
     chunks = [],
     offsets = [0];
