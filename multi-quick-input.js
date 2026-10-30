@@ -29,6 +29,9 @@ const QUICK_MASTER_TYPES = {
   xls: 'application/vnd.ms-excel',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
+// Weekly options exist only on these underlyings; every other contract expires once a month.
+const QUICK_WEEKLY_SYMBOLS = new Set(['NIFTY', 'SENSEX', 'BSX']);
+const QUICK_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const QUICK_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 let quickMaster = null, // { id, fileName, uploadedAt, master: { SYMBOL: [profile, …] } }
   quickXlsx = null,
@@ -193,18 +196,49 @@ function quickContract(master, symbol, expiry, line) {
   const exact = dated.find((p) => p.expiry === expiry);
   if (exact) return exact;
   const month = expiry.slice(0, 7),
+    monthName = quickDayLabel(month + '-01').replace(/^1 /, ''),
     sameMonth = dated.filter((p) => p.expiry.slice(0, 7) === month).sort((a, b) => (a.expiry < b.expiry ? 1 : -1));
-  if (sameMonth.length) return sameMonth[0];
-  const months = [...new Set(dated.map((p) => p.expiry.slice(0, 7)))]
-    .sort()
-    .map((m) => QUICK_MONTHS[Number(m.slice(5, 7)) - 1] + ' ' + m.slice(0, 4))
-    .slice(0, 4);
-  throw new Error(
-    line + 'the weekly master has no ' + symbol + ' contract for ' +
-      QUICK_MONTHS[Number(month.slice(5, 7)) - 1] + ' ' + month.slice(0, 4) +
-      '. Months in the master: ' + months.join(', ') + '.',
-  );
+  if (!sameMonth.length) {
+    const months = [...new Set(dated.map((p) => p.expiry.slice(0, 7)))]
+      .sort()
+      .map((m) => quickDayLabel(m + '-01').replace(/^1 /, ''))
+      .slice(0, 4);
+    throw new Error(
+      line + 'the weekly master has no ' + symbol + ' contract for ' + monthName +
+        '. Months in the master: ' + months.join(', ') + '.',
+    );
+  }
+  const monthly = sameMonth[0],
+    typed = quickDayLabel(expiry);
+  // The typed date must be a day the contract can actually expire on.
+  if (!QUICK_WEEKLY_SYMBOLS.has(symbol) && !QUICK_WEEKLY_SYMBOLS.has(monthly.ticker))
+    throw new Error(
+      line + symbol + ' options expire monthly only; the ' + monthName + ' contract expires on ' +
+        quickDayLabel(monthly.expiry) + ', not ' + typed + '.',
+    );
+  if (expiry > monthly.expiry)
+    throw new Error(
+      line + 'the last ' + symbol + ' expiry in ' + monthName + ' is ' + quickDayLabel(monthly.expiry) +
+        ', so no contract expires on ' + typed + '.',
+    );
+  const weekday = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay(),
+    counts = {};
+  for (const p of dated) counts[weekday(p.expiry)] = (counts[weekday(p.expiry)] || 0) + 1;
+  // Usual expiry weekday from the master; a holiday moves an expiry one day earlier.
+  const usual = Number(Object.keys(counts).sort((a, b) => counts[b] - counts[a] || b - a)[0]),
+    before = (usual + 6) % 7,
+    day = weekday(expiry);
+  if (day === 0 || day === 6 || (day !== usual && day !== before))
+    throw new Error(
+      line + symbol + ' weekly options expire on ' + QUICK_WEEKDAYS[usual] + 's (' +
+        QUICK_WEEKDAYS[before] + ' when that is a holiday); ' + typed + ' is a ' +
+        QUICK_WEEKDAYS[day] + '.',
+    );
+  return monthly;
 }
+const quickDayLabel = (iso) =>
+  Number(iso.slice(8, 10)) + ' ' + QUICK_MONTHS[Number(iso.slice(5, 7)) - 1].charAt(0) +
+  QUICK_MONTHS[Number(iso.slice(5, 7)) - 1].slice(1).toLowerCase() + ' ' + iso.slice(0, 4);
 function quickInstrument(profile, symbol) {
   const codes = QUICK_OPTION_CODES[profile.exchange] || {},
     mapped = codes[profile.instrument];
