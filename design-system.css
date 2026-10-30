@@ -1466,3 +1466,126 @@ input[type='file']::file-selector-button:hover {
     display: inline-grid;
   }
 }
+
+/* ───────────── refinement, round 1 (30 Oct 2026) ─────────────
+   Calm and consistent across roles: one rule per problem found in the screenshots. */
+
+/* Sidebar: the menu scrolls on its own and Change password / Sign out stay below it, instead of
+   Sign out sitting on top of the last menu group on a laptop-height screen. */
+.sidebar {
+  overflow: hidden;
+}
+.sidebar .brand,
+.sidebar .role-badge,
+.sidebar .change-password,
+.sidebar .logout {
+  flex-shrink: 0;
+}
+.sidebar nav {
+  flex: 1 1 auto;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -12px 8px;
+  padding: 0 12px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 18%) transparent;
+  /* a soft edge only where the list runs on below */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+}
+.sidebar .logout {
+  position: static;
+  box-shadow: none;
+}
+
+/* Cards side by side line up at the top and are as tall as their content. */
+:is(.overview-grid, .grid-2) {
+  align-items: start;
+}
+/* :nth-child(n) only lifts specificity above ".card.panel + .card.panel" */
+.overview-grid > .card,
+.grid-2 > .card,
+.overview-grid > .card.panel:nth-child(n),
+.grid-2 > .card.panel:nth-child(n) {
+  margin-top: 0;
+}
+
+/* Empty chart: icon and one sentence on a plain inset, no ruling through the text. */
+.viz-plot.viz-empty {
+  background: var(--surface-2);
+}
+
+/* Neutral states ("Not set up", "Not sent") are gray; red is kept for failures and refusals. */
+.status.gray {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, var(--surface));
+}
+
+/* An overline inside a card head looks like every other overline. */
+.panel-head .overline {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Cash report library: same heading as other sections; empty cells line up with their headers. */
+.cash-library-heading {
+  display: block;
+  margin: 28px 2px 12px;
+}
+.cash-library-heading h3 {
+  margin: 0 0 3px;
+  font-size: 20px;
+}
+.cash-library-heading p {
+  font-size: 13.5px;
+}
+.cash-report-matrix tbody > tr > td > p.muted {
+  margin: 0;
+  padding: 18px 14px;
+}
+.cash-report-matrix .cash-report-list {
+  padding: 0 14px;
+}
+.cash-report-matrix .cash-report-list article {
+  padding-inline: 0;
+}
+
+/* Unread notifications: a blue edge, not a fully tinted card. */
+.notification-row.unread {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: inset 3px 0 var(--blue);
+}
+
+/* Profile: room between the avatar and the name. */
+.profile-card .profile-avatar {
+  margin-bottom: 16px;
+}
+
+/* Wide tables: a soft shadow at the edge that still has columns to scroll to. */
+.table-wrap {
+  background:
+    linear-gradient(to right, var(--surface) 40%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 40%, transparent) right / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--ink) 14%, transparent), transparent) left / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--ink) 14%, transparent), transparent) right / 12px 100% no-repeat scroll,
+    var(--surface);
+}
+/* In a half-width card the date goes under the text, so the message keeps its width. */
+.grid-2 .notification-row {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+.grid-2 .notification-row time {
+  grid-column: 2;
+}
+/* Email list: every message had the same blue dot, so it said nothing. */
+.email-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.email-item .mail-dot {
+  display: none;
+}

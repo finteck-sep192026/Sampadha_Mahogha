@@ -33,7 +33,7 @@ const brokerRowFor = (clientId) => brokerRows().find((r) => r.client_id === clie
 // For the RA send screens: true when the client's broker will get the order email.
 const brokerAutoEmailActive = (clientId) => brokerRowFor(clientId)?.status === 'Active';
 const brokerStatusBadge = (row) => {
-  const [tone, label] = BROKER_STATUS[row?.status] || ['red', 'Not set up'];
+  const [tone, label] = BROKER_STATUS[row?.status] || ['gray', 'Not set up'];
   return `<span class="status ${tone}">${label}</span>`;
 };
 
@@ -115,7 +115,7 @@ show = function (page) {
   if (page === 'emails' && state.role === 'admin')
     document
       .querySelector('#content')
-      .insertAdjacentHTML('afterbegin', '<article class="card panel" id="mailerStatus"></article>');
+      .insertAdjacentHTML('afterbegin', '<article class="card panel" id="mailerStatus"><p class="muted">Checking mail set-up…</p></article>');
   if (page === 'brokerEmail' || page === 'emails') brokerRenderMailerStatus();
 };
 
