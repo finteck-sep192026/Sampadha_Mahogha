@@ -1640,3 +1640,50 @@ input[type='file']::file-selector-button:hover {
 .segment-heading-meta .segment-mark {
   display: none;
 }
+
+/* ───────────── refinement, round 3 (30 Oct 2026): sign-in and create forms ───────────── */
+
+/* Sign-in: the intro line is as wide as the form, the two text links look alike and are
+   centred, and an empty error line leaves no gap above the main button. */
+.login-box > .muted {
+  max-width: 400px;
+}
+.login-box form .error:empty {
+  display: none;
+}
+.login-box form .btn.primary.wide {
+  margin-top: 18px;
+}
+.demo-hint {
+  text-align: center;
+}
+.login-forgot {
+  color: var(--muted);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+.login-forgot:hover,
+.login-forgot:focus-visible {
+  color: var(--blue);
+  text-decoration: underline;
+}
+/* While a code is being entered, "Forgot your password?" is not a way out of that screen. */
+.login-box:has(#loginCodeForm) .demo-hint {
+  display: none;
+}
+
+/* A link styled as a button reads as a button, without an underline. */
+a.btn {
+  text-decoration: none;
+}
+
+/* Cash research pack: on a narrow screen the month goes under the heading instead of squeezing it. */
+@media (max-width: 760px) {
+  .cash-pack-card .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cash-pack-month {
+    min-width: 0;
+  }
+}
