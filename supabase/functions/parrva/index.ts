@@ -246,11 +246,12 @@ function strategyPayload(legs: Record<string, unknown>[]) {
       CEorPE: l.option_type ?? null,
       ContractName: l.contract_name,
       ContractExpiryDate: l.expiry,
-      EntryPriceStart: Number(l.initiation_price),
-      EntryPriceEnd: Number(l.entry_price_end),
+      // Prices the analyst left out (allowed for non-intraday legs, stop-loss for all) go as null.
+      EntryPriceStart: l.initiation_price == null ? null : Number(l.initiation_price),
+      EntryPriceEnd: l.entry_price_end == null ? null : Number(l.entry_price_end),
       Lot: l.lots,
-      TargetPrice: Number(l.t1),
-      StopLoss: Number(l.stop_loss),
+      TargetPrice: l.t1 == null ? null : Number(l.t1),
+      StopLoss: l.stop_loss == null ? null : Number(l.stop_loss),
       ExitPrice: l.exit_price == null ? null : Number(l.exit_price),
       OptionStrikePrice: l.strike == null ? null : Number(l.strike),
       LegId: Number(l.leg_ref),
@@ -312,9 +313,7 @@ async function multiPayload(reportId: string) {
       !l.strategy_name ||
       !l.instrument ||
       !l.price_type ||
-      !l.leg_ref ||
-      l.stop_loss == null ||
-      l.t1 == null,
+      !l.leg_ref,
   );
   if (missing)
     throw new HttpError(
