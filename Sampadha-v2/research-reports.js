@@ -112,11 +112,13 @@ async function createResearchPdfBlob(report) {
     ['entryPriceStart', 'Entry start', 80],
     ['entryPriceEnd', 'Entry end', 80],
     ['lot', 'Lot', 45],
+    ['lotSize', 'Lot size', 50],
+    ['quantity', 'Qty', 55],
     ['targetPrice', 'Target', 80],
     ['stopLoss', 'Stop loss', 75],
     ['exitPrice', 'Exit price', 75],
-    ['optionStrikePrice', 'Strike', 90],
-    ['legId', 'Leg ID', 80],
+    ['optionStrikePrice', 'Strike', 80],
+    ['legId', 'Leg ID', 60],
   ];
   const tableHeader = () => {
     const height = 58;
@@ -520,7 +522,7 @@ function researchCsvRowsFromText(text) {
     const values = researchCsvLine(line),
       get = (key) => String(values[indexes[key]] ?? '').trim(),
       fail = (message) => {
-        throw new Error('CSV row ' + (rowIndex + 2) + ': ' + message);
+        throw new Error('Leg ' + (rowIndex + 1) + ': ' + message);
       },
       productName = get('productName'),
       adviceName = get('adviceName'),
@@ -605,6 +607,22 @@ function researchCsvRowsFromText(text) {
       stopLoss <= 0
     )
       fail('TargetPrice and StopLoss must be positive numbers.');
+    // PaRRVA only asks for prices above zero, so a swapped target and stop-loss would be signed
+    // and filed as typed. A BUY profits above its entry range, a SELL below it.
+    const entryLow = Math.min(entryPriceStart, entryPriceEnd),
+      entryHigh = Math.max(entryPriceStart, entryPriceEnd);
+    if (buyOrSell === 'BUY' && !(targetPrice > entryHigh && stopLoss < entryLow))
+      fail(
+        'for BUY the target must be above the entry price and the stop-loss below it (entry ' +
+          (entryLow === entryHigh ? entryLow : entryLow + '-' + entryHigh) +
+          ', target ' + targetPrice + ', stop-loss ' + stopLoss + ').',
+      );
+    if (buyOrSell === 'SELL' && !(targetPrice < entryLow && stopLoss > entryHigh))
+      fail(
+        'for SELL the target must be below the entry price and the stop-loss above it (entry ' +
+          (entryLow === entryHigh ? entryLow : entryLow + '-' + entryHigh) +
+          ', target ' + targetPrice + ', stop-loss ' + stopLoss + ').',
+      );
     if (exitPrice !== '' && (!Number.isFinite(exitPrice) || exitPrice <= 0))
       fail('ExitPrice must be blank or a positive number.');
     if (!/^\d{1,9}$/.test(legId) || Number(legId) < 1)
@@ -651,7 +669,7 @@ function researchCsvRowsFromText(text) {
   rows.forEach((row, index) => {
     const first = strategies.get(row.adviceName);
     if (!first) return strategies.set(row.adviceName, { row, legs: new Set([row.legId]) });
-    const line = 'CSV row ' + (index + 2) + ': ';
+    const line = 'Leg ' + (index + 1) + ': ';
     if (
       ['productName', 'exchangeName', 'strategyName', 'ifIntraday'].some(
         (key) => first.row[key] !== row[key],
@@ -676,10 +694,15 @@ function researchCsvRowsFromText(text) {
   });
   return rows;
 }
+// The 19 PaRRVA columns plus the lot size taken from the weekly master and the quantity, so the
+// analyst can check them before signing.
+const RESEARCH_LEG_COLUMNS = RESEARCH_IMPORT_COLUMNS.flatMap((column) =>
+  column[0] === 'lot' ? [column, ['lotSize', 'Lot size'], ['quantity', 'Quantity']] : [column],
+);
 function researchCsvTable(rows) {
   return (
     '<div class="table-wrap"><table class="table research-csv-table"><thead><tr><th>Row</th>' +
-    RESEARCH_IMPORT_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
+    RESEARCH_LEG_COLUMNS.map(([, label]) => '<th>' + label + '</th>').join('') +
     '</tr></thead><tbody>' +
     rows
       .map(
@@ -687,7 +710,7 @@ function researchCsvTable(rows) {
           '<tr><td>' +
           (index + 1) +
           '</td>' +
-          RESEARCH_IMPORT_COLUMNS.map(
+          RESEARCH_LEG_COLUMNS.map(
             ([key]) => '<td>' + reportEscape(researchValue(row, key)) + '</td>',
           ).join('') +
           '</tr>',
@@ -1075,7 +1098,8 @@ researchPage = function () {
   );
 };
 function researchReadRows(form) {
-  if (!researchCsvRows.length) throw new Error('Upload a valid Multi recommendations CSV file.');
+  if (!researchCsvRows.length)
+    throw new Error('Type the advice basket and press Generate legs before creating the report.');
   return researchCsvRows.map((row) => ({
     id: 'POS-' + crypto.randomUUID(),
     ...row,
@@ -1647,7 +1671,7 @@ function researchOrdersPage() {
     })
     .join('');
   return (
-    '<article class="card panel"><div class="research-workflow-header"><div><h3>Positions</h3><p class="research-notice">Every imported CSV recommendation appears here with its client IDs and full details. Exits are entered by number of lots; every partial and full close retains its own timestamp. These are recommendation positions, not broker trades.</p></div><button class="btn secondary" data-go="multiReports">Create report</button></div>' +
+    '<article class="card panel"><div class="research-workflow-header"><div><h3>Positions</h3><p class="research-notice">Every Multi recommendation appears here with its client IDs and full details. Exits are entered by number of lots; every partial and full close retains its own timestamp. These are recommendation positions, not broker trades.</p></div><button class="btn secondary" data-go="multiReports">Create report</button></div>' +
     filters +
     '<div class="research-orders-tabs">' +
     views
@@ -1790,16 +1814,23 @@ $('#content').addEventListener('submit', async (e) => {
       message.classList.remove('research-error');
       message.textContent = 'Saving report...';
       created = await Api.createDraft(title, sections, legs);
+      // The legs are saved: empty the basket so they cannot become a second report by mistake,
+      // even if an attachment upload below fails.
+      researchCsvRows = [];
+      researchCsvFileName = '';
+      const basket = form.querySelector('[data-quick="basket"]');
+      if (basket) basket.value = '';
+      researchRenderCsvPreview();
+      $('#researchCsvMessage').textContent =
+        created.report_ref + ' was saved. Type the next basket to start another report.';
       for (const file of researchDraftAttachments.filter(Boolean))
         await Api.uploadAttachment(created.id, file.slot, file.file);
       researchDraftAttachments = [null, null, null];
       researchAttachmentTab = 0;
-      researchCsvRows = [];
-      researchCsvFileName = '';
       researchRenderAttachments();
       await refreshWorkspace();
       message.textContent =
-        'Report created from the imported CSV. Review the PDF below, then sign it with Aadhaar eSign.';
+        'Report ' + created.report_ref + ' created. Review the PDF below, then sign it with Aadhaar eSign.';
       researchShow([created.id]);
       $('#researchHistory').innerHTML = researchHistory();
       $('#researchPreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1813,7 +1844,7 @@ $('#content').addEventListener('submit', async (e) => {
         $('#researchHistory').innerHTML = researchHistory();
       }
     } finally {
-      button.disabled = false;
+      button.disabled = !researchCsvRows.length;
     }
   }
   if (e.target.id === 'researchSignForm') {
