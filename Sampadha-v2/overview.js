@@ -107,7 +107,7 @@ function activityFeed(entries) {
     entries
       .map(
         (a) =>
-          `<div class="activity-row"><span class="activity-icon">${icon(AUDIT_ICON_BY_ENTITY[a.entity] || 'history')}</span><div><b>${esc(AUDIT_LABELS[a.action] || a.action.replace(/[._]/g, ' ').replace(/^./, (c) => c.toUpperCase()))}</b><small>${esc([a.entity_ref, a.actor_login].filter(Boolean).join(' · ') || 'System')}</small></div><time>${esc(Api.fmt.stamp(a.at))}</time></div>`,
+          `<div class="activity-row"><span class="activity-icon">${icon(AUDIT_ICON_BY_ENTITY[a.entity] || 'history')}</span><div><b>${esc(AUDIT_LABELS[a.action] || a.action.replace(/[._]/g, ' ').replace(/^./, (c) => c.toUpperCase()))}</b><small>${esc([/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(a.entity_ref || '') ? '' : a.entity_ref, a.actor_login].filter(Boolean).join(' · ') || 'System')}</small></div><time>${esc(Api.fmt.stamp(a.at))}</time></div>`,
       )
       .join('') || '<p class="empty">Nothing recorded yet.</p>'
   }</div>`;

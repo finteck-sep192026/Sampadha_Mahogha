@@ -51,7 +51,7 @@ const brokerMailRows = (mails) =>
     ? `<div class="table-wrap"><table class="table"><thead><tr><th>Email</th><th>To / CC</th><th>Queued</th><th>Status</th></tr></thead><tbody>${mails
         .map(
           (m) =>
-            `<tr><td><b>${esc(m.subject)}</b><small>${esc(m.id)} · ${esc(m.type)}</small></td><td>${esc(m.to)}<small>${esc(m.cc.join('; ') || '—')}</small></td><td class="stamp">${esc(m.sent)}</td><td><span class="status ${MAIL_STATUS_CLASS[m.status] || 'red'}">${esc(m.status)}</span>${m.note ? `<small>${esc(m.note)}</small>` : ''}</td></tr>`,
+            `<tr><td><b>${esc(m.subject)}</b><small>${esc(m.id)} · ${esc(m.type)}</small></td><td>${esc(m.to)}<small>${esc(m.cc.join('; ') || '—')}</small></td><td class="stamp">${esc(m.sent)}</td><td><span class="status ${MAIL_STATUS_CLASS[m.status] || 'red'}">${esc(m.status)}</span>${m.note && m.status !== 'Sent' ? `<small>${esc(m.note)}</small>` : ''}</td></tr>`,
         )
         .join('')}</tbody></table></div>`
     : '<p class="muted">No broker emails yet.</p>';

@@ -1724,3 +1724,31 @@ a.btn {
   font-size: 13.5px;
   color: var(--muted);
 }
+
+/* ───────────── refinement, round 5 (30 Oct 2026): from the element audit of every page ───────────── */
+
+/* Gold tags ("Simulated", "Upcoming", "To do") had too little contrast on the dark surface. */
+:root[data-mode='dark'] .status.gold {
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 16%, var(--surface));
+}
+/* Progress tracks use the pill shape, like tags. */
+.meter-track,
+.meter-track span,
+.risk-progress-track,
+.risk-progress-track span {
+  border-radius: 999px;
+}
+/* Buttons in table rows keep one line (and the 40px control height) on phones too. */
+.table .btn {
+  white-space: nowrap;
+}
+.table td > b:first-child {
+  white-space: nowrap;
+}
+/* KYC select and Save in the compliance table: the standard 40px control height. */
+.kyc-form select,
+.kyc-form .btn {
+  height: 40px;
+  min-height: 40px;
+}
