@@ -7,3 +7,6 @@ demo-credentials*
 
 # Local-only secrets (temporary staff passwords etc.) — never commit
 *.local.txt
+
+# Supabase CLI cache
+supabase/.temp/
