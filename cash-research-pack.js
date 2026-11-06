@@ -109,13 +109,17 @@ async function cashPackSha256(file) {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
-async function cashPackUpload(product, file) {
+// Checks an uploaded report PDF and returns its fingerprint.
+async function cashCheckPdf(file) {
   if (!file.name.toLowerCase().endsWith('.pdf')) throw new Error(file.name + ' is not a PDF.');
   if (file.size > PACK_PDF_LIMIT)
     throw new Error(file.name + ' is larger than 10 MB, the most Aadhaar eSign accepts.');
   if (new TextDecoder().decode(await file.slice(0, 5).arrayBuffer()) !== '%PDF-')
     throw new Error(file.name + ' is not a readable PDF.');
-  const sha = await cashPackSha256(file),
+  return cashPackSha256(file);
+}
+async function cashPackUpload(product, file) {
+  const sha = await cashCheckPdf(file),
     current = cashPackReport(product);
   let id;
   if (current && current.esignStatus !== 'Signed') {

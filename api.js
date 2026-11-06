@@ -305,7 +305,8 @@
     signed: r.signed_at ? stamp(r.signed_at, true) + ' IST' : '',
     signerName: r.signer_name || '',
     signedPdfPath: r.signed_pdf_path,
-    // Cash: 'portfolio' (from the 12-column CSV) or 'pack' (an uploaded monthly research pack PDF).
+    // Cash: 'upload' (a finished PDF), 'pack' (a monthly research pack PDF) or 'portfolio' (older
+    // reports made from the 12-column CSV).
     cashKind: r.cash_kind || 'portfolio',
     packMonth: r.pack_month || '',
     packStocks: r.pack_stocks || [],
@@ -521,12 +522,12 @@
   const sendReport = withMail((reportId, clientIds, types) =>
     rpc('send_research_report', { p_report_id: reportId, p_client_ids: clientIds, p_types: types }),
   );
-  const createCashDraft = (product, frequency, fileName, rows) =>
-    rpc('create_cash_report_draft', {
+  const createCashUploadDraft = (product, frequency, fileName, sha256) =>
+    rpc('create_cash_upload_draft', {
       p_product: product,
       p_frequency: frequency,
       p_file_name: fileName,
-      p_rows: rows,
+      p_pdf_sha256: sha256,
     });
   const sendCashReport = withMail((reportId, clientIds) =>
     rpc('send_cash_report', { p_report_id: reportId, p_client_ids: clientIds }),
@@ -738,7 +739,7 @@
     markNotificationsRead,
     createDraft,
     sendReport,
-    createCashDraft,
+    createCashUploadDraft,
     listCashStockLists,
     saveCashStockList,
     createCashPackDraft,
