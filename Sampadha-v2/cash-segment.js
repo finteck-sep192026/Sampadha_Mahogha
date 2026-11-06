@@ -600,9 +600,6 @@ function cashClientSelection(report) {
           '</b><small>' +
           cashEscape(client.full_name) +
           (received.has(client.id) ? ' · received' : '') +
-          (typeof brokerAutoEmailActive === 'function' && brokerAutoEmailActive(client.id)
-            ? ' · ⇄ broker auto-email'
-            : '') +
           (typeof complianceNote === 'function'
             ? cashEscape(complianceNote(client.id, 'Cash'))
             : '') +

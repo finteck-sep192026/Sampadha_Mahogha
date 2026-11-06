@@ -1,0 +1,10 @@
+# Read by the Supabase CLI. Only what the deploy needs: everything else keeps the CLI's defaults.
+project_id = "nxtyswlxnmekpvlfuucg"
+
+# Both check their callers themselves: Google's redirect and the schedule carry no Supabase token, so
+# with verify_jwt on, a redeploy would stop Gmail connections and every scheduled mail run.
+[functions.client-gmail]
+verify_jwt = false
+
+[functions.mailer]
+verify_jwt = false

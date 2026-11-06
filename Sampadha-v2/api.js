@@ -201,6 +201,7 @@
     delivered: r.delivered_at ? stamp(r.delivered_at, true) + ' IST' : '',
     note: r.provider_message || '',
     body: r.body,
+    sendVia: r.send_via || 'smtp',
   });
   const mapLeg = (l, exits, signedAt) => ({
     id: l.id,
@@ -341,6 +342,16 @@
         const { data, error } = await promise;
         if (error) throw new Error(error.message);
         return data || [];
+      },
+      // The client's own Gmail link (RLS returns only their row). Fails soft: the portal still opens
+      // and the Broker auto-email page shows Gmail as not connected.
+      ownGmailLink = async () => {
+        try {
+          const { data, error } = await q('client_gmail_links').limit(1);
+          return error ? null : data?.[0] || null;
+        } catch {
+          return null;
+        }
       };
     const [
       cash,
@@ -366,6 +377,7 @@
       compliance,
       riskProfiles,
       clientDocuments,
+      gmailLink,
     ] = await Promise.all([
       // "All recommendations" is built from delivered reports below; the old sample tables
       // (cash_recommendations, multi_recommendations) are no longer read.
@@ -406,6 +418,7 @@
       role === 'ra'
         ? []
         : ok(q('client_documents', (x) => x.order('created_at', { ascending: false }))),
+      role === 'client' ? ownGmailLink() : null,
     ]);
 
     const exitsByLeg = new Map();
@@ -474,6 +487,8 @@
       cashClients,
       // Broker auto-email details per client (a client gets only their own row)
       brokerEmails,
+      // The signed-in client's Gmail connection (null for staff, or when not connected yet)
+      gmailLink,
       // Compliance (Compliance page): per-client overview for staff, risk answers, documents to sign
       compliance,
       riskProfiles,
@@ -545,6 +560,24 @@
   const sendBrokerTestEmail = withMail((loginId, testEmail) =>
     rpc('send_broker_test_email', { p_login_id: loginId || null, p_test_email: testEmail || null }),
   );
+  // The client's own Gmail (client-gmail Edge Function): 'start' returns { url } for Google's approval
+  // page; 'disconnect' revokes the access and withdraws the consent.
+  async function clientGmail(action) {
+    const { data, error } = await sb.functions.invoke('client-gmail', { body: { action } });
+    if (error) {
+      if (error.name === 'FunctionsFetchError')
+        throw new Error('The Gmail connection service is not reachable. Please try again shortly.');
+      let message = error.message;
+      try {
+        message = (await error.context.json()).error || message;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new Error(message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }
   // ───────────── client compliance (risk profile, documents to sign, KYC) ─────────────
   const riskQuestionnaire = () => rpc('risk_questionnaire');
   const submitRiskProfile = (answers) => rpc('submit_risk_profile', { p_answers: answers });
@@ -721,6 +754,7 @@
     saveBrokerEmail,
     revokeBrokerEmail,
     sendBrokerTestEmail,
+    clientGmail,
     mailerStatus,
     sendTestEmail,
     flushMail,
