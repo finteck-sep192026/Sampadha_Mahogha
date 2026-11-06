@@ -19,6 +19,23 @@
   flex: 1 1 260px;
   margin: 0;
 }
+.broker-test-note {
+  flex: 1 1 100%;
+  margin: 0;
+}
+.broker-gmail-note {
+  margin-bottom: 12px;
+}
+.broker-gmail-points {
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+.broker-gmail-points li + li {
+  margin-top: 4px;
+}
+.broker-gmail-needed {
+  margin: 10px 0 0;
+}
 .broker-mail-body {
   margin: 0 0 14px;
   font: inherit;
@@ -27,4 +44,10 @@
 }
 #mailerStatus {
   margin-bottom: 17px;
+}
+.notice.mailer-warning {
+  margin-bottom: 14px;
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  color: color-mix(in srgb, var(--red) 88%, black);
 }
