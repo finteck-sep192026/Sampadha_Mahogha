@@ -1,24 +1,10 @@
-.cash-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-}
-.cash-hero h3,
 .cash-library-heading h3 {
   font-size: 24px;
   margin: 2px 0 6px;
 }
-.cash-hero p,
 .cash-library-heading p {
   margin: 0;
   color: var(--muted, #60748b);
-}
-.cash-steps {
-  margin: 18px 0;
 }
 .cash-overview-actions {
   display: flex;
@@ -242,13 +228,9 @@
   }
 }
 @media (max-width: 720px) {
-  .cash-hero,
   .cash-library-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .cash-hero .btn {
-    width: 100%;
   }
   .cash-client-grid {
     grid-template-columns: 1fr;
