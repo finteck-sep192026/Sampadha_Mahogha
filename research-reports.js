@@ -1018,7 +1018,9 @@ function researchHistory() {
           reportEscape(r.created) +
           '</td><td>' +
           (r.recipients.length
-            ? r.recipients.length + ' clients · ' + reportEscape(r.sent)
+            ? (state.role === 'client' ? '' : r.recipients.length + ' clients · ') +
+              reportEscape(r.sent) +
+              (r.esignStatus === 'Signed' ? '' : ' · not signed yet')
             : r.esignStatus === 'Signed'
               ? 'eSigned · not sent'
               : 'Not signed') +
@@ -1208,13 +1210,15 @@ function researchRememberMobile(value) {
     /* storage unavailable: the field just won't be prefilled next time */
   }
 }
-// The Multi report in the user's order (30 Oct 2026): 1. send to CARE PaRRVA, 2. Aadhaar eSign
-// (opens once CARE PaRRVA has been tried, accepted or not), 3. send to clients (once signed).
+// The Multi report's three actions. They do not depend on each other and can be done in any order;
+// each row shows its own status with its buttons beside it.
 function researchSignPanel(r) {
   return (
-    researchParrvaStep(r) +
-    researchSignStep(r) +
-    '<section id="researchClientSection" class="research-section"></section>'
+    '<article class="card panel research-section research-actions">' +
+    researchParrvaRow(r) +
+    researchSignRow(r) +
+    researchClientsRow(r) +
+    '<section id="researchClientSection" class="research-client-panel" hidden></section></article>'
   );
 }
 const researchLegCount = (r) => {
@@ -1224,54 +1228,77 @@ const researchLegCount = (r) => {
     r.rows.length + (r.rows.length === 1 ? ' leg' : ' legs')
   );
 };
-function researchParrvaStep(r) {
-  const head = '<article class="card panel research-section research-step"><p class="overline">Step 1 of 3</p><h3>Send to CARE PaRRVA</h3>';
+const researchRow = (title, status, actions, below = '') =>
+  '<div class="research-row"><div class="research-row-head"><h4>' +
+  title +
+  '</h4>' +
+  status +
+  '</div><div class="research-row-actions">' +
+  actions +
+  '</div>' +
+  below +
+  '</div>';
+function researchParrvaRow(r) {
   if (r.parrvaStatus === 'Submitted')
-    return (
-      head +
-      '<p class="research-notice"><span class="status green">Accepted</span> CARE PaRRVA accepted ' +
-      researchLegCount(r) + ' on ' + reportEscape(r.parrvaSubmitted) +
-      '. The recommendation is in Positions.</p></article>'
+    return researchRow(
+      'CARE PaRRVA',
+      '<span class="status green">Accepted</span><small>' + researchLegCount(r) + ' on ' + reportEscape(r.parrvaSubmitted) + '</small>',
+      '',
     );
-  return (
-    head +
-    '<p class="research-notice">Sends the ' + researchLegCount(r) +
-    ' to CARE PaRRVA (Strategy API). Once sent, the recommendation appears in Positions.</p>' +
-    (r.parrvaStatus === 'Failed'
-      ? '<p class="research-message research-error">Last attempt failed: ' + reportEscape(r.parrvaMessage) + '</p>'
-      : '') +
-    '<div class="research-filter-bar"><button type="button" class="btn primary" data-parrva-send="' +
-    reportEscape(r.id) + '">' +
-    (r.parrvaStatus === 'Failed' ? 'Try CARE PaRRVA again' : 'Send to CARE PaRRVA') +
-    '</button></div><p id="researchParrvaMessage" class="research-message" role="status"></p></article>'
+  const failed = r.parrvaStatus === 'Failed';
+  return researchRow(
+    'CARE PaRRVA',
+    (failed ? '<span class="status red">Failed</span>' : '<span class="status gray">Not sent</span>') +
+      '<small>' + researchLegCount(r) + '</small>',
+    '<button type="button" class="btn primary" data-parrva-send="' +
+      reportEscape(r.id) +
+      '">' +
+      (failed ? 'Try again' : 'Send to CARE PaRRVA') +
+      '</button>',
+    '<p id="researchParrvaMessage" class="research-message' +
+      (failed ? ' research-error' : '') +
+      '" role="status">' +
+      (failed ? reportEscape(r.parrvaMessage) : '') +
+      '</p>',
   );
 }
-function researchSignStep(r) {
-  const head = '<article class="card panel research-section research-step"><p class="overline">Step 2 of 3</p><h3>Aadhaar eSign</h3>';
+function researchSignRow(r) {
   if (r.esignStatus === 'Signed')
-    return (
-      head + '<p class="research-notice"><span class="status green">Signed</span> Signed with Aadhaar eSign by <strong>' +
-      reportEscape(r.signerName) + '</strong> on ' + reportEscape(r.signed) +
-      '. Clients receive this signed PDF.</p></article>'
+    return researchRow(
+      'Aadhaar eSign',
+      '<span class="status green">Signed</span><small>' + reportEscape(r.signerName) + ' · ' + reportEscape(r.signed) + '</small>',
+      '',
     );
-  if (r.parrvaStatus === 'Not sent' || !r.parrvaStatus)
-    return (
-      head +
-      '<p class="research-notice">Opens after step 1: send the report to CARE PaRRVA first. Signing is possible even if CARE PaRRVA refuses it; the result stays visible in Positions.</p></article>'
-    );
+  const requested = r.esignStatus === 'Requested';
   return (
-    head +
-    '<p class="research-notice">Sign the PDF above with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. If the eSign page ends on the signed PDF instead of bringing you back, return to this report and click Check signing status.</p><form id="researchSignForm" data-report="' +
+    '<form id="researchSignForm" data-report="' +
     reportEscape(r.id) +
-    '" class="research-signing"><label class="research-check"><input type="checkbox" name="consent">I have reviewed this report and will sign it with my Aadhaar eSign.</label><label class="field">Your mobile number<input name="mobile" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" required placeholder="10-digit mobile" value="' +
-    reportEscape(researchRememberedMobile()) +
-    '"></label><div class="research-filter-bar"><button class="btn primary" id="researchSignButton">Sign with Aadhaar eSign</button><button type="button" class="btn secondary" data-esign-check="' +
-    reportEscape(r.id) +
-    '">Check signing status</button></div><p id="researchSignStatus" class="research-message" role="status">' +
-    (r.esignStatus === 'Requested'
-      ? 'A signing request is open. Finish it on the eSign page, or start again.'
-      : 'Not signed yet.') +
-    '</p></form></article>'
+    '">' +
+    researchRow(
+      'Aadhaar eSign',
+      (requested ? '<span class="status gold">In progress</span>' : '<span class="status gray">Not signed</span>') +
+        '<label class="research-check"><input type="checkbox" name="consent">I have reviewed this report</label>',
+      '<label class="field research-mobile"><input name="mobile" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" required placeholder="10-digit mobile" aria-label="Your mobile number" value="' +
+        reportEscape(researchRememberedMobile()) +
+        '"></label><button class="btn primary" id="researchSignButton">Sign with Aadhaar</button>' +
+        (requested
+          ? '<button type="button" class="btn secondary" data-esign-check="' + reportEscape(r.id) + '">Check status</button>'
+          : ''),
+      '<p id="researchSignStatus" class="research-message" role="status">' +
+        (requested ? 'A signing request is open. Finish it on the eSign page, or start again.' : '') +
+        '</p>',
+    ) +
+    '</form>'
+  );
+}
+function researchClientsRow(r) {
+  const count = r.recipients.length;
+  return researchRow(
+    'Send to clients',
+    count
+      ? '<span class="status green">Sent</span><small>' + count + (count === 1 ? ' client' : ' clients') + ' · ' + reportEscape(r.sent) + '</small>'
+      : '<span class="status gray">Not sent</span>',
+    '<button type="button" class="btn primary" data-research-clients-toggle aria-expanded="false">Choose clients</button>',
   );
 }
 async function researchConfirmSign(reportId) {
@@ -1329,10 +1356,6 @@ const ESIGN_RETURN_PARAM = 'esign_report';
 async function researchStartSign(r, form) {
   const status = $('#researchSignStatus'),
     buttons = form.querySelectorAll('button');
-  if (r.parrvaStatus === 'Not sent' || !r.parrvaStatus) {
-    status.textContent = 'Send the report to CARE PaRRVA first (step 1).';
-    return;
-  }
   if (!form.elements.consent.checked) {
     status.textContent = 'Tick the confirmation to continue.';
     return;
@@ -1340,7 +1363,8 @@ async function researchStartSign(r, form) {
   buttons.forEach((b) => (b.disabled = true));
   try {
     status.textContent = 'Preparing the PDF for signing...';
-    await Api.uploadPreviewPdf(r.id, await createResearchPdfBlob(r));
+    // Once sent, the stored PDF is frozen: the signature must cover exactly what clients hold.
+    if (!r.recipients.length) await Api.uploadPreviewPdf(r.id, await createResearchPdfBlob(r));
     status.textContent = 'Opening the eSign page...';
     const returnUrl = new URL(
       location.pathname,
@@ -1397,7 +1421,11 @@ function researchPdfPanel(r) {
 }
 // Signed reports show the PDF returned by the eSign service; unsigned drafts show the local preview.
 const researchPdfBlob = (r) =>
-  r.esignStatus === 'Signed' ? Api.downloadFile(r.signedPdfPath) : createResearchPdfBlob(r);
+  r.esignStatus === 'Signed'
+    ? Api.downloadFile(r.signedPdfPath)
+    : r.recipients.length
+      ? Api.downloadFile(r.id + '/preview.pdf')
+      : createResearchPdfBlob(r);
 async function researchRefreshPdfFrame(r) {
   const viewer = $('#researchPdfViewer'),
     status = $('#researchPdfStatus');
@@ -1412,7 +1440,9 @@ async function researchRefreshPdfFrame(r) {
     $('#researchPdfStatus').textContent =
       r.esignStatus === 'Signed'
         ? 'Aadhaar eSigned PDF.'
-        : 'Unsigned preview. This is the PDF you will sign.';
+        : r.recipients.length
+          ? 'Not signed yet. This is the PDF clients received.'
+          : 'Unsigned preview. This is the PDF you will sign.';
 }
 function researchShow(ids) {
   const r = researchReports.find((r) => ids.includes(r.id) && researchCanView(r));
@@ -1427,12 +1457,12 @@ function researchShow(ids) {
   if (researchOwner(r)) researchOpenClients(r);
 }
 function researchClientSection(r) {
-  const head = '<article class="card panel research-step"><p class="overline">Step 3 of 3</p><h3>Send to clients</h3>';
-  if (r.esignStatus !== 'Signed')
-    return head + '<p class="research-notice">Opens once the report is signed (step 2). Clients always receive the signed PDF.</p></article>';
   return (
-    head +
-    '<p class="research-notice">Choose the clients who receive the signed report.</p><form id="researchSend" data-report="' +
+    '<p class="research-notice">' +
+    (r.esignStatus === 'Signed'
+      ? 'Clients receive the signed PDF.'
+      : 'Not signed yet: clients receive the unsigned PDF, and the signed copy replaces it once you sign.') +
+    '</p><form id="researchSend" data-report="' +
     r.id +
     '"><p class="research-notice">Clients: select product types to show their subscribed clients.</p><div class="research-filter-bar"><button type="button" class="btn secondary" id="researchSelectAll">Select visible clients</button><button type="button" class="btn secondary" id="researchClearAll">Clear checkboxes</button>' +
     MULTI_TYPES.map(
@@ -1446,7 +1476,7 @@ function researchClientSection(r) {
     '</div><p class="research-notice">Clients marked ⇄ broker auto-email have consented and connected Gmail: these legs also go to their broker as an order email from their own Gmail.</p>' +
     (typeof brokerGmailWarning === 'function' ? brokerGmailWarning() : '') +
     '<p id="researchClientCount" role="status">Choose a product type to show clients.</p><div id="researchClientList" class="research-client-grid"></div><label class="field">Or type matching client IDs / email addresses<textarea class="research-textarea" name="recipients" rows="2" placeholder="Enter IDs or emails for the selected product types"></textarea></label><p id="researchSendMessage" class="research-message" role="status"></p>' +
-    '<button class="btn primary">Send to clients</button></form></article>'
+    '<button class="btn primary">Send to clients</button></form>'
   );
 }
 function researchFilterClients() {
@@ -1499,7 +1529,9 @@ function researchOpenClients(r) {
   researchFilterClients();
 }
 async function researchSendReport(r, selected, types) {
-  if (r.esignStatus !== 'Signed') throw new Error('Complete the Aadhaar eSign before sending.');
+  // Clients of an unsigned report receive this stored PDF. It freezes once the report is sent.
+  if (r.esignStatus !== 'Signed' && !r.recipients.length)
+    await Api.uploadPreviewPdf(r.id, await createResearchPdfBlob(r));
   const result = await Api.sendReport(r.id, selected, types);
   await refreshWorkspace();
   return result.delivered;
@@ -1507,7 +1539,7 @@ async function researchSendReport(r, selected, types) {
 // What the send form asks for: { plan: { toParrva, ids, types } } or { error }.
 function researchSendChoices(form) {
   const d = new FormData(form),
-    toParrva = false, // CARE PaRRVA is step 1, sent on its own
+    toParrva = false, // CARE PaRRVA has its own row and button
     types = d.getAll('category'),
     eligible = new Set(researchEligible(types).map((c) => c.id)),
     selected = researchRecipients(d.get('recipients'), d.getAll('client'));
@@ -1548,8 +1580,9 @@ async function researchDispatch(r, plan) {
     $('#researchHistory').innerHTML = researchHistory();
     throw new Error((results.length ? results.join(' ') + ' ' : '') + error.message);
   }
+  $('#researchClientSection').hidden = false;
   $('#researchClientSection').innerHTML =
-    '<article class="card panel research-step"><p class="overline">Step 3 of 3</p><h3>Sent to clients</h3><p>' +
+    '<p class="research-notice">' +
     results.join(' ') +
     (plan.ids.length
       ? ' ' + r.rows.length + ' recommendation positions are available in Positions.'
@@ -1560,7 +1593,7 @@ async function researchDispatch(r, plan) {
       : '') +
     '<button class="btn secondary" data-research-pdf-view="' +
     reportEscape(r.id) +
-    '">View report</button></article>';
+    '">View report</button>';
   $('#researchHistory').innerHTML = researchHistory();
   toast(results.join(' '), 'seal');
 }
@@ -1963,7 +1996,7 @@ $('#content').addEventListener('submit', async (e) => {
       r = researchReports.find((r) => r.id === form.dataset.report),
       message = $('#researchSendMessage'),
       button = form.querySelector('button:not([type=button])');
-    if (!r || !researchOwner(r) || r.esignStatus !== 'Signed') return;
+    if (!r || !researchOwner(r)) return;
     const { plan, error } = researchSendChoices(form);
     if (error) {
       message.textContent = error;
@@ -1973,6 +2006,13 @@ $('#content').addEventListener('submit', async (e) => {
       message.textContent = 'Choose at least one client.';
       return;
     }
+    if (
+      r.esignStatus !== 'Signed' &&
+      !confirm(
+        'This report is not signed yet. Clients will receive the unsigned PDF now, and any client with broker auto-email will send this order to their broker now. Send anyway?',
+      )
+    )
+      return;
     button.disabled = true;
     try {
       await researchDispatch(r, plan);
@@ -1982,8 +2022,16 @@ $('#content').addEventListener('submit', async (e) => {
     }
   }
 });
-// Step 1: send the report to CARE PaRRVA. This files the recommendation with CARE PaRRVA, so it
-// asks first; the result (accepted or failed) opens step 2 and lists the legs in Positions.
+// Send the report to CARE PaRRVA. This files the recommendation with CARE PaRRVA, so it asks first;
+// the result (accepted or failed) lists the legs in Positions.
+$('#content').addEventListener('click', (e) => {
+  const toggle = e.target.closest('[data-research-clients-toggle]');
+  if (!toggle) return;
+  const panel = $('#researchClientSection');
+  panel.hidden = !panel.hidden;
+  toggle.setAttribute('aria-expanded', String(!panel.hidden));
+  toggle.textContent = panel.hidden ? 'Choose clients' : 'Hide clients';
+});
 $('#content').addEventListener('click', async (e) => {
   const button = e.target.closest('[data-parrva-send]');
   if (!button) return;

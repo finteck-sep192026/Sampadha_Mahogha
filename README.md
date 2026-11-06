@@ -73,6 +73,8 @@ hPanel → racrm.fintecindia.com → Advanced → GIT if it does not redeploy on
 
 ## Signing a report
 
+Multi reports: CARE PaRRVA, Aadhaar eSign and Send to clients are independent and can be done in any order, each with its own row. A report sent before signing goes out as the stored unsigned PDF, which then cannot change, so a later signature covers exactly what clients hold, and the signed copy replaces it for them. Broker orders go out at send time, signed or not. Cash reports still need the signature before sending.
+
 Research Analyst → Multi Segment → upload the advice CSV, add attachments and the four analysis sections →
 *Create & preview PDF* (or Cash Segment → *New report* → product and frequency → upload the PDF → *Upload report*) → review the PDF → tick the confirmation, enter your mobile number → *Sign with Aadhaar eSign*. The
 NSDL eSign page opens; enter your Aadhaar number and the OTP, and you are brought back to the report,
