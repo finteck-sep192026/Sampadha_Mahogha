@@ -381,44 +381,6 @@ h3,
   text-underline-offset: 3px;
   cursor: pointer;
 }
-/* Cash Segment → Monthly research pack: stock list in, generator PDFs out. */
-.cash-pack-card .panel-head {
-  align-items: flex-end;
-  gap: 16px;
-}
-.cash-pack-month {
-  min-width: 180px;
-}
-.cash-pack-step {
-  padding: 14px 0 4px;
-  border-top: 1px solid var(--line);
-}
-.cash-pack-step h4 {
-  margin: 0 0 6px;
-}
-.cash-pack-file {
-  cursor: pointer;
-}
-.cash-pack-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0;
-  font-size: 12.5px;
-}
-.cash-pack-chips b {
-  min-width: 28px;
-}
-.cash-pack-chips span {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--tint-blue);
-  color: var(--ink);
-}
-.cash-pack-table small {
-  display: block;
-  color: var(--muted);
-}
 /* Password or email code: the quiet second way in, under the main button. */
 .btn.wide.login-mode-switch {
   min-height: 40px;
@@ -1084,7 +1046,6 @@ td.empty::before {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.cash-hero .btn,
 .research-workflow-header .btn,
 .panel-head .btn {
   white-space: nowrap;
@@ -1675,17 +1636,6 @@ input[type='file']::file-selector-button:hover {
 /* A link styled as a button reads as a button, without an underline. */
 a.btn {
   text-decoration: none;
-}
-
-/* Cash research pack: on a narrow screen the month goes under the heading instead of squeezing it. */
-@media (max-width: 760px) {
-  .cash-pack-card .panel-head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .cash-pack-month {
-    min-width: 0;
-  }
 }
 
 /* ───────────── refinement, round 4 (30 Oct 2026) ───────────── */

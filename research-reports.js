@@ -1010,11 +1010,7 @@ function researchHistory() {
             ? 'Cash ' +
               reportEscape(r.cashProduct) +
               ' · ' +
-              (r.cashKind === 'upload'
-                ? 'uploaded PDF'
-                : r.cashKind === 'pack'
-                  ? 'research pack · ' + r.packStocks.length + ' stocks'
-                  : r.cashRows.length + ' stocks')
+              (r.cashKind === 'upload' ? 'uploaded PDF' : r.cashRows.length + ' stocks')
             : r.rows.length + (r.rows.length === 1 ? ' recommendation' : ' recommendations')) +
           ' · ' +
           reportEscape(r.ref) +

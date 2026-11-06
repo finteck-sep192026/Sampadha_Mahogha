@@ -2,8 +2,7 @@
 // by Monthly, Quarterly and Half-Yearly frequency. Reports already made from the old 12-column CSV
 // still open, sign and send (cash_kind 'portfolio'). Signing and delivery live in Supabase (schema
 // v2) and share the Aadhaar eSign, PDF storage and "Reports received" flow with Multi reports.
-let cashStrategyFormOpen = false,
-  cashSelectedId = null,
+let cashSelectedId = null,
   cashPdfUrl = '',
   cashInternalRender = false;
 // Activity is kept for this browser session only (shown on the RA Overview).
@@ -36,25 +35,6 @@ const cashCsvColumns = [
   ['price', 'Initiation Price'],
   ['quantity', 'Quantity'],
 ];
-function cashParseCsvLine(line) {
-  const cells = [];
-  let current = '',
-    quoted = false;
-  for (let index = 0; index < line.length; index++) {
-    const char = line[index];
-    if (char === '"') {
-      if (quoted && line[index + 1] === '"') {
-        current += '"';
-        index++;
-      } else quoted = !quoted;
-    } else if (char === ',' && !quoted) {
-      cells.push(current.trim());
-      current = '';
-    } else current += char;
-  }
-  cells.push(current.trim());
-  return cells;
-}
 
 // Multi-page landscape PDF with every imported row (from the prototype).
 async function cashCreatePdfBlob(report) {
@@ -310,6 +290,20 @@ const cashFindReport = (id) => cashReports().find((r) => r.id === id) || null;
 const cashClients = () => state.ws?.cashClients || [];
 // The PDF itself is stored ('upload', 'pack'); 'portfolio' reports build theirs from their rows.
 const cashHasStoredPdf = (report) => report.cashKind !== 'portfolio';
+const CASH_PDF_LIMIT = 10 * 1024 * 1024; // what the esign function accepts
+// Checks an uploaded report and returns its fingerprint. Aadhaar eSign signs PDFs only.
+async function cashCheckPdf(file) {
+  if (/\.docx?$/i.test(file.name))
+    throw new Error('Aadhaar eSign signs PDFs only. In Word use File → Save As → PDF, then upload the PDF.');
+  if (!file.name.toLowerCase().endsWith('.pdf')) throw new Error(file.name + ' is not a PDF.');
+  if (file.size > CASH_PDF_LIMIT)
+    throw new Error(file.name + ' is larger than 10 MB, the most Aadhaar eSign accepts.');
+  const bytes = await file.arrayBuffer();
+  if (new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-')
+    throw new Error(file.name + ' is not a readable PDF.');
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 const cashStatusLabel = (report) =>
   report.recipients.length
     ? 'Sent to ' + report.recipients.length + ' client(s)'
@@ -344,9 +338,7 @@ function cashReportCell(frequency, product) {
           cashEscape(cashStatusLabel(report)) +
           '</small></div><div class="cash-report-actions"><button type="button" class="btn secondary" data-cash-view="' +
           report.id +
-          '">View PDF</button><button type="button" class="btn secondary" data-cash-download="' +
-          report.id +
-          '">Download</button></div></article>',
+          '">View PDF</button></div></article>',
       )
       .join('') +
     '</div>'
@@ -373,9 +365,8 @@ function cashReportGroups() {
   );
 }
 function cashCreateForm() {
-  if (!cashStrategyFormOpen) return '';
   return (
-    '<article class="card panel cash-create-card"><div class="panel-head"><div><p class="overline">New Cash report</p><h3>Upload Cash Segment report</h3><p>Select the market-cap product and reporting period, then upload the finished report as a PDF.</p></div><button type="button" class="btn secondary" id="cashCancelCreate">Close</button></div><form id="cashCreateForm"><div class="form-grid three"><label class="field">Product<select name="product" required><option value="">Select product</option><option>LC</option><option>MC</option><option>SC</option></select></label><label class="field">Report frequency<select name="frequency" required><option value="">Select report frequency</option><option>Monthly</option><option>Quarterly</option><option>Half-Yearly</option></select></label><label class="field">Report PDF<input name="pdf" type="file" accept=".pdf,application/pdf" required disabled><small id="cashPdfHint">Select the product and frequency first.</small></label></div><div class="cash-form-actions"><button class="btn primary" disabled>Upload report</button></div><p id="cashCreateMessage" class="research-message research-error" role="alert"></p></form></article>'
+    '<article class="card panel cash-create-card"><div class="panel-head"><div><p class="overline">New Cash report</p><h3>Upload Cash Segment report</h3><p>Select the market-cap product and reporting period, then upload the finished report as a PDF.</p></div></div><form id="cashCreateForm"><div class="form-grid three"><label class="field">Product<select name="product" required><option value="">Select product</option><option>LC</option><option>MC</option><option>SC</option></select></label><label class="field">Report frequency<select name="frequency" required><option value="">Select report frequency</option><option>Monthly</option><option>Quarterly</option><option>Half-Yearly</option></select></label><label class="field">Report PDF<input name="pdf" type="file" accept=".pdf,application/pdf" required disabled><small id="cashPdfHint">Select the product and frequency first.</small></label></div><div class="cash-form-actions"><button class="btn primary" disabled>Upload report</button></div><p id="cashCreateMessage" class="research-message research-error" role="alert"></p></form></article>'
   );
 }
 
@@ -393,9 +384,7 @@ function cashPdfPanel(report) {
     ' · ' +
     (report.cashKind === 'upload'
       ? 'uploaded report (' + cashEscape(report.fileName) + ')'
-      : report.cashKind === 'pack'
-        ? report.packStocks.length + ' stocks · research pack (' + cashEscape(report.fileName) + ')'
-        : report.rows.length + (report.rows.length === 1 ? ' recommendation' : ' recommendations')) +
+      : report.rows.length + (report.rows.length === 1 ? ' recommendation' : ' recommendations')) +
     '</p></div><button type="button" class="btn secondary" data-cash-download="' +
     report.id +
     '">Download PDF</button></div><p id="cashPdfStatus" class="research-message" role="status">Generating PDF preview...</p><iframe id="cashPdfViewer" data-report="' +
@@ -423,12 +412,14 @@ function cashSignPanel(report) {
       '. Clients receive this signed PDF.</p></article>' +
       clients
     );
-  const signOnly = report.cashKind === 'upload';
+  const signOnly = report.cashKind === 'upload',
+    requested = report.esignStatus === 'Requested';
   return (
     (signOnly ? '' : clients) +
     '<article class="card panel cash-otp-card"><h3>Aadhaar eSign</h3><p class="research-notice">Sign the PDF above with your Aadhaar. You will be taken to the secure NSDL eSign page; the OTP goes to the mobile number linked to your Aadhaar. ' +
     (signOnly
-      ? 'After signing you come back here and choose the clients. If the eSign page ends on the signed PDF instead of bringing you back, return to this report and click Check signing status.'
+      ? 'After signing you come back here and choose the clients.' +
+        (requested ? ' If the eSign page did not bring you back, click Check signing status.' : '')
       : 'As soon as the signature is confirmed, the report is sent to what you chose above. If the eSign page ends on the signed PDF instead of bringing you back, return to this report and click Check signing status: sending continues from there.') +
     '</p><form id="cashSignForm" data-report="' +
     report.id +
@@ -436,12 +427,14 @@ function cashSignPanel(report) {
     cashEscape(researchRememberedMobile()) +
     '"></label><div class="cash-otp-actions"><button class="btn primary" id="cashSignButton">' +
     (sendPlanHasWork(cashSendChoices(null, report)) ? 'Sign with Aadhaar & send' : 'Sign with Aadhaar eSign') +
-    '</button><button type="button" class="btn secondary" data-cash-esign-check="' +
-    report.id +
-    '">Check signing status</button></div><p id="cashSignStatus" class="research-message" role="status">' +
-    (report.esignStatus === 'Requested'
-      ? 'A signing request is open. Finish it on the eSign page, or start again.'
-      : 'Not signed yet.') +
+    '</button>' +
+    (requested
+      ? '<button type="button" class="btn secondary" data-cash-esign-check="' +
+        report.id +
+        '">Check signing status</button>'
+      : '') +
+    '</div><p id="cashSignStatus" class="research-message" role="status">' +
+    (requested ? 'A signing request is open. Finish it on the eSign page, or start again.' : '') +
     '</p></form></article>'
   );
 }
@@ -534,10 +527,7 @@ function cashParrvaProblem(report) {
   return { portfolios, text: '' };
 }
 function cashParrvaChoice(report) {
-  if (report.cashKind === 'upload')
-    return '<p class="research-notice">Uploaded reports are not sent to CARE PaRRVA: the portal holds only the PDF, not its recommendations.</p>';
-  if (report.cashKind === 'pack')
-    return '<p class="research-notice">Research packs are not sent to CARE PaRRVA: they hold no buy or sell recommendations.</p>';
+  if (cashHasStoredPdf(report)) return '';
   if (report.parrvaStatus === 'Submitted')
     return (
       '<p class="research-parrva research-parrva-done"><strong>CARE PaRRVA:</strong> submitted on ' +
@@ -628,15 +618,17 @@ function cashClientSelection(report) {
 function cashStrategyPage() {
   if (!['ra', 'admin'].includes(state.role)) return segmentPage('Cash');
   const report = cashSelectedId ? cashFindReport(cashSelectedId) : null;
+  if (report)
+    return (
+      '<div class="cash-form-actions"><button type="button" class="btn secondary" data-cash-back>Back to Cash reports</button></div><section id="cashPreviewRegion" class="cash-preview-region">' +
+      cashPdfPanel(report) +
+      cashSignPanel(report) +
+      '</section>'
+    );
   return (
-    '<section class="cash-hero card"><div><h3>Cash reports</h3><p>Upload finished LC, MC or SC reports as PDFs and file them by monthly, quarterly or half-yearly frequency.</p></div><button type="button" class="btn primary" id="cashNewStrategy">New report</button></section><div class="research-steps cash-steps"><span>1. Product and frequency</span><span>2. Upload the report PDF</span><span>3. Sign with Aadhaar eSign</span><span>4. Choose clients & send</span></div>' +
     cashCreateForm() +
-    (typeof cashPackCard === 'function' ? cashPackCard() : '') +
     '<section class="cash-library-heading"><div><h3>Report library</h3></div><p>The latest two reports for each strategy and period.</p></section>' +
-    cashReportGroups() +
-    '<section id="cashPreviewRegion" class="cash-preview-region">' +
-    (report ? cashPdfPanel(report) + cashSignPanel(report) : '') +
-    '</section>'
+    cashReportGroups()
   );
 }
 
@@ -797,16 +789,9 @@ function cashShowCurrent() {
   cashInternalRender = false;
 }
 function cashShowReport(reportId) {
-  cashStrategyFormOpen = false;
   cashSelectedId = reportId;
   cashShowCurrent();
-  setTimeout(
-    () =>
-      document
-        .querySelector('#cashPreviewRegion')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-    0,
-  );
+  window.scrollTo(0, 0);
 }
 pages.cashSegment = cashStrategyPage;
 titles.cashSegment = 'Cash Segment';
@@ -815,6 +800,7 @@ show = function (page) {
   if (state.role === 'ra' && !cashInternalRender)
     cashTrackRa(titles[page] || page, 'Viewed tab', 'Opened ' + (titles[page] || page));
   if (page !== 'cashSegment') cashReleasePdf();
+  if (page === 'cashSegment' && !cashInternalRender) cashSelectedId = null;
   cashOriginalShow(page);
   if (!cashInternalRender) window.scrollTo(0, 0);
   if (page === 'cashSegment' && cashSelectedId) {
@@ -834,7 +820,6 @@ enterPortal = async function (profile) {
 const cashOriginalLogout = document.querySelector('#logout').onclick;
 document.querySelector('#logout').onclick = () => {
   cashReleasePdf();
-  cashStrategyFormOpen = false;
   cashSelectedId = null;
   cashRaActivity.splice(0);
   cashOriginalLogout();
@@ -842,18 +827,10 @@ document.querySelector('#logout').onclick = () => {
 
 // ───────────── events ─────────────
 document.querySelector('#content').addEventListener('click', (event) => {
-  const newStrategy = event.target.closest('#cashNewStrategy');
-  if (newStrategy) {
-    cashStrategyFormOpen = true;
+  if (event.target.closest('[data-cash-back]')) {
     cashSelectedId = null;
     cashShowCurrent();
-    cashTrackRa('Cash Segment', 'Opened New Report', 'Started a new Cash Segment report');
-    return;
-  }
-  const cancel = event.target.closest('#cashCancelCreate');
-  if (cancel) {
-    cashStrategyFormOpen = false;
-    cashShowCurrent();
+    window.scrollTo(0, 0);
     return;
   }
   const view = event.target.closest('[data-cash-view]');
@@ -952,7 +929,7 @@ document.querySelector('#content').addEventListener('change', (event) => {
   input.disabled = !ready;
   if (!ready) input.value = '';
   document.querySelector('#cashPdfHint').textContent = ready
-    ? 'PDF, up to 10 MB.'
+    ? 'PDF, up to 10 MB. Save Word reports as PDF first.'
     : 'Select the product and frequency first.';
   form.querySelector('button:not([type=button])').disabled = !ready || !input.files.length;
 });
