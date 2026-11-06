@@ -1,7 +1,7 @@
 // Client compliance, as in Mahogha's Clients and E-Sign pages: per client a risk profile, a signed
 // client agreement, KYC and (optional) broker auto-email.
 //   • Client → Compliance: answer the risk questionnaire, sign documents with Aadhaar eSign.
-//   • Admin / Sales → Compliance: overview of every client, send a PDF to a client for eSign,
+//   • Admin → Compliance: overview of every client, send a PDF to a client for eSign,
 //     download signed copies; Admin records KYC.
 //   • RA send screens: a warning next to clients with something missing.
 // Rules and scoring live in migration 20261027030000_v2_client_compliance.sql; signing in the
@@ -180,7 +180,7 @@ function riskReset() {
   complianceRetake = false;
 }
 
-// ───────────── Admin / Sales page ─────────────
+// ───────────── Admin page ─────────────
 function staffCompliancePage() {
   const rows = complianceRows(),
     clientsList = (state.ws?.directory || []).filter((p) => p.role === 'client' && p.is_active),
@@ -234,10 +234,11 @@ nav.client.splice(
   0,
   ['compliance', '§', 'Compliance'],
 );
-for (const role of ['admin', 'sales']) {
-  const at = nav[role].findIndex((x) => x[0] === 'clients');
-  nav[role].splice(at + 1, 0, ['compliance', '§', 'Compliance']);
-}
+nav.admin.splice(
+  nav.admin.findIndex((x) => x[0] === 'clients') + 1,
+  0,
+  ['compliance', '§', 'Compliance'],
+);
 const complianceOriginalShow = show;
 show = function (page) {
   complianceOriginalShow(page);
