@@ -8,7 +8,7 @@ const esc = (v) =>
 const roles = {
   admin: { name: 'Admin', desc: 'Full platform access' },
   ra: { name: 'Research Analyst', desc: 'Cash and Multi reports' },
-  sales: { name: 'Sales', desc: 'Clients, KYC and plans' },
+  sales: { name: 'Sales', desc: 'Clients and communication' },
   client: { name: 'Client', desc: 'View-only investor access' },
 };
 const nav = {
@@ -34,11 +34,8 @@ const nav = {
   ],
   sales: [
     ['profile', '♙', 'Profile'],
-    ['workflowMap', '◆', 'Workflow chart'],
     ['clients', '◎', 'Clients'],
-    ['addClient', '＋', 'Add client'],
-    ['emails', '✉', 'Confirmation emails'],
-    ['plans', '₹', 'Subscription plans'],
+    ['emails', '✉', 'Client Communication'],
   ],
   client: [
     ['clientDashboard', '⌂', 'Dashboard'],
@@ -371,7 +368,7 @@ const workflowMap = () =>
 const emails = () => {
   const list =
     state.role === 'client' ? state.emails.filter((x) => x.to === state.user.email) : state.emails;
-  return `<article class="card panel"><div class="panel-head"><div><h3>${state.role === 'client' ? 'My notifications' : 'Email delivery'}</h3><p>Every email the portal sends: client confirmations, report notices and broker order emails.</p></div><span class="badge">${list.length} messages</span></div><div class="email-layout"><div class="email-list">${list.map((x, i) => `<button class="email-item ${i === 0 ? 'active' : ''}" data-mail="${x.id}"><span class="mail-dot"></span><div><b>${esc(x.subject)}</b><small>To: ${esc(x.to)}</small><small class="stamp">${esc(x.sent)}</small></div><span class="status ${MAIL_TONE[x.status] || 'red'}">${esc(x.status)}</span></button>`).join('') || '<div class="empty">No confirmation emails available.</div>'}</div><div id="emailPreview" class="email-preview">${list[0] ? emailBody(list[0]) : '<div class="empty">Select an email to preview.</div>'}</div></div></article>`;
+  return `<article class="card panel"><div class="panel-head"><div><h3>${state.role === 'client' ? 'My notifications' : state.role === 'sales' ? 'Client Communication' : 'Email delivery'}</h3><p>Every email the portal sends: client confirmations, report notices and broker order emails.</p></div><span class="badge">${list.length} messages</span></div><div class="email-layout"><div class="email-list">${list.map((x, i) => `<button class="email-item ${i === 0 ? 'active' : ''}" data-mail="${x.id}"><span class="mail-dot"></span><div><b>${esc(x.subject)}</b><small>To: ${esc(x.to)}</small><small class="stamp">${esc(x.sent)}</small></div><span class="status ${MAIL_TONE[x.status] || 'red'}">${esc(x.status)}</span></button>`).join('') || '<div class="empty">No confirmation emails available.</div>'}</div><div id="emailPreview" class="email-preview">${list[0] ? emailBody(list[0]) : '<div class="empty">Select an email to preview.</div>'}</div></div></article>`;
 };
 const MAIL_TONE = { Sent: 'green', Queued: 'gold', Sending: 'gold', Simulated: 'gold' };
 const emailBody = (x) =>
@@ -482,7 +479,8 @@ function updateAlertBadge() {
 }
 function show(page) {
   state.page = page;
-  $('#title').textContent = titles[page];
+  $('#title').textContent =
+    page === 'emails' && state.role === 'sales' ? 'Client Communication' : titles[page];
   $('#crumb').textContent = `${roles[state.role].name} workspace`;
   $('#content').innerHTML = pages[page]().replace('timestampVtbl', 'timestamped');
   renderNav();
