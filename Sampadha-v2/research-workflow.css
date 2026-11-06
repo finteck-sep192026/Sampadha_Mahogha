@@ -393,3 +393,63 @@
   align-items: center;
   gap: 12px;
 }
+
+/* Multi report actions: one compact row each, buttons beside the status. */
+.research-actions {
+  display: grid;
+  gap: 0;
+  padding-block: 6px;
+}
+.research-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0;
+}
+.research-actions form + .research-row,
+.research-row + form .research-row,
+.research-row + .research-row {
+  border-top: 1px solid var(--line);
+}
+.research-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+}
+.research-row-head h4 {
+  margin: 0;
+  min-width: 118px;
+}
+.research-row-head .research-check {
+  margin: 0;
+}
+.research-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.research-row-actions .research-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.research-row-actions .research-mobile input {
+  width: 140px;
+}
+.research-row .research-message {
+  flex-basis: 100%;
+  margin: 0;
+}
+.research-row .research-message:empty {
+  display: none;
+}
+.research-client-panel {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
