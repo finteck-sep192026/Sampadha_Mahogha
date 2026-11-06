@@ -6,6 +6,10 @@ RewriteEngine On
 RewriteCond %{HTTPS} off
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# Google returns here after Connect Gmail. The address must be on our own domain for Google to
+# verify the app, so it forwards straight on to the client-gmail function with the query string.
+RewriteRule ^gmail-callback$ https://nxtyswlxnmekpvlfuucg.supabase.co/functions/v1/client-gmail [R=302,QSA,L]
+
 # Git deployment leaves a .git folder in the web root; never serve it.
 RedirectMatch 404 /\.git
 

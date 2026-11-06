@@ -185,7 +185,9 @@ New environment: same `GOOGLE_*` and `GMAIL_TOKEN_KEY`, plus `MAILER_CRON_SECRET
 ## Going live
 
 1. Google Cloud: enable the Gmail API, create a Web OAuth client, and set the redirect URI to
-   `https://nxtyswlxnmekpvlfuucg.supabase.co/functions/v1/client-gmail`. Add test users while in
+   `https://racrm.fintecindia.com/gmail-callback`. That address is on our own domain because Google
+   will not verify an app whose redirect is on `supabase.co`; `.htaccess` forwards it, with its query
+   string, to the `client-gmail` function. `GOOGLE_REDIRECT_URI` must be this same address. Add test users while in
    Testing (connections expire after 7 days until Google approves the app).
 2. Run the migration in the SQL Editor.
 3. Set the secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`,
