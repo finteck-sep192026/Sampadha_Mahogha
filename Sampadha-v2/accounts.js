@@ -115,7 +115,7 @@ function approvalAccountCell(app) {
   if (accountsCreateFor !== app.id)
     return `<button type="button" class="btn primary" data-account-create="${esc(app.id)}">Create login</button>`;
   const plans = state.ws?.plans || [];
-  return `<form class="account-create" data-app="${esc(app.id)}"><label class="field">Plan<select name="plan" required>${plans.map((p) => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('')}</select></label><fieldset><legend>Products</legend><div class="checks"><label><input type="checkbox" name="products" value="Cash" checked> Cash</label><label><input type="checkbox" name="products" value="Multi"> Multi</label></div></fieldset><label class="field">Multi tier<select name="multiTier"><option value="">Not needed</option>${['Bronze', 'Silver', 'Palladium', 'Platinum', 'Gold', 'Rhodium'].map((t) => `<option>${t}</option>`).join('')}</select></label><label class="field">Billing<select name="billing"><option>Quarterly</option><option>Annual</option></select></label><div class="compliance-actions"><button class="btn primary">Create and email</button><button type="button" class="btn secondary" data-account-cancel>Cancel</button></div><p class="research-message" role="status"></p></form>`;
+  return `<form class="account-create" data-app="${esc(app.id)}"><label class="field">Plan<select name="plan" required>${plans.map((p) => `<option value="${esc(p.code)}">${esc(p.name)}</option>`).join('')}</select></label><fieldset><legend>Products</legend><div class="checks"><label><input type="checkbox" name="products" value="Cash"> Cash</label><label><input type="checkbox" name="products" value="Multi"> Multi</label></div></fieldset><label class="field">Multi tier<select name="multiTier"><option value="">Select tier (Multi only)</option>${['Bronze', 'Silver', 'Palladium', 'Platinum', 'Gold', 'Rhodium'].map((t) => `<option>${t}</option>`).join('')}</select></label><label class="field">Billing<select name="billing"><option>Quarterly</option><option>Annual</option></select></label><div class="compliance-actions"><button class="btn primary">Create and email</button><button type="button" class="btn secondary" data-account-cancel>Cancel</button></div><p class="research-message" role="status"></p></form>`;
 }
 
 pages.users = usersPage;
@@ -127,6 +127,15 @@ async function accountsRefresh(page, messageSelector, message) {
   const target = document.querySelector(messageSelector);
   if (target && message) target.textContent = message;
 }
+
+// Create login: a tier means Multi, and a client without Multi has no tier.
+document.querySelector('#content').addEventListener('change', (event) => {
+  const form = event.target.closest('.account-create');
+  if (!form) return;
+  const multi = form.querySelector('[name=products][value=Multi]');
+  if (event.target.name === 'multiTier' && event.target.value) multi.checked = true;
+  if (event.target === multi && !multi.checked) form.elements.multiTier.value = '';
+});
 
 document.querySelector('#content').addEventListener('click', async (event) => {
   const create = event.target.closest('[data-account-create]');
@@ -193,6 +202,15 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
       message = form.querySelector('.research-message'),
       app = state.submissions.find((a) => a.id === form.dataset.app),
       e = form.elements;
+    const products = [...form.querySelectorAll('[name=products]:checked')].map((x) => x.value);
+    if (!products.length) {
+      message.textContent = 'Choose Cash, Multi or both.';
+      return;
+    }
+    if (products.includes('Multi') && !e.multiTier.value) {
+      message.textContent = 'Choose the Multi tier. Without it the client cannot receive Multi reports.';
+      return;
+    }
     button.disabled = true;
     message.textContent = 'Creating the login…';
     try {
@@ -200,7 +218,7 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
         role: 'client',
         applicationRef: app.id,
         plan: e.plan.value,
-        products: [...form.querySelectorAll('[name=products]:checked')].map((x) => x.value),
+        products,
         multiTier: e.multiTier.value || null,
         billing: e.billing.value,
       });

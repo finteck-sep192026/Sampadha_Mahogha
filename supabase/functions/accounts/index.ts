@@ -261,7 +261,14 @@ async function invite(who: Caller, body: Record<string, unknown>) {
     throw new HttpError(500, 'Could not save the account: ' + profileError.message);
   }
   if (subscription) {
-    await v2.from('subscriptions').insert({ client_id: user.id, ...subscription });
+    const { error: subscriptionError } = await v2
+      .from('subscriptions')
+      .insert({ client_id: user.id, ...subscription });
+    if (subscriptionError) {
+      await v2.from('profiles').delete().eq('id', user.id);
+      if (user.isNew) await admin.auth.admin.deleteUser(user.id);
+      throw new HttpError(500, 'Could not save the subscription: ' + subscriptionError.message);
+    }
     await v2.from('client_applications').update({ client_id: user.id }).eq('id', application!.id);
   }
   await audit(who, 'account.created', loginId, { role, email, application: application?.app_ref ?? null });
