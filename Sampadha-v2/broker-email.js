@@ -113,13 +113,12 @@ function brokerPrefill(person) {
 function brokerForm(row, { client, loginId }) {
   const value = (v) => esc(v || ''),
     names = brokerDesks().length ? brokerDesks().map((d) => d.name) : BROKER_NAMES,
-    gmailStatus = client ? brokerGmailOf(state.user.uid).status : '',
-    locked = client && gmailStatus !== 'Connected' ? ' disabled' : '';
+    locked = '';
   return `<form id="brokerEmailForm" data-login="${esc(loginId || '')}"><datalist id="brokerNames">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>${client ? `<input type="hidden" name="broker" value="${value(row?.broker)}"><input type="hidden" name="brokerClientId" value="${value(row?.broker_client_id)}"><input type="hidden" name="toEmail" value="${value(row?.to_email)}"><input type="hidden" name="ccEmails" value="${value((row?.cc_emails || []).join('; '))}">` : `<div class="form-grid"><label class="field">Broker *<input name="broker" list="brokerNames" required maxlength="80" value="${value(row?.broker)}" placeholder="e.g. Kotak Securities"></label><label class="field">Broker client ID *<input name="brokerClientId" required maxlength="30" value="${value(row?.broker_client_id)}" placeholder="Client code at the broker"></label><label class="field">Broker order email (TO) *<input name="toEmail" type="email" required value="${value(row?.to_email)}" placeholder="Dealing desk address"></label><label class="field">CC emails<input name="ccEmails" value="${value((row?.cc_emails || []).join('; '))}" placeholder="Separate with ;  e.g. you and your advisor"></label></div>`}${
     client
-      ? `<label class="consent broker-consent"><input name="consent" type="checkbox" required${locked}><span><b>My consent *</b>${onboardingPending() ? '<small><b>I accept my onboarding details above as correct.</b></small>' : ''}<small>${esc(BROKER_CONSENT_TEXT)}</small><small>Wording ${BROKER_CONSENT_VERSION}</small></span></label>${locked ? `<p class="muted broker-gmail-needed">${gmailStatus === 'Reconnect needed' ? 'Reconnect' : 'Connect'} your Gmail above before giving consent.</p>` : ''}`
+      ? `<label class="consent broker-consent"><input name="consent" type="checkbox" required${locked}><span><b>My consent *</b>${onboardingPending() ? '<small><b>I accept my onboarding details above as correct.</b></small>' : ''}<small>${esc(BROKER_CONSENT_TEXT)}</small><small>Wording ${BROKER_CONSENT_VERSION}</small></span></label>`
       : '<div class="notice">Saving emails the client a consent request and shows it in their portal. Only the client can connect Gmail and give consent, and no order email goes until they do.</div>'
-  }<div class="actions"><button class="btn primary"${locked}>${client ? 'I consent' : 'Save and send consent request'}</button>${row?.status && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form><p id="brokerEmailMessage" class="research-message" role="status"></p>`;
+  }<div class="actions"><button class="btn primary"${locked}>${client ? 'Give consent' : 'Save and send consent request'}</button>${row?.status && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form><p id="brokerEmailMessage" class="research-message" role="status"></p>`;
 }
 
 // Sent on a Gmail row means Gmail took it, not that the broker has it.
@@ -146,33 +145,26 @@ function brokerGmailProblem(lastError) {
   return text;
 }
 
-function brokerGmailSection(done) {
+function brokerGmailNotes(done) {
   const link = state.ws?.gmailLink,
-    connected = link?.status === 'Connected',
-    reconnect = link?.status === 'Reconnect needed',
-    note = brokerGmailNote ? `<div class="notice broker-gmail-note">${esc(brokerGmailNote)}</div>` : '',
-    points = `<ul class="broker-gmail-points"><li>You approve once on Google's page. Nothing more is needed for each order.</li><li>Order emails go from your own Gmail.</li><li>Sampadha can send only. It cannot read your mail.</li><li>Use the Gmail that is registered with your broker. It must be the same as your portal email, ${esc(state.user.email)}.</li></ul>`;
-  return `<div class="panel-head"><div><h4>Your Gmail</h4><p>Order emails go to your broker from your own Gmail address.</p></div>${brokerGmailBadge(link?.status)}</div>${note}${
-    connected
-      ? `<div class="notice">Order emails go from <b>${esc(link.gmail_address)}</b>. Sampadha can send only. It cannot read your mail.</div>${done ? '' : '<div class="actions"><button type="button" class="btn secondary" data-gmail-disconnect>Disconnect</button></div>'}`
-      : reconnect
-        ? `<div class="notice"><b>Order emails cannot be sent right now.</b> ${esc(brokerGmailProblem(link.last_error))} Reconnect to start sending again.</div>${points}<div class="actions"><button type="button" class="btn primary" data-gmail-connect>Reconnect</button></div>`
-        : `${points}<div class="actions"><button type="button" class="btn primary" data-gmail-connect>Connect Gmail</button></div>`
+    note = brokerGmailNote ? `<div class="notice broker-gmail-note">${esc(brokerGmailNote)}</div>` : '';
+  return `${note}${
+    done || link?.status === 'Connected'
+      ? ''
+      : `${link?.status === 'Reconnect needed' ? `<div class="notice"><b>Order emails cannot be sent right now.</b> ${esc(brokerGmailProblem(link.last_error))} Give consent again to start sending.</div>` : ''}<ul class="broker-gmail-points"><li>Give consent opens Google once, so you can approve sending from your Gmail. Nothing more is needed for each order.</li><li>Order emails go from your own Gmail.</li><li>Sampadha can send only. It cannot read your mail.</li><li>Use the Gmail that is registered with your broker. It must be the same as your portal email, ${esc(state.user.email)}.</li></ul>`
   }<p id="brokerGmailMessage" class="research-message" role="status"></p>`;
 }
-
 function brokerConsentBanner(row) {
-  const uid = state.user.uid,
-    first = brokerGmailConnected(uid) ? 'Check' : 'Connect your Gmail, then check';
+  const uid = state.user.uid;
   if (row?.status === 'Active')
     return brokerGmailConnected(uid)
       ? `<div class="notice"><b>On since ${esc(Api.fmt.stamp(row.consented_at))} IST.</b> Multi recommendations go from ${esc(brokerGmailOf(uid).address)} to ${esc(row.broker)} at ${esc(row.to_email)}. Cash PDF reports are not sent.</div>`
-      : '<div class="notice"><b>Order emails are stopped.</b> Your consent is on, but your Gmail is not connected. Connect it above to start sending again.</div>';
+      : '<div class="notice"><b>Order emails are stopped.</b> Your Gmail is not connected. Give consent again to start sending.</div>';
   // The migration that asked everyone to consent again left updated_by empty; staff entries fill it.
   if (row?.status === 'Pending')
     return !row.updated_by
-      ? `<div class="notice"><b>Please consent again.</b> Order emails now go from your own Gmail, so your earlier consent has ended. ${first} these details, tick your consent and save.</div>`
-      : `<div class="notice"><b>Your Sampadha contact entered these details.</b> ${first} them, tick your consent and save to switch broker auto-email on. If anything is wrong, ask them to change it.</div>`;
+      ? `<div class="notice"><b>Please consent again.</b> Order emails now go from your own Gmail, so your earlier consent has ended. Check these details, then give your consent.</div>`
+      : `<div class="notice"><b>Your Sampadha contact entered these details.</b> Check them, then give your consent to switch broker auto-email on. If anything is wrong, ask them to change it.</div>`;
   return '';
 }
 
@@ -180,7 +172,7 @@ function brokerConsentBanner(row) {
 const brokerDeskNote = () =>
   `<div class="notice"><b>Ask your broker's dealing desk to mark your email address as safe.</b> Without this, your order emails may land in their spam folder. "Accepted by Gmail" means Gmail took the email, not that it reached their inbox, so please confirm with your broker that your orders are arriving.</div>`;
 
-// One section: the details, then Gmail, then the consent. Once all is done there is no form.
+// One section and one consent: the details, then Give consent, which also connects Gmail if needed.
 function brokerClientPage() {
   const uid = state.user.uid,
     row = brokerRowFor(uid),
@@ -193,10 +185,11 @@ function brokerClientPage() {
           ['Broker client ID', row.broker_client_id],
           ['Broker order email', row.to_email],
           ['CC emails', (row.cc_emails || []).join('; ')],
+          ...(brokerGmailConnected(uid) ? [['Sends from', brokerGmailOf(uid).address]] : []),
           ...(done ? [['Consent given', Api.fmt.stamp(row.consented_at) + ' IST']] : []),
         ])
       : '<div class="notice">Your Sampadha contact will enter your broker details. You will get an email and a portal alert when they are ready for your consent.</div>'
-  }${brokerDeskNote()}${brokerGmailSection(done)}${
+  }${brokerDeskNote()}${brokerGmailNotes(done)}${
     !row
       ? ''
       : done
@@ -314,6 +307,37 @@ const BROKER_GMAIL_RETURN = {
   denied: () => ['Gmail not connected', 'Gmail not connected. Google approval was not given, so nothing has changed. To connect, press the button below and allow sending.'],
   failed: () => ['Gmail not connected', 'Gmail not connected. Something went wrong during the Google approval. Please try again. If it keeps failing, contact Sampadha.'],
 };
+const BROKER_CONSENT_AFTER_GMAIL = 'sampadha.brokerConsentAfterGmail';
+function brokerTakeConsentFlag() {
+  try {
+    const set = sessionStorage.getItem(BROKER_CONSENT_AFTER_GMAIL) === '1';
+    sessionStorage.removeItem(BROKER_CONSENT_AFTER_GMAIL);
+    return set;
+  } catch {
+    return false;
+  }
+}
+// The client ticked and pressed Give consent before going to Google, so finish it now.
+async function brokerSaveConsentAfterGmail() {
+  const row = brokerRowFor(state.user.uid);
+  if (!row) return;
+  try {
+    await Api.saveBrokerEmail(
+      '',
+      {
+        broker: row.broker,
+        brokerClientId: row.broker_client_id,
+        toEmail: row.to_email,
+        ccEmails: (row.cc_emails || []).join('; '),
+      },
+      true,
+    );
+    brokerGmailNote = '';
+    await brokerAfterChange('Consent given', 'Broker auto-email is on.');
+  } catch (error) {
+    toast(error.message);
+  }
+}
 function brokerResumeGmail() {
   const params = new URLSearchParams(location.search),
     result = params.get(BROKER_GMAIL_PARAM);
@@ -321,8 +345,10 @@ function brokerResumeGmail() {
   params.delete(BROKER_GMAIL_PARAM);
   history.replaceState(null, '', location.pathname + (params.size ? '?' + params : ''));
   if (state.role !== 'client' || !Object.hasOwn(BROKER_GMAIL_RETURN, result)) return;
+  const consenting = brokerTakeConsentFlag();
   const unconfirmed = result === 'connected' && !brokerGmailConnected(state.user.uid),
     [title, text] = BROKER_GMAIL_RETURN[unconfirmed ? 'failed' : result]();
+  if (consenting && result === 'connected' && !unconfirmed) return brokerSaveConsentAfterGmail();
   brokerGmailNote = text;
   show('brokerEmail');
   toast(title);
@@ -485,8 +511,18 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
     loginId = form.dataset.login;
   button.disabled = true;
   try {
-    const e = form.elements,
-      result = await Api.saveBrokerEmail(
+    const e = form.elements;
+    if (!loginId && onboardingPending()) await Api.acceptOnboardingDetails();
+    // Not connected yet: Google first, and the consent is saved on the way back.
+    if (!loginId && !brokerGmailConnected(state.user.uid)) {
+      try {
+        sessionStorage.setItem(BROKER_CONSENT_AFTER_GMAIL, '1');
+      } catch {
+        /* the client will be asked to give consent again */
+      }
+      return await brokerConnectGmail(button);
+    }
+    const result = await Api.saveBrokerEmail(
         loginId,
         {
           broker: e.broker.value.trim(),
@@ -497,7 +533,6 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
         Boolean(e.consent?.checked),
       );
     const clientId = loginId ? state.ws?.directory?.find((p) => p.login_id === loginId)?.id : state.user.uid;
-    if (!loginId && e.consent?.checked && onboardingPending()) await Api.acceptOnboardingDetails();
     if (loginId && !(result.status === 'Active' && brokerGmailConnected(clientId)))
       await Api.sendBrokerConsent(loginId);
     await brokerAfterChange('Broker details saved', () =>

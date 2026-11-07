@@ -41,14 +41,13 @@ live dealing desk.
 1. **Home page (10 seconds).** Open `https://racrm.fintecindia.com`. Show the Sampadha name and the
    Privacy Policy link, then open the policy and scroll to "Connecting your Gmail".
 2. **Sign in as a test client (10 seconds).** Open **Broker auto-email**.
-3. **Explain the feature (10 seconds).** Show the Connect your Gmail card, and say that order emails
-   go from the client's own Gmail and that the portal cannot read mail.
-4. **Consent screen (25 seconds).** Press **Connect your Gmail**. Google shows the unverified app
-   screen: it must appear in the video, so press Advanced and continue. Pause on Google's screen. Click into
-   the address bar so the `client_id` is readable, then show the requested permission, "Send email on
-   your behalf". Tick it and continue.
-5. **Connected (10 seconds).** Back in the portal, show Connected and the Gmail address.
-6. **Consent (15 seconds).** Show the broker details, tick the consent, and press **I consent**.
+3. **Explain the feature (15 seconds).** Show the read-only broker details and the consent statement,
+   and say that order emails go from the client's own Gmail and that the portal cannot read mail.
+4. **Consent (10 seconds).** Tick the consent and press **Give consent**.
+5. **Google's screen (25 seconds).** Google shows the unverified app screen: it must appear in the video,
+   so press Advanced and continue. Click into the address bar so the  is readable, then
+   show the requested permission, "Send email on your behalf". Tick it and continue.
+6. **Done (10 seconds).** Back in the portal, show Done, the Sends from address and the consent date.
 7. **The scope in use (30 seconds).** Sign in as the Research Analyst in a second window, send a Multi
    report to the test client, then open the test mailbox and show the order arriving from the
    client's Gmail address. Set up the test client with a test mailbox as the broker address first.

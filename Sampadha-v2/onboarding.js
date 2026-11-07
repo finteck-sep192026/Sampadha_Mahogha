@@ -194,7 +194,7 @@ function onboardingClientCard() {
   const own = state.ws.onboarding,
     d = own.details || {},
     uid = state.user.uid,
-    together = brokerRowFor(uid) && brokerGmailConnected(uid),
+    together = brokerRowFor(uid),
     auto = d.auto_email,
     date = d.dob ? String(d.dob).split('-').reverse().join('-') : '';
   return `<article class="card panel"><div class="panel-head"><div><h3>Your onboarding details</h3><p>Check the details your Sampadha contact entered for you.</p></div><span class="status gold">Waiting for you</span></div>${own.pdf_path ? `<div class="actions"><button type="button" class="btn secondary" data-onboarding-file="${esc(own.pdf_path)}">View PDF</button></div>` : ''}${hubFacts([
