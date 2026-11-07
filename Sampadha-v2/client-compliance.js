@@ -29,6 +29,7 @@ const RISK_MEANING = {
 };
 
 const complianceRows = () => state.ws?.compliance || [];
+const complianceHome = () => (state.role === 'client' ? 'compliance' : 'clients');
 const complianceRow = (clientId) => complianceRows().find((r) => r.client_id === clientId);
 const latestRiskProfile = (clientId) =>
   (state.ws?.riskProfiles || []).find((r) => r.client_id === clientId);
@@ -187,36 +188,14 @@ function staffCompliancePage() {
     clientsList = (state.ws?.directory || []).filter((p) => p.role === 'client' && p.is_active),
     docs = state.ws?.clientDocuments || [],
     login = new Map(clientsList.map((p) => [p.id, p.login_id])),
-    admin = state.role === 'admin';
+    admin = state.role === 'admin',
+    kycCell = (r) => (admin ? `<form class="kyc-form" data-kyc="${esc(r.login_id)}"><select name="status">${['Verified', 'Pending', 'Rejected'].map((s) => `<option ${String(r.kyc_status || '').startsWith(s) ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn secondary">Save</button></form><small>${esc(r.kyc_status || '—')}</small>` : esc(r.kyc_status || '—'));
   return `${statCards([
     ['Clients', rows.length, 'In the portal'],
     ['Risk profile done', rows.filter((r) => r.risk_category).length, 'Answered by the client', '✓'],
     ['Agreement signed', rows.filter((r) => r.agreement_signed_at).length, 'Aadhaar eSigned', '✎'],
     ['KYC verified', rows.filter((r) => /^verified/i.test(r.kyc_status || '')).length, 'Recorded by Admin', '✓'],
-  ])}<article class="card panel"><div class="panel-head"><div><h3>Send a document for e-sign</h3><p>Upload the client agreement (or any PDF) for one client. They are emailed and sign it with Aadhaar eSign in their portal.</p></div><span class="badge">eSign</span></div><form id="docSendForm"><div class="form-grid three"><label class="field">Client *<select name="client" required><option value="">Select a client</option>${clientsList.map((p) => `<option value="${esc(p.id)}">${esc(p.full_name)} · ${esc(p.login_id)}</option>`).join('')}</select></label><label class="field">Document type *<select name="kind"><option>Client agreement</option><option>Other</option></select></label><label class="field">Title *<input name="title" required maxlength="120" value="Research Analyst client agreement"></label><label class="field">Sign pages<select name="signPages"><option value="All">All pages</option><option value="Last">Last page only</option></select></label><label class="field">PDF (up to 10 MB) *<input name="file" type="file" accept="application/pdf" required></label></div><div class="actions"><button class="btn primary">Send for signature</button></div><p id="docSendMessage" class="research-message" role="status"></p></form></article><article class="card panel"><div class="panel-head"><div><h3>Client compliance</h3><p>Each client's risk profile, signed agreement and KYC, filled in by the client's own actions.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>Agreement</th><th>KYC</th><th>Broker auto-email</th><th></th></tr></thead><tbody>${
-    rows
-      .map(
-        (r) =>
-          `<tr><td><b>${esc(r.full_name)}</b><small>${esc(r.login_id)}${r.is_active ? '' : ' · inactive'}</small></td><td>${
-            r.risk_category
-              ? `<span class="status ${r.derivatives_suitable ? 'green' : 'gold'}">${esc(r.risk_category)}</span><small>${r.risk_score}/36 · ${esc(complianceDate(r.risk_at))}${r.derivatives_suitable ? '' : ' · F&O may not suit'}</small>`
-              : '<span class="status gray">Not done</span>'
-          }</td><td>${
-            r.agreement_signed_at
-              ? `<span class="status green">Signed</span><small>${esc(complianceDate(r.agreement_signed_at))}</small>`
-              : `<span class="status ${r.documents_pending ? 'gold' : 'gray'}">${r.documents_pending ? 'Sent, not signed' : 'Not sent'}</span>`
-          }</td><td>${
-            admin
-              ? `<form class="kyc-form" data-kyc="${esc(r.login_id)}"><select name="status">${['Verified', 'Pending', 'Rejected'].map((s) => `<option ${String(r.kyc_status || '').startsWith(s) ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn secondary">Save</button></form><small>${esc(r.kyc_status || '—')}</small>`
-              : esc(r.kyc_status || '—')
-          }</td><td>${esc(r.broker_email_status || 'Off')}</td><td>${r.risk_category ? `<button type="button" class="btn secondary" data-risk-answers="${esc(r.client_id)}">${complianceAnswersFor === r.client_id ? 'Hide answers' : 'Answers'}</button>` : ''}</td></tr>${
-            complianceAnswersFor === r.client_id && latestRiskProfile(r.client_id)
-              ? `<tr><td colspan="6">${riskSummary(latestRiskProfile(r.client_id))}</td></tr>`
-              : ''
-          }`,
-      )
-      .join('') || '<tr><td colspan="6" class="empty">No clients yet.</td></tr>'
-  }</tbody></table></div></article><article class="card panel"><div class="panel-head"><div><h3>Documents sent for e-sign</h3><p>Original and signed copies are kept privately.</p></div><span class="badge">${docs.length}</span></div>${
+  ])}${clientHubTable(kycCell)}<article class="card panel"><div class="panel-head"><div><h3>Send a document for e-sign</h3><p>Upload the client agreement (or any PDF) for one client. They are emailed and sign it with Aadhaar eSign in their portal.</p></div><span class="badge">eSign</span></div><form id="docSendForm"><div class="form-grid three"><label class="field">Client *<select name="client" required><option value="">Select a client</option>${clientsList.map((p) => `<option value="${esc(p.id)}">${esc(p.full_name)} · ${esc(p.login_id)}</option>`).join('')}</select></label><label class="field">Document type *<select name="kind"><option>Client agreement</option><option>Other</option></select></label><label class="field">Title *<input name="title" required maxlength="120" value="Research Analyst client agreement"></label><label class="field">Sign pages<select name="signPages"><option value="All">All pages</option><option value="Last">Last page only</option></select></label><label class="field">PDF (up to 10 MB) *<input name="file" type="file" accept="application/pdf" required></label></div><div class="actions"><button class="btn primary">Send for signature</button></div><p id="docSendMessage" class="research-message" role="status"></p></form></article><article class="card panel"><div class="panel-head"><div><h3>Documents sent for e-sign</h3><p>Original and signed copies are kept privately.</p></div><span class="badge">${docs.length}</span></div>${
     docs.length
       ? `<div class="table-wrap"><table class="table"><thead><tr><th>Document</th><th>Client</th><th>Status</th><th></th></tr></thead><tbody>${docs
           .map(
@@ -235,11 +214,6 @@ nav.client.splice(
   0,
   ['compliance', '§', 'Compliance'],
 );
-nav.admin.splice(
-  nav.admin.findIndex((x) => x[0] === 'clients') + 1,
-  0,
-  ['compliance', '§', 'Compliance'],
-);
 const complianceOriginalShow = show;
 show = function (page) {
   complianceOriginalShow(page);
@@ -248,7 +222,7 @@ show = function (page) {
 
 async function complianceRefresh(message) {
   await refreshWorkspace();
-  show('compliance');
+  show(complianceHome());
   const target = document.querySelector('#complianceDocMessage');
   if (target && message) target.textContent = message;
 }
@@ -271,7 +245,7 @@ async function complianceResumeSign() {
   params.delete(COMPLIANCE_RETURN_PARAM);
   history.replaceState(null, '', location.pathname + (params.size ? '?' + params : ''));
   if (state.role !== 'client') return;
-  show('compliance');
+  show(complianceHome());
   await complianceVerify(documentId).catch((error) => {
     const target = document.querySelector('#complianceDocMessage');
     if (target) target.textContent = error.message;
@@ -355,13 +329,13 @@ document.querySelector('#content').addEventListener('click', async (event) => {
     complianceQuestions ||= await Api.riskQuestionnaire().catch(() => null);
     riskPrefill(latestRiskProfile(state.user.uid));
     complianceRetake = true;
-    show('compliance');
+    show(complianceHome());
     document.querySelector('#riskProfileCard')?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
   if (target.closest('[data-risk-cancel]')) {
     riskReset();
-    show('compliance');
+    show(complianceHome());
     document.querySelector('#riskProfileCard')?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
@@ -369,7 +343,7 @@ document.querySelector('#content').addEventListener('click', async (event) => {
   if (answers) {
     complianceAnswersFor =
       complianceAnswersFor === answers.dataset.riskAnswers ? '' : answers.dataset.riskAnswers;
-    show('compliance');
+    show(complianceHome());
     return;
   }
   const button = target.closest('[data-doc-download],[data-doc-verify],[data-doc-cancel]');

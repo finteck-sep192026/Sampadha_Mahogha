@@ -96,12 +96,18 @@ const brokerGmailBadge = (status) => {
 // Names come from Admin's list, with the built-in names until it loads.
 const brokerDesks = () => state.ws?.brokerDesks || [];
 const brokerDeskEmail = (name) => brokerDesks().find((d) => d.name === name)?.order_email || '';
+const brokerDeskCc = (name) => brokerDesks().find((d) => d.name === name)?.order_cc || [];
 // Sales has already entered the client's brokers on Add client; Multi orders use a Multi product's.
 function brokerPrefill(person) {
   const accounts = state.submissions.find((a) => a.email === person.email)?.accounts || [],
     account = accounts.find((a) => CLIENT_MULTI_PRODUCTS.includes(a.product)) || accounts[0];
   return account
-    ? { broker: account.broker, broker_client_id: account.tradingId, to_email: brokerDeskEmail(account.broker) }
+    ? {
+        broker: account.broker,
+        broker_client_id: account.tradingId,
+        to_email: brokerDeskEmail(account.broker),
+        cc_emails: brokerDeskCc(account.broker),
+      }
     : null;
 }
 function brokerForm(row, { client, loginId }) {
@@ -214,7 +220,7 @@ function brokerAutoEmailCell(loginId) {
     : `<button class="btn secondary" data-broker-client="${esc(loginId)}">Set up</button>`;
 }
 function brokerDesksCard() {
-  return `<article class="card panel"><div class="panel-head"><div><h3>Broker order addresses</h3><p>Choosing a broker fills in this TO address, and Sales can still change it for one client. These names also appear on the Add client form. Clear a name to remove it.</p></div></div><form id="brokerDesksForm"><div class="table-wrap"><table class="table"><thead><tr><th>Broker</th><th>Order email</th></tr></thead><tbody>${[...brokerDesks(), { name: '', order_email: '' }].map((d, i) => `<tr data-desk="${esc(d.name)}"><td><input name="name" value="${esc(d.name)}" maxlength="80" placeholder="Add a broker" aria-label="Broker ${i + 1}"></td><td><input name="email" type="email" value="${esc(d.order_email || '')}" placeholder="Dealing desk address" aria-label="Order email ${i + 1}"></td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="btn primary">Save addresses</button></div></form></article>`;
+  return `<article class="card panel"><div class="panel-head"><div><h3>Broker order addresses</h3><p>Choosing a broker fills in this TO address, and Sales can still change it for one client. These names also appear on the Add client form. Clear a name to remove it.</p></div></div><form id="brokerDesksForm"><div class="table-wrap"><table class="table"><thead><tr><th>Broker</th><th>Order email (TO)</th><th>CC emails</th></tr></thead><tbody>${[...brokerDesks(), { name: '', order_email: '', order_cc: [] }].map((d, i) => `<tr data-desk="${esc(d.name)}"><td><input name="name" value="${esc(d.name)}" maxlength="80" placeholder="Add a broker" aria-label="Broker ${i + 1}"></td><td><input name="email" type="email" value="${esc(d.order_email || '')}" placeholder="Dealing desk address" aria-label="Order email ${i + 1}"></td><td><input name="cc" value="${esc((d.order_cc || []).join('; '))}" placeholder="Separate with ;" aria-label="CC emails ${i + 1}"></td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="btn primary">Save addresses</button></div></form></article>`;
 }
 
 function brokerStaffPage() {
@@ -357,7 +363,10 @@ document.querySelector('#content').addEventListener('change', (event) => {
   const form = event.target.closest('#brokerEmailForm');
   if (!form || event.target.name !== 'broker' || !form.dataset.login) return;
   const address = brokerDeskEmail(event.target.value.trim());
-  if (address) form.elements.toEmail.value = address;
+  if (address) {
+    form.elements.toEmail.value = address;
+    form.elements.ccEmails.value = brokerDeskCc(event.target.value.trim()).join('; ');
+  }
 });
 document.querySelector('#content').addEventListener('click', async (event) => {
   const resend = event.target.closest('[data-broker-resend]');
@@ -445,13 +454,14 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
         old: row.dataset.desk,
         name: row.querySelector('[name=name]').value.trim(),
         order_email: row.querySelector('[name=email]').value.trim().toLowerCase() || null,
+        order_cc: row.querySelector('[name=cc]').value.split(/[;,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean),
         sort_order: (i + 1) * 10,
       })),
       keep = lines.filter((l) => l.name);
     button.disabled = true;
     try {
       await Api.saveBrokerDesks(
-        keep.map(({ name, order_email, sort_order }) => ({ name, order_email, sort_order })),
+        keep.map(({ name, order_email, order_cc, sort_order }) => ({ name, order_email, order_cc, sort_order })),
         lines.filter((l) => l.old && l.old !== l.name).map((l) => l.old),
       );
       await brokerAfterChange('Addresses saved', '');

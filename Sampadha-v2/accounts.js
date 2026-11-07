@@ -141,12 +141,12 @@ document.querySelector('#content').addEventListener('click', async (event) => {
   const create = event.target.closest('[data-account-create]');
   if (create) {
     accountsCreateFor = create.dataset.accountCreate;
-    show('approvals');
+    show('clients');
     return;
   }
   if (event.target.closest('[data-account-cancel]')) {
     accountsCreateFor = '';
-    show('approvals');
+    show('clients');
     return;
   }
   const button = event.target.closest('[data-account-link],[data-account-active]');
@@ -223,7 +223,7 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
         billing: e.billing.value,
       });
       accountsCreateFor = '';
-      await accountsRefresh('approvals', '', '');
+      await accountsRefresh('clients', '', '');
       toast(`Login ${r.loginId} created and emailed to ${r.email}`);
     } catch (error) {
       message.textContent = error.message;
