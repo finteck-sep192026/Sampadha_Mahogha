@@ -45,6 +45,7 @@ function hubDetails(app, row, person) {
           ['Application', app.id],
           ['Submitted', app.submitted],
           ['Services', app.services],
+          ['Broker auto-email', raw.auto_email?.wanted ? raw.auto_email.broker + ' → ' + raw.auto_email.to : raw.auto_email ? 'Not requested' : ''],
           ['Products', app.products + (app.quoted ? ' (' + app.quoted + ' / year)' : '')],
         ])}<h4>Brokers</h4>${
           app.accounts.length

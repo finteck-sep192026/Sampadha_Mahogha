@@ -121,6 +121,13 @@ async function onboardingPdfBlob(p) {
       ['Maximum loss tolerance', a.loss],
     ].forEach(([label, value]) => line(label, value));
   });
+  heading('Broker auto-email');
+  if (p.autoEmail?.wanted) {
+    line('Broker', p.autoEmail.broker);
+    line('Broker client ID', p.autoEmail.tradingId);
+    line('Order email (TO)', p.autoEmail.to);
+    line('CC emails', p.autoEmail.cc.join(', '));
+  } else line('Auto-email', 'Not requested');
   const images = pages.map((canvas, index) => {
     ctx = canvas.getContext('2d');
     ctx.fillStyle = muted;
@@ -182,10 +189,14 @@ const onboardingPending = () => {
 function onboardingClientCard() {
   const own = state.ws?.onboarding;
   if (!own?.pdf_path) return '';
+  const uid = state.user.uid,
+    together = brokerRowFor(uid) && brokerGmailConnected(uid);
   return `<article class="card panel"><div class="panel-head"><div><h3>Your onboarding details</h3><p>Check the details your Sampadha contact entered for you.</p></div><span class="status ${own.details_accepted_at ? 'green' : 'gold'}">${own.details_accepted_at ? 'Accepted' : 'Waiting for you'}</span></div><div class="actions"><button type="button" class="btn secondary" data-onboarding-file="${esc(own.pdf_path)}">View PDF</button></div>${
     own.details_accepted_at
       ? `<p class="muted">Accepted on ${esc(Api.fmt.stamp(own.details_accepted_at))} IST.</p>`
-      : '<form id="onboardingAcceptForm"><label class="consent"><input name="accept" type="checkbox" required><span><b>I accept these details *</b><small>The details in this PDF are correct. If anything is wrong, ask your Sampadha contact to change it before accepting.</small></span></label><div class="actions"><button class="btn primary">Accept details</button></div></form>'
+      : together
+        ? '<p class="muted">Your consent below also accepts these details.</p>'
+        : '<form id="onboardingAcceptForm"><label class="consent"><input name="accept" type="checkbox" required><span><b>I accept these details *</b><small>The details in this PDF are correct. If anything is wrong, ask your Sampadha contact to change it before accepting.</small></span></label><div class="actions"><button class="btn primary">Accept details</button></div></form>'
   }</article>`;
 }
 

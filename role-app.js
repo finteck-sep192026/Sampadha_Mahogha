@@ -208,6 +208,25 @@ function syncAddClient() {
     other.hidden = !isOther;
     input.required = isOther;
   });
+  // Multi orders use the first ticked Multi product's broker, with that desk's addresses.
+  const auto = form.querySelector('[data-auto-email]'),
+    multi = CLIENT_MULTI_PRODUCTS.find((p) => ticked.includes(p)),
+    wanted = form.elements.autoWanted.checked;
+  auto.hidden = !multi;
+  auto.disabled = !multi;
+  auto.querySelector('[data-auto-fields]').hidden = !wanted;
+  form.elements.autoTo.required = Boolean(multi && wanted);
+  if (multi) {
+    const i = CLIENT_PRODUCTS.indexOf(multi),
+      chosen = form.elements['broker_' + i].value,
+      name = chosen === 'Others' ? form.elements['brokerOther_' + i].value.trim() : chosen;
+    form.elements.autoBroker.value = name;
+    if (form.dataset.autoBroker !== name) {
+      form.dataset.autoBroker = name;
+      form.elements.autoTo.value = brokerDeskEmail(name);
+      form.elements.autoCc.value = brokerDeskCc(name).join('; ');
+    }
+  } else delete form.dataset.autoBroker;
   const prices = [...form.querySelectorAll('[name=products]:checked')].map((x) => x.dataset.price),
     total = prices.reduce((sum, p) => sum + Number(p || 0), 0),
     missing = prices.filter((p) => p === '').length;
@@ -218,7 +237,7 @@ function syncAddClient() {
 const experienceOptions = () =>
   '<option>New / No experience</option><option>Under 1 year</option><option>1–3 years</option><option>3–5 years</option><option>More than 5 years</option>';
 const addClient = () =>
-  `<form id="addClientForm"><section class="form-section card panel"><div class="panel-head"><div><h3>Personal and KYC details</h3><p>Fields marked required must be completed before submission.</p></div><span class="badge">Step 1 of 3</span></div><div class="form-grid three"><label class="field">Full legal name *<input name="name" required placeholder="As per PAN"></label><label class="field">PAN number *<input name="pan" required pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" placeholder="ABCDE1234F"></label><label class="field">Date of birth *<input name="dob" type="date" required></label><label class="field">Email address *<input name="email" type="email" required></label><label class="field">Mobile number *<input name="mobile" required placeholder="+91 98765 43210"></label><label class="field">Occupation *<select name="occupation" required><option value="">Select</option><option>Salaried</option><option>Business</option><option>Professional</option><option>Retired</option></select></label><label class="field">Annual income *<select name="income" required><option>₹5–10 lakh</option><option>₹10–25 lakh</option><option>₹25–50 lakh</option><option>Above ₹50 lakh</option></select></label><label class="field">Net worth *<select name="netWorth" required><option>Below ₹10 lakh</option><option>₹10–25 lakh</option><option>₹25–75 lakh</option><option>₹75 lakh–₹2.5 crore</option><option>₹2.5–5 crore</option><option>Above ₹5 crore</option></select></label><label class="field">Tax residency *<select name="residency"><option>Resident Indian – Non business</option><option>Resident Indian – Business</option><option>Non-individual (LLP, Private Limited etc.)</option><option>Non-resident individual</option></select></label><label class="field">City *<input name="city" required value="Mumbai"></label><label class="field">Mutual fund investment experience<select name="mfExperience">${experienceOptions()}</select></label><label class="field">Stocks investment experience<select name="stockExperience">${experienceOptions()}</select></label><label class="field">F &amp; O trading experience<select name="foExperience">${experienceOptions()}</select></label><label class="field">Proposed investment amount *<input name="amount" type="number" min="10000" value="500000" required></label></div><fieldset><legend>Required market segments *</legend><div class="checks">${MARKET_SEGMENTS.map((x) => `<label><input type="checkbox" name="segments" value="${x}"${x === 'Cash' ? ' checked' : ''}> ${x}</label>`).join('')}</div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Products and services</h3><p>Choose the services and products, then enter the broker and suitability details for each product.</p></div><span class="badge">Step 2 of 3</span></div><fieldset><legend>Services</legend><div class="checks">${CLIENT_SERVICES.map((x) => `<label><input type="checkbox" name="services" value="${x}"> ${x}</label>`).join('')}</div></fieldset><fieldset><legend>Interested products *</legend><h4>Cash segment</h4><div class="checks">${CLIENT_CASH_PRODUCTS.map(productCheck).join('')}</div><h4>Multi segment</h4><div class="checks">${CLIENT_MULTI_PRODUCTS.map(productCheck).join('')}</div><p id="productTotal" class="research-notice"></p></fieldset>${CLIENT_PRODUCTS.map(brokerBlock).join('')}</section><section class="form-section card panel"><div class="panel-head"><div><h3>Client confirmation</h3><p>Send the details to the client, then submit for Admin approval.</p></div><span class="badge">Step 3 of 3</span></div><label class="consent"><input name="consent" type="checkbox" required><span><b>Send above details to client mail *</b><small>Admin gets this for approval. The client gets the details as a PDF by email, then accepts them in their login once Admin creates it.</small></span></label><div class="notice">Submitting creates a pending record. Only an Admin login can approve or reject the client.</div><div class="actions"><button type="reset" class="btn secondary">Clear form</button><button class="btn primary">Submit for Admin approval →</button></div></section></form>`;
+  `<form id="addClientForm"><section class="form-section card panel"><div class="panel-head"><div><h3>Personal and KYC details</h3><p>Fields marked required must be completed before submission.</p></div><span class="badge">Step 1 of 3</span></div><div class="form-grid three"><label class="field">Full legal name *<input name="name" required placeholder="As per PAN"></label><label class="field">PAN number *<input name="pan" required pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" placeholder="ABCDE1234F"></label><label class="field">Date of birth *<input name="dob" type="date" required></label><label class="field">Email address *<input name="email" type="email" required></label><label class="field">Mobile number *<input name="mobile" required placeholder="+91 98765 43210"></label><label class="field">Occupation *<select name="occupation" required><option value="">Select</option><option>Salaried</option><option>Business</option><option>Professional</option><option>Retired</option></select></label><label class="field">Annual income *<select name="income" required><option>₹5–10 lakh</option><option>₹10–25 lakh</option><option>₹25–50 lakh</option><option>Above ₹50 lakh</option></select></label><label class="field">Net worth *<select name="netWorth" required><option>Below ₹10 lakh</option><option>₹10–25 lakh</option><option>₹25–75 lakh</option><option>₹75 lakh–₹2.5 crore</option><option>₹2.5–5 crore</option><option>Above ₹5 crore</option></select></label><label class="field">Tax residency *<select name="residency"><option>Resident Indian – Non business</option><option>Resident Indian – Business</option><option>Non-individual (LLP, Private Limited etc.)</option><option>Non-resident individual</option></select></label><label class="field">City *<input name="city" required value="Mumbai"></label><label class="field">Mutual fund investment experience<select name="mfExperience">${experienceOptions()}</select></label><label class="field">Stocks investment experience<select name="stockExperience">${experienceOptions()}</select></label><label class="field">F &amp; O trading experience<select name="foExperience">${experienceOptions()}</select></label><label class="field">Proposed investment amount *<input name="amount" type="number" min="10000" value="500000" required></label></div><fieldset><legend>Required market segments *</legend><div class="checks">${MARKET_SEGMENTS.map((x) => `<label><input type="checkbox" name="segments" value="${x}"${x === 'Cash' ? ' checked' : ''}> ${x}</label>`).join('')}</div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Products and services</h3><p>Choose the services and products, then enter the broker and suitability details for each product.</p></div><span class="badge">Step 2 of 3</span></div><fieldset><legend>Services</legend><div class="checks">${CLIENT_SERVICES.map((x) => `<label><input type="checkbox" name="services" value="${x}"> ${x}</label>`).join('')}</div></fieldset><fieldset><legend>Interested products *</legend><h4>Cash segment</h4><div class="checks">${CLIENT_CASH_PRODUCTS.map(productCheck).join('')}</div><h4>Multi segment</h4><div class="checks">${CLIENT_MULTI_PRODUCTS.map(productCheck).join('')}</div><p id="productTotal" class="research-notice"></p></fieldset>${CLIENT_PRODUCTS.map(brokerBlock).join('')}<fieldset data-auto-email hidden disabled><legend>Broker auto-email</legend><label class="consent"><input name="autoWanted" type="checkbox" checked><span><b>Email Multi orders to the broker from the client's Gmail</b><small>The client approves this on their consent page. Nothing is sent until they do.</small></span></label><div class="form-grid three" data-auto-fields><label class="field">Broker<input name="autoBroker" readonly></label><label class="field">Broker order email (TO) *<input name="autoTo" type="email" placeholder="Dealing desk address"></label><label class="field">CC emails<input name="autoCc" placeholder="Separate with ;"></label></div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Client confirmation</h3><p>Send the details to the client, then submit for Admin approval.</p></div><span class="badge">Step 3 of 3</span></div><label class="consent"><input name="consent" type="checkbox" required><span><b>Send above details to client mail *</b><small>Admin gets this for approval. The client gets the details as a PDF by email. Once Admin creates the login, the client gets one link to review them and give consent.</small></span></label><div class="notice">Submitting creates a pending record. Only an Admin login can approve or reject the client.</div><div class="actions"><button type="reset" class="btn secondary">Clear form</button><button class="btn primary">Submit for Admin approval →</button></div></section></form>`;
 const salesClientsPage = () =>
   `<article class="card panel"><div class="panel-head"><div><p class="overline">Client relationships</p><h3>Clients</h3><p>View existing clients or add a new share-market client for Admin approval.</p></div><button id="salesAddClientToggle" class="btn primary" aria-expanded="false">＋ Add client</button></div></article><section id="salesAddClientPanel" hidden>${addClient()}</section>${clientTable(false)}`;
 const approvals = () =>
@@ -1017,6 +1036,17 @@ $('#content').addEventListener('submit', async (e) => {
         ]
       : [],
   );
+  const multiAccount = payload.accounts.find((a) => CLIENT_MULTI_PRODUCTS.includes(a.product));
+  payload.autoEmail =
+    multiAccount && d.get('autoWanted') === 'on'
+      ? {
+          wanted: true,
+          broker: multiAccount.broker,
+          tradingId: multiAccount.tradingId,
+          to: d.get('autoTo').trim().toLowerCase(),
+          cc: d.get('autoCc').split(/[;,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean),
+        }
+      : { wanted: false };
   if (!payload.segments.length) return toast('Tick at least one market segment.');
   if (!payload.products.length) return toast('Tick at least one product.');
   payload.consent = d.get('consent') === 'on';
@@ -1033,3 +1063,7 @@ $('#content').addEventListener('submit', async (e) => {
   }
 });
 setSignInMode('email');
+if (new URLSearchParams(location.search).get('link') === 'expired') {
+  $('#loginError').textContent = 'This link has expired. Enter your ID to get an email code.';
+  history.replaceState(null, '', location.pathname);
+}
