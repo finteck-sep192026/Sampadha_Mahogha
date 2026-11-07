@@ -4,7 +4,7 @@
 //        → creates a staff login and emails a link to set the password.
 //   POST { action: 'invite', role: 'client', applicationRef, plan, products: [...], multiTier? }
 //        → creates the login for an approved client application, with its subscription, and emails
-//          the client a link to set the password.
+//          the client their one consent link (no password needed).
 //   POST { action: 'resend', loginId }             → emails a fresh set-password link.
 //   POST { action: 'set-active', loginId, active } → turns a person's portal access off or on.
 //
@@ -13,6 +13,7 @@
 // SMTP_USERNAME, SMTP_PASSWORD, MAIL_FROM. PORTAL_URL (optional) is where the link lands.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { sendClientLink } from '../_shared/client-link.ts';
 
 const PORTAL_URL = Deno.env.get('PORTAL_URL') ?? 'https://racrm.fintecindia.com/';
 const HOST = Deno.env.get('SMTP_HOST')?.trim();
@@ -156,9 +157,7 @@ async function sendSetPasswordLink(profile: { id: string; login_id: string; role
   const subject = kind === 'invite' ? 'Your Sampadha portal account' : 'Set a new password for the Sampadha portal';
   const intro =
     kind === 'invite'
-      ? profile.role === 'client'
-        ? `An account has been created for you on the Sampadha portal. This one link sets your password and opens your consent page, where you accept your onboarding details and approve broker auto-email.`
-        : `An account has been created for you on the Sampadha portal.`
+      ? `An account has been created for you on the Sampadha portal.`
       : `A new link to set your Sampadha portal password was requested for you.`;
   const text = `Hello ${profile.full_name},\n\n${intro}\n\nYour login ID: ${profile.login_id}\n\nSet your password here (the link works once and expires in 5 minutes):\n${link}\n\nThen sign in at ${PORTAL_URL} with your login ID or this email address. If the link has expired, choose "Sign in with an email code instead" there, then set a password from Change password.\n\nIf you were not expecting this email, ignore it.\n\nSampadha`;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -274,7 +273,14 @@ async function invite(who: Caller, body: Record<string, unknown>) {
     await v2.from('client_applications').update({ client_id: user.id }).eq('id', application!.id);
   }
   await audit(who, 'account.created', loginId, { role, email, application: application?.app_ref ?? null });
-  await sendSetPasswordLink(profile, 'invite', who);
+  // A client needs no password: their one link signs them in and opens the consent page.
+  if (role === 'client') {
+    try {
+      await sendClientLink({ admin, v2, transport, from: FROM, portalUrl: PORTAL_URL }, profile, who.id);
+    } catch (error) {
+      throw new HttpError(502, `Login ${loginId} was created, but its link email failed. Use Resend consent. ${(error as Error).message}`);
+    }
+  } else await sendSetPasswordLink(profile, 'invite', who);
   return { loginId, email };
 }
 

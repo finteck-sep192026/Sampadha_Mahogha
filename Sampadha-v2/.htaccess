@@ -10,6 +10,9 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # verify the app, so it forwards straight on to the client-gmail function with the query string.
 RewriteRule ^gmail-callback$ https://nxtyswlxnmekpvlfuucg.supabase.co/functions/v1/client-gmail [R=302,QSA,L]
 
+# The client's one link from their consent email.
+RewriteRule ^client-access$ https://nxtyswlxnmekpvlfuucg.supabase.co/functions/v1/client-link [R=302,QSA,L]
+
 # Git deployment leaves a .git folder in the web root; never serve it.
 RedirectMatch 404 /\.git
 

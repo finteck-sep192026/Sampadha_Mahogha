@@ -584,9 +584,20 @@
       p_cc_emails: details.ccEmails,
       p_consent: consent,
     });
-  const sendBrokerConsent = withMail((loginId) =>
-    rpc('send_broker_consent_request', { p_login_id: loginId }),
-  );
+  // Records the request, then the client-link function emails the client their one link.
+  async function sendBrokerConsent(loginId) {
+    await rpc('send_broker_consent_request', { p_login_id: loginId });
+    const { error } = await sb.functions.invoke('client-link', { body: { action: 'send', loginId } });
+    if (error) {
+      let message = error.message;
+      try {
+        message = (await error.context.json()).error || message;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new Error(message);
+    }
+  }
   async function saveBrokerDesks(rows, removed) {
     if (removed.length) must(await sb.from('broker_desks').delete().in('name', removed));
     if (rows.length) must(await sb.from('broker_desks').upsert(rows));

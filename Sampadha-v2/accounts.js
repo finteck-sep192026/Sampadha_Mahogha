@@ -57,9 +57,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!link) return;
   if (link.error) {
     document.querySelector('#loginError').textContent =
-      'This set-password link has expired or was already used. Sign in with an email code instead, then set a password from Change password.';
+      'This link has expired or was already used. Sign in with an email code instead, then set a password from Change password.';
     return;
   }
+  // A client's one link signs them straight in; only a recovery link asks for a password.
+  if (link.type === 'magiclink') return continueSignIn();
   showSetPassword();
 });
 document.addEventListener('submit', async (event) => {

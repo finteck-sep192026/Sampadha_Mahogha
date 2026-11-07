@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.mailer]
 verify_jwt = false
+
+[functions.client-link]
+verify_jwt = false
