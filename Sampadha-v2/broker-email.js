@@ -120,18 +120,7 @@ function brokerForm(row, { client, loginId }) {
     client
       ? `<label class="consent broker-consent"><input name="consent" type="checkbox" required${locked}><span><b>My consent *</b>${onboardingPending() ? '<small><b>I accept my onboarding details above as correct.</b></small>' : ''}<small>${esc(BROKER_CONSENT_TEXT)}</small><small>Wording ${BROKER_CONSENT_VERSION}</small></span></label>${locked ? `<p class="muted broker-gmail-needed">${gmailStatus === 'Reconnect needed' ? 'Reconnect' : 'Connect'} your Gmail in step 1 before giving consent.</p>` : ''}`
       : '<div class="notice">Saving emails the client a consent request and shows it in their portal. Only the client can connect Gmail and give consent, and no order email goes until they do.</div>'
-  }<div class="actions"><button class="btn primary"${locked}>${client ? (row?.status === 'Active' && !onboardingPending() ? 'Save and confirm consent' : 'I consent') : 'Save and send consent request'}</button>${row?.status && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form>${client ? brokerTestForm(row) : ''}<p id="brokerEmailMessage" class="research-message" role="status"></p>`;
-}
-
-function brokerTestForm(row) {
-  const connected = brokerGmailConnected(state.user.uid),
-    off = connected && row ? '' : ' disabled',
-    waiting = !connected
-      ? ' Available once your Gmail is connected.'
-      : row
-        ? ''
-        : ' Available once your broker details are saved.';
-  return `<form id="brokerTestForm" class="broker-test" data-login=""><label class="field">Send a sample order from your Gmail to<input name="testEmail" type="email" value="${esc(state.user.email)}"${off}></label><button class="btn secondary"${off}>Send test from your Gmail</button><p class="muted broker-test-note">Send this to your own address, not a real dealing desk, because this is a real email.${waiting}</p></form>`;
+  }<div class="actions"><button class="btn primary"${locked}>${client ? 'I consent' : 'Save and send consent request'}</button>${row?.status && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form><p id="brokerEmailMessage" class="research-message" role="status"></p>`;
 }
 
 // Sent on a Gmail row means Gmail took it, not that the broker has it.
@@ -192,10 +181,20 @@ function brokerConsentBanner(row) {
 const brokerDeskNote = () =>
   `<div class="notice"><b>Ask your broker's dealing desk to mark your email address as safe.</b> Without this, your order emails may land in their spam folder. "Accepted by Gmail" means Gmail took the email, not that it reached their inbox, so please confirm with your broker that your orders are arriving.</div>`;
 
+// Consent given and Gmail connected: nothing left to do, so no form.
+function brokerConsentDone(row) {
+  return `<article class="card panel"><div class="panel-head"><div><h3>Step 2: Auto-email consent</h3><p>Your consent is recorded, and each Multi recommendation is emailed to your broker from your Gmail.</p></div><span class="status green">Done</span></div>${brokerDeskNote()}${hubFacts([
+    ['Broker', row.broker],
+    ['Broker client ID', row.broker_client_id],
+    ['Broker order email', row.to_email],
+    ['CC emails', (row.cc_emails || []).join('; ')],
+    ['Consent given', row.consented_at ? Api.fmt.stamp(row.consented_at) + ' IST' : ''],
+  ])}<div class="actions"><button type="button" class="btn secondary" data-broker-revoke>Withdraw consent</button></div><p id="brokerEmailMessage" class="research-message" role="status"></p></article>`;
+}
 function brokerClientPage() {
   const row = brokerRowFor(state.user.uid),
-    mails = state.emails.filter((m) => m.clientId === state.user.uid && /^Broker/.test(m.type));
-  return `${onboardingClientCard()}${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${row ? brokerForm(row, { client: true }) : '<div class="notice">Your Sampadha contact will enter your broker details. You will get an email and a portal alert when they are ready for your consent.</div>'}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
+    mails = state.emails.filter((m) => m.clientId === state.user.uid && m.type === 'Broker order');
+  return `${onboardingClientCard()}${brokerGmailCard()}${row?.status === 'Active' && brokerGmailConnected(state.user.uid) ? brokerConsentDone(row) : `<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${row ? brokerForm(row, { client: true }) : '<div class="notice">Your Sampadha contact will enter your broker details. You will get an email and a portal alert when they are ready for your consent.</div>'}</article>`}<article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
 }
 
 // r is the row from list_broker_email_clients. A client without one has no Gmail facts here.
@@ -471,18 +470,13 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
     }
     return;
   }
-  if (form.id !== 'brokerEmailForm' && form.id !== 'brokerTestForm') return;
+  if (form.id !== 'brokerEmailForm') return;
   event.preventDefault();
   const button = form.querySelector('button:not([type=button])'),
     message = document.querySelector('#brokerEmailMessage'),
     loginId = form.dataset.login;
   button.disabled = true;
   try {
-    if (form.id === 'brokerTestForm') {
-      const result = await Api.sendBrokerTestEmail(loginId, form.elements.testEmail.value.trim());
-      await brokerAfterChange('Test email queued', 'Test email ' + result.mail_ref + ' to ' + result.to + ' from your Gmail: see its status in the list.');
-      return;
-    }
     const e = form.elements,
       result = await Api.saveBrokerEmail(
         loginId,

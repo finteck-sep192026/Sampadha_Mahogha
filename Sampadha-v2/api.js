@@ -612,9 +612,6 @@
       );
   }
   const revokeBrokerEmail = (loginId) => rpc('revoke_broker_email', { p_login_id: loginId || null });
-  const sendBrokerTestEmail = withMail((loginId, testEmail) =>
-    rpc('send_broker_test_email', { p_login_id: loginId || null, p_test_email: testEmail || null }),
-  );
   // The client's own Gmail (client-gmail Edge Function): 'start' returns { url } for Google's approval
   // page; 'disconnect' revokes the access and withdraws the consent.
   async function clientGmail(action) {
@@ -859,7 +856,6 @@
     reportDeliveryStatus,
     replaceReportPdf,
     revokeBrokerEmail,
-    sendBrokerTestEmail,
     clientGmail,
     mailerStatus,
     sendTestEmail,

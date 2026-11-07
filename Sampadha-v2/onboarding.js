@@ -186,8 +186,10 @@ const onboardingPending = () => {
   return Boolean(own && !own.details_accepted_at);
 };
 // The top of the client's Broker auto-email page.
-// Shown until the client has accepted. After that the page holds only broker auto-email.
+// The details until the client has accepted, then one line saying that part is done.
 function onboardingClientCard() {
+  if (state.ws?.onboarding?.details_accepted_at)
+    return `<article class="card panel"><div class="panel-head"><div><h3>Your onboarding details</h3><p>Accepted on ${esc(Api.fmt.stamp(state.ws.onboarding.details_accepted_at))} IST.</p></div><span class="status green">Done</span></div></article>`;
   if (!onboardingPending()) return '';
   const own = state.ws.onboarding,
     d = own.details || {},
