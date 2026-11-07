@@ -18,7 +18,7 @@ continue, with a limit of about 100 users.
 
 ## Scope justification
 
-Paste this for . Data Access allows 1000 characters and
+Paste this for the gmail.send scope. Data Access allows 1000 characters and
 will not save it until the video link is filled in too.
 
 > Sampadha Portal is used by clients of Sampadha, a SEBI-registered Research Analyst. A client can choose to have the research recommendations they receive emailed to their stockbroker's dealing desk. Brokers accept order instructions from the email address registered with them, so the email has to be sent from the client's own Gmail account, not from Sampadha's mailbox. The client turns this on once, after reading a consent statement and approving access on Google's screen. The portal then sends each recommendation to the broker addresses shown at consent. The client can see each email sent, and withdraw and disconnect at any time. We request only gmail.send because the feature only sends messages. We do not read, search, modify or delete mail. gmail.compose and gmail.modify would grant more access than we need. Refresh tokens are encrypted at rest and deleted when the client disconnects.
