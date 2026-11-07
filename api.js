@@ -187,6 +187,9 @@
     status: r.status,
     clientId: r.client_id,
     products: (r.products || []).join(', ') || '—',
+    services: (r.services || []).join(', ') || '—',
+    accounts: r.broker_accounts || [],
+    quoted: r.quoted_annual == null ? '' : rupee(r.quoted_annual),
     horizon: r.horizon || '—',
     objective: r.objective || '—',
     mfExperience: r.mf_experience || '—',
@@ -312,6 +315,7 @@
     signed: r.signed_at ? stamp(r.signed_at, true) + ' IST' : '',
     signerName: r.signer_name || '',
     signedPdfPath: r.signed_pdf_path,
+    pdfVersion: r.pdf_version || 1,
     // Cash: 'upload' (a finished PDF) or 'portfolio' (the older 12-column CSV reports).
     cashKind: r.cash_kind || 'portfolio',
     rows: legs
@@ -360,6 +364,8 @@
         }
       };
     const [
+      productPrices,
+      brokerDesks,
       mailMeta,
       cash,
       multi,
@@ -385,6 +391,12 @@
       clientDocuments,
       gmailLink,
     ] = await Promise.all([
+      ['admin', 'sales'].includes(role)
+        ? ok(q('product_prices', (x) => x.order('sort_order'))).catch(() => [])
+        : [],
+      ['admin', 'sales'].includes(role)
+        ? ok(q('broker_desks', (x) => x.order('sort_order'))).catch(() => [])
+        : [],
       // Sender and segment for Client Communication; without it the filters show less, nothing breaks.
       ['admin', 'sales'].includes(role) ? rpc('mail_meta').catch(() => []) : [],
       // "All recommendations" is built from delivered reports below; the old sample tables
@@ -483,6 +495,8 @@
       applications: apps.map(mapApplication),
       mails: mails.map((m) => mapMail(m, reportRefs)),
       mailMeta,
+      productPrices,
+      brokerDesks,
       directory,
       subscriptions: subs,
       payments,
@@ -561,6 +575,22 @@
       p_cc_emails: details.ccEmails,
       p_consent: consent,
     });
+  const sendBrokerConsent = withMail((loginId) =>
+    rpc('send_broker_consent_request', { p_login_id: loginId }),
+  );
+  async function saveBrokerDesks(rows, removed) {
+    if (removed.length) must(await sb.from('broker_desks').delete().in('name', removed));
+    if (rows.length) must(await sb.from('broker_desks').upsert(rows));
+  }
+  async function saveProductPrices(prices) {
+    for (const [product, price] of Object.entries(prices))
+      must(
+        await sb
+          .from('product_prices')
+          .update({ price_annual: price === '' ? null : Number(price), updated_at: new Date().toISOString() })
+          .eq('product', product),
+      );
+  }
   const revokeBrokerEmail = (loginId) => rpc('revoke_broker_email', { p_login_id: loginId || null });
   const sendBrokerTestEmail = withMail((loginId, testEmail) =>
     rpc('send_broker_test_email', { p_login_id: loginId || null, p_test_email: testEmail || null }),
@@ -696,6 +726,19 @@
     });
   }
 
+  // ───────────── a sent report: delivery status and replacement ─────────────
+  const reportDeliveryStatus = (reportId) =>
+    rpc('report_delivery_status', { p_report_id: reportId });
+  // Archive the current PDF, put the new one in place, then tell the clients. If a step fails the
+  // report stays open for replacing, so pressing Replace again carries on.
+  const replaceReportPdf = withMail(async (reportId, file, reason) => {
+    const { version, source } = await rpc('begin_report_replacement', { p_report_id: reportId }),
+      { error } = await sb.storage.from(BUCKET).copy(source, `${reportId}/archive/v${version}.pdf`);
+    if (error && !/exists/i.test(error.message)) throw new Error(error.message);
+    await upload(`${reportId}/preview.pdf`, file, 'application/pdf');
+    return rpc('finish_report_replacement', { p_report_id: reportId, p_reason: reason });
+  });
+
   // ───────────── Cash working files (Uploads page) ─────────────
   const listCashFiles = async () =>
     must(
@@ -780,6 +823,11 @@
     sendCashReport,
     closeLeg,
     saveBrokerEmail,
+    sendBrokerConsent,
+    saveBrokerDesks,
+    saveProductPrices,
+    reportDeliveryStatus,
+    replaceReportPdf,
     revokeBrokerEmail,
     sendBrokerTestEmail,
     clientGmail,

@@ -1033,7 +1033,9 @@ function researchHistory() {
             : '') +
           '</td><td><button type="button" class="btn secondary" data-research-pdf-view="' +
           r.id +
-          '">View PDF</button> <button type="button" class="btn secondary" data-research-pdf="' +
+          '">' +
+          (state.role !== 'client' && r.recipients.length ? 'Clients, view and replace' : 'View PDF') +
+          '</button> <button type="button" class="btn secondary" data-research-pdf="' +
           r.id +
           '">Download PDF</button></td></tr>',
       )
@@ -1218,7 +1220,8 @@ function researchSignPanel(r) {
     researchParrvaRow(r) +
     researchSignRow(r) +
     researchClientsRow(r) +
-    '<section id="researchClientSection" class="research-client-panel" hidden></section></article>'
+    '<section id="researchClientSection" class="research-client-panel" hidden></section></article>' +
+    reportDeliveryCard(r)
   );
 }
 const researchLegCount = (r) => {

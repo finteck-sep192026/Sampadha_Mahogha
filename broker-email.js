@@ -93,15 +93,28 @@ const brokerGmailBadge = (status) => {
   return `<span class="status ${tone}">${label}</span>`;
 };
 
+// Names come from Admin's list, with the built-in names until it loads.
+const brokerDesks = () => state.ws?.brokerDesks || [];
+const brokerDeskEmail = (name) => brokerDesks().find((d) => d.name === name)?.order_email || '';
+// Sales has already entered the client's brokers on Add client; Multi orders use the derivatives one.
+function brokerPrefill(person) {
+  const accounts = state.submissions.find((a) => a.email === person.email)?.accounts || [],
+    account = accounts.find((a) => a.segment === 'Equity derivatives') || accounts[0];
+  return account
+    ? { broker: account.broker, broker_client_id: account.tradingId, to_email: brokerDeskEmail(account.broker) }
+    : null;
+}
 function brokerForm(row, { client, loginId }) {
   const value = (v) => esc(v || ''),
+    readOnly = client ? ' readonly' : '',
+    names = brokerDesks().length ? brokerDesks().map((d) => d.name) : BROKER_NAMES,
     gmailStatus = client ? brokerGmailOf(state.user.uid).status : '',
     locked = client && gmailStatus !== 'Connected' ? ' disabled' : '';
-  return `<form id="brokerEmailForm" data-login="${esc(loginId || '')}"><datalist id="brokerNames">${BROKER_NAMES.map((n) => `<option value="${esc(n)}">`).join('')}</datalist><div class="form-grid"><label class="field">Broker *<input name="broker" list="brokerNames" required maxlength="80" value="${value(row?.broker)}" placeholder="e.g. Kotak Securities"></label><label class="field">Broker client ID *<input name="brokerClientId" required maxlength="30" value="${value(row?.broker_client_id)}" placeholder="Client code at the broker"></label><label class="field">Broker order email (TO) *<input name="toEmail" type="email" required value="${value(row?.to_email)}" placeholder="Dealing desk address"></label><label class="field">CC emails<input name="ccEmails" value="${value((row?.cc_emails || []).join('; '))}" placeholder="Separate with ;  e.g. you and your advisor"></label></div>${
+  return `<form id="brokerEmailForm" data-login="${esc(loginId || '')}"><datalist id="brokerNames">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist><div class="form-grid"><label class="field">Broker *<input name="broker"${client ? '' : ' list="brokerNames"'} required maxlength="80" value="${value(row?.broker)}" placeholder="e.g. Kotak Securities"${readOnly}></label><label class="field">Broker client ID *<input name="brokerClientId" required maxlength="30" value="${value(row?.broker_client_id)}" placeholder="Client code at the broker"${readOnly}></label><label class="field">Broker order email (TO) *<input name="toEmail" type="email" required value="${value(row?.to_email)}" placeholder="Dealing desk address"${readOnly}></label><label class="field">CC emails<input name="ccEmails" value="${value((row?.cc_emails || []).join('; '))}" placeholder="Separate with ;  e.g. you and your advisor"${readOnly}></label></div>${
     client
       ? `<label class="consent broker-consent"><input name="consent" type="checkbox" required${locked}><span><b>My consent *</b><small>${esc(BROKER_CONSENT_TEXT)}</small><small>Wording ${BROKER_CONSENT_VERSION}</small></span></label>${locked ? `<p class="muted broker-gmail-needed">${gmailStatus === 'Reconnect needed' ? 'Reconnect' : 'Connect'} your Gmail in step 1 before giving consent.</p>` : ''}`
-      : '<div class="notice">The client must connect their Gmail and give consent in their own portal before any order email is sent.</div>'
-  }<div class="actions"><button class="btn primary"${locked}>${client ? (row?.status === 'Active' ? 'Save and confirm consent' : 'Give consent and save') : 'Save for client confirmation'}</button>${row && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form>${client ? brokerTestForm(row) : ''}<p id="brokerEmailMessage" class="research-message" role="status"></p>`;
+      : '<div class="notice">Saving emails the client a consent request and shows it in their portal. Only the client can connect Gmail and give consent, and no order email goes until they do.</div>'
+  }<div class="actions"><button class="btn primary"${locked}>${client ? (row?.status === 'Active' ? 'Save and confirm consent' : 'Give consent and save') : 'Save and send consent request'}</button>${row?.status && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form>${client ? brokerTestForm(row) : ''}<p id="brokerEmailMessage" class="research-message" role="status"></p>`;
 }
 
 function brokerTestForm(row) {
@@ -165,7 +178,7 @@ function brokerConsentBanner(row) {
   if (row?.status === 'Pending')
     return !row.updated_by
       ? `<div class="notice"><b>Please consent again.</b> Order emails now go from your own Gmail, so your earlier consent has ended. ${first} these details, tick your consent and save.</div>`
-      : `<div class="notice"><b>Your advisor entered these details.</b> ${first} them, tick your consent and save to switch broker auto-email on.</div>`;
+      : `<div class="notice"><b>Your Sampadha contact entered these details.</b> ${first} them, tick your consent and save to switch broker auto-email on. If anything is wrong, ask them to change it.</div>`;
   return '';
 }
 
@@ -176,7 +189,7 @@ const brokerDeskNote = () =>
 function brokerClientPage() {
   const row = brokerRowFor(state.user.uid),
     mails = state.emails.filter((m) => m.clientId === state.user.uid && /^Broker/.test(m.type));
-  return `${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${brokerForm(row, { client: true })}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
+  return `${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${row ? brokerForm(row, { client: true }) : '<div class="notice">Your Sampadha contact will enter your broker details. You will get an email and a portal alert when they are ready for your consent.</div>'}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
 }
 
 // r is the row from list_broker_email_clients. A client without one has no Gmail facts here.
@@ -184,6 +197,23 @@ function brokerGmailCell(r) {
   if (!r) return '—';
   const known = BROKER_GMAIL_STATUS[r.gmail_status] && r.gmail_address;
   return `${brokerGmailBadge(r.gmail_status)}${known ? `<small>${esc(r.gmail_address)}</small>` : ''}`;
+}
+
+const brokerResendButton = (clientId, loginId) =>
+  brokerRowFor(clientId) && !brokerAutoEmailActive(clientId)
+    ? `<button class="btn secondary" data-broker-resend="${esc(loginId)}">Resend consent</button>`
+    : '';
+// The Auto email column on the Clients page.
+function brokerAutoEmailCell(loginId) {
+  const person = (state.ws?.directory || []).find((p) => p.login_id === loginId);
+  if (!person) return '—';
+  const row = brokerRowFor(person.id);
+  return row
+    ? `${brokerStatusBadge(row)}${row.requested_at ? `<small>Requested ${esc(Api.fmt.stamp(row.requested_at))} IST</small>` : ''}${brokerResendButton(person.id, loginId)}`
+    : `<button class="btn secondary" data-broker-client="${esc(loginId)}">Set up</button>`;
+}
+function brokerDesksCard() {
+  return `<article class="card panel"><div class="panel-head"><div><h3>Broker order addresses</h3><p>Choosing a broker fills in this TO address, and Sales can still change it for one client. These names also appear on the Add client form. Clear a name to remove it.</p></div></div><form id="brokerDesksForm"><div class="table-wrap"><table class="table"><thead><tr><th>Broker</th><th>Order email</th></tr></thead><tbody>${[...brokerDesks(), { name: '', order_email: '' }].map((d, i) => `<tr data-desk="${esc(d.name)}"><td><input name="name" value="${esc(d.name)}" maxlength="80" placeholder="Add a broker" aria-label="Broker ${i + 1}"></td><td><input name="email" type="email" value="${esc(d.order_email || '')}" placeholder="Dealing desk address" aria-label="Order email ${i + 1}"></td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="btn primary">Save addresses</button></div></form></article>`;
 }
 
 function brokerStaffPage() {
@@ -194,14 +224,14 @@ function brokerStaffPage() {
     clientsList
       .map((p) => {
         const r = brokerRowFor(p.id);
-        return `<tr><td><b>${esc(p.full_name)}</b><small>${esc(p.login_id)}</small></td><td>${esc(r?.broker || '—')}<small>${esc(r?.broker_client_id || '')}</small></td><td>${esc(r?.to_email || '—')}<small>${esc((r?.cc_emails || []).join('; '))}</small></td><td>${brokerGmailCell(r)}</td><td>${brokerStatusBadge(r)}${r?.consented_at && r.status === 'Active' ? `<small>Since ${esc(Api.fmt.stamp(r.consented_at))} IST</small>` : ''}${brokerNeedsGmail(p.id) ? '<small>Orders stopped until Gmail is connected</small>' : ''}</td><td><button class="btn secondary" data-broker-client="${esc(p.login_id)}">${r ? 'Edit' : 'Set up'}</button></td></tr>`;
+        return `<tr><td><b>${esc(p.full_name)}</b><small>${esc(p.login_id)}</small></td><td>${esc(r?.broker || '—')}<small>${esc(r?.broker_client_id || '')}</small></td><td>${esc(r?.to_email || '—')}<small>${esc((r?.cc_emails || []).join('; '))}</small></td><td>${brokerGmailCell(r)}</td><td>${brokerStatusBadge(r)}${r?.consented_at && r.status === 'Active' ? `<small>Since ${esc(Api.fmt.stamp(r.consented_at))} IST</small>` : ''}${brokerNeedsGmail(p.id) ? '<small>Orders stopped until Gmail is connected</small>' : ''}</td><td><button class="btn secondary" data-broker-client="${esc(p.login_id)}">${r ? 'Edit' : 'Set up'}</button>${brokerResendButton(p.id, p.login_id)}</td></tr>`;
       })
       .join('') || '<tr><td colspan="6" class="empty">No clients yet.</td></tr>'
   }</tbody></table></div></article>${
     chosen
-      ? `<article class="card panel" id="brokerSetupPanel"><div class="panel-head"><div><h3>${esc(chosen.full_name)}</h3><p>${esc(chosen.login_id)} · ${esc(chosen.email)}</p></div>${brokerStatusBadge(row)}</div>${brokerForm(row, { client: false, loginId: chosen.login_id })}</article>`
+      ? `<article class="card panel" id="brokerSetupPanel"><div class="panel-head"><div><h3>${esc(chosen.full_name)}</h3><p>${esc(chosen.login_id)} · ${esc(chosen.email)}</p></div>${brokerStatusBadge(row)}</div>${brokerForm(row || brokerPrefill(chosen), { client: false, loginId: chosen.login_id })}</article>`
       : ''
-  }`;
+  }${state.role === 'admin' ? brokerDesksCard() : ''}`;
 }
 
 // What is wrong with order sending, as a red block; SMTP being on says nothing about any of this.
@@ -322,7 +352,27 @@ async function brokerConnectGmail(button) {
   }
 }
 
+document.querySelector('#content').addEventListener('change', (event) => {
+  const form = event.target.closest('#brokerEmailForm');
+  if (!form || event.target.name !== 'broker' || !form.dataset.login) return;
+  const address = brokerDeskEmail(event.target.value.trim());
+  if (address) form.elements.toEmail.value = address;
+});
 document.querySelector('#content').addEventListener('click', async (event) => {
+  const resend = event.target.closest('[data-broker-resend]');
+  if (resend) {
+    resend.disabled = true;
+    try {
+      await Api.sendBrokerConsent(resend.dataset.brokerResend);
+      await refreshWorkspace();
+      show(state.page);
+      toast('Consent request sent to the client');
+    } catch (error) {
+      toast(error.message);
+      resend.disabled = false;
+    }
+    return;
+  }
   const pick = event.target.closest('[data-broker-client]');
   if (pick) {
     brokerSetupLogin = pick.dataset.brokerClient;
@@ -387,6 +437,29 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
     }
     return;
   }
+  if (form.id === 'brokerDesksForm') {
+    event.preventDefault();
+    const button = form.querySelector('button'),
+      lines = [...form.querySelectorAll('tbody tr')].map((row, i) => ({
+        old: row.dataset.desk,
+        name: row.querySelector('[name=name]').value.trim(),
+        order_email: row.querySelector('[name=email]').value.trim().toLowerCase() || null,
+        sort_order: (i + 1) * 10,
+      })),
+      keep = lines.filter((l) => l.name);
+    button.disabled = true;
+    try {
+      await Api.saveBrokerDesks(
+        keep.map(({ name, order_email, sort_order }) => ({ name, order_email, sort_order })),
+        lines.filter((l) => l.old && l.old !== l.name).map((l) => l.old),
+      );
+      await brokerAfterChange('Addresses saved', '');
+    } catch (error) {
+      toast(error.message);
+      button.disabled = false;
+    }
+    return;
+  }
   if (form.id !== 'brokerEmailForm' && form.id !== 'brokerTestForm') return;
   event.preventDefault();
   const button = form.querySelector('button:not([type=button])'),
@@ -411,9 +484,11 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
         Boolean(e.consent?.checked),
       );
     const clientId = loginId ? state.ws?.directory?.find((p) => p.login_id === loginId)?.id : state.user.uid;
+    if (loginId && !(result.status === 'Active' && brokerGmailConnected(clientId)))
+      await Api.sendBrokerConsent(loginId);
     await brokerAfterChange('Broker details saved', () =>
       result.status !== 'Active'
-        ? 'Saved. The client must connect their Gmail and give consent in their own portal before order emails are sent.'
+        ? 'Saved. The consent request went to the client by email and in their portal.'
         : brokerGmailConnected(clientId)
           ? 'Saved. Broker auto-email is on.'
           : 'Saved. The consent stands, but no order email can go until the client connects Gmail in their own portal.',
