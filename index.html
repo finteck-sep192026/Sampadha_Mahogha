@@ -46,6 +46,10 @@
         <h2>Sign in</h2>
         <p class="muted">Use your client ID, staff ID or email address.</p>
         <form id="loginForm">
+          <div class="notification-toolbar" data-sign-in-tabs>
+            <button type="button" class="filter-chip active" data-sign-in-mode="email">Email code</button>
+            <button type="button" class="filter-chip" data-sign-in-mode="password">Password</button>
+          </div>
           <label
             >Client ID, staff ID or email<input
               id="email"
@@ -60,8 +64,8 @@
           /></label>
           <p id="loginError" class="error" role="alert"></p>
           <button class="btn primary wide">Sign in</button>
-          <button type="button" class="btn ghost wide login-mode-switch" data-sign-in-mode="email">
-            Sign in with an email code instead
+          <button type="button" class="btn ghost wide login-mode-switch" data-sign-in-mode="email" hidden>
+            Back to sign in
           </button>
         </form>
         <p class="demo-hint"><button type="button" class="login-forgot" data-forgot-password>Forgot your password?</button> · <a class="login-forgot" href="privacy.html">Privacy Policy</a></p>
@@ -116,5 +120,6 @@
     <script src="accounts.js"></script>
     <script src="report-delivery.js"></script>
     <script src="onboarding.js"></script>
+    <script src="client-hub.js"></script>
   </body>
 </html>

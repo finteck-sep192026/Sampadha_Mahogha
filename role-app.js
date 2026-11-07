@@ -17,8 +17,6 @@ const nav = {
     ['workflowMap', '◆', 'Workflow chart'],
     ['users', '♙', 'Users & access'],
     ['clients', '◎', 'Clients'],
-    ['addClient', '＋', 'Add client'],
-    ['approvals', '✓', 'Client approvals'],
     ['emails', '✉', 'Email delivery'],
     ['multiReports', '▦', 'Multi Segment'],
     ['plans', '₹', 'Subscriptions'],
@@ -334,7 +332,7 @@ const commDetails = (x) => {
   };
 };
 const commFilters = () =>
-  `<form id="commFilters" class="separate-table-filters"><label>Sent / added by<select id="commSender"><option value="">All senders</option><option>Admin</option><option>RA</option><option>Sales</option></select></label><label>Product<select id="commProduct"><option value="">Cash &amp; Multi</option><option>Cash</option><option>Multi</option></select></label><label>Search client<input id="commSearch" type="search" list="commClients" placeholder="Choose or type a client"><datalist id="commClients">${(state.ws?.directory || []).filter((p) => p.role === 'client').map((p) => `<option value="${esc(p.login_id)}">${esc(p.full_name)}</option>`).join('')}</datalist></label></form>`;
+  `<form id="commFilters" class="separate-table-filters"><label>Sent / added by<select id="commSender"><option value="">All senders</option><option>Admin</option><option>RA</option><option>Sales</option><option>System</option></select></label><label>Product<select id="commProduct"><option value="">Cash &amp; Multi</option><option>Cash</option><option>Multi</option></select></label><label>Search client<input id="commSearch" type="search" list="commClients" placeholder="Choose or type a client"><datalist id="commClients">${(state.ws?.directory || []).filter((p) => p.role === 'client').map((p) => `<option value="${esc(p.login_id)}">${esc(p.full_name)}</option>`).join('')}</datalist></label></form>`;
 function applyCommFilters() {
   const sender = $('#commSender').value,
     product = $('#commProduct').value,
@@ -348,13 +346,17 @@ function applyCommFilters() {
     item.style.display = match ? '' : 'none';
     if (match) shown++;
   });
-  $('#commCount').textContent = `${shown} messages`;
+  $('#commCount').textContent = `${shown} ${shown === 1 ? 'message' : 'messages'}`;
+  const active = $('.email-item.active');
+  if (active?.style.display === 'none')
+    [...$$('.email-item')].find((item) => item.style.display !== 'none')?.click();
 }
 const emails = () => {
   const list =
       state.role === 'client' ? state.emails.filter((x) => x.to === state.user.email) : state.emails,
-    sales = state.role === 'sales';
-  return `<article class="card panel"><div class="panel-head"><div><h3>${state.role === 'client' ? 'My notifications' : sales ? 'Client Communication' : 'Email delivery'}</h3><p>${sales ? 'Filter Cash or Multi communication and search by client code, name, PAN card or mobile number.' : 'Every email the portal sends: client confirmations, report notices and broker order emails.'}</p></div><span id="commCount" class="badge">${list.length} messages</span></div>${sales ? commFilters() : ''}<div class="email-layout"><div class="email-list">${list.map((x, i) => { const c = sales ? commDetails(x) : null; return `<button class="email-item ${i === 0 ? 'active' : ''}" data-mail="${x.id}"${c ? ` data-sender="${esc(c.sender)}" data-product="${esc(c.product)}" data-search="${esc(c.search)}"` : ''}><span class="mail-dot"></span><div><b>${esc(x.subject)}</b>${c ? `<small>${esc(c.sender)}${c.product ? ' • ' + esc(c.product) : ''}</small><small>To: ${esc(x.name || x.to)}${c.code ? ' • ' + esc(c.code) : ''}</small><small>${esc(c.pan || 'PAN unavailable')} • ${esc(c.mobile || 'Mobile unavailable')}</small>` : `<small>To: ${esc(x.to)}</small>`}<small class="stamp">${esc(x.sent)}</small></div><span class="status ${MAIL_TONE[x.status] || 'red'}">${esc(mailStatusLabel(x))}</span></button>`; }).join('') || '<div class="empty">No confirmation emails available.</div>'}</div><div id="emailPreview" class="email-preview">${list[0] ? emailBody(list[0]) : '<div class="empty">Select an email to preview.</div>'}</div></div></article>`;
+    sales = state.role === 'sales',
+    filtered = sales || state.role === 'admin';
+  return `<article class="card panel"><div class="panel-head"><div><h3>${state.role === 'client' ? 'My notifications' : sales ? 'Client Communication' : 'Email delivery'}</h3><p>${filtered ? 'Filter Cash or Multi communication and search by client code, name, PAN card or mobile number.' : 'Every email the portal sends: client confirmations, report notices and broker order emails.'}</p></div><span id="commCount" class="badge">${list.length} messages</span></div>${filtered ? commFilters() : ''}<div class="email-layout"><div class="email-list">${list.map((x, i) => { const c = filtered ? commDetails(x) : null; return `<button class="email-item ${i === 0 ? 'active' : ''}" data-mail="${x.id}"${c ? ` data-sender="${esc(c.sender)}" data-product="${esc(c.product)}" data-search="${esc(c.search)}"` : ''}><span class="mail-dot"></span><div><b>${esc(x.subject)}</b>${c ? `<small>${esc(c.sender)}${c.product ? ' • ' + esc(c.product) : ''}</small><small>To: ${esc(x.name || x.to)}${c.code ? ' • ' + esc(c.code) : ''}</small><small>${esc(c.pan || 'PAN unavailable')} • ${esc(c.mobile || 'Mobile unavailable')}</small>` : `<small>To: ${esc(x.to)}</small>`}<small class="stamp">${esc(x.sent)}</small></div><span class="status ${MAIL_TONE[x.status] || 'red'}">${esc(mailStatusLabel(x))}</span></button>`; }).join('') || '<div class="empty">No confirmation emails available.</div>'}</div><div id="emailPreview" class="email-preview">${list[0] ? emailBody(list[0]) : '<div class="empty">Select an email to preview.</div>'}</div></div></article>`;
 };
 const MAIL_TONE = { Sent: 'green', Queued: 'gold', Sending: 'gold', Simulated: 'gold' };
 // A broker order is 'Sent' once Gmail accepts it; that does not prove the broker received it.
@@ -377,7 +379,7 @@ const pages = {
   clientDashboard,
   notifications,
   users,
-  clients: () => (state.role === 'sales' ? salesClientsPage() : clientTable()),
+  clients: () => (state.role === 'admin' ? staffCompliancePage() : salesClientsPage()),
   addClient,
   approvals,
   emails,
@@ -658,7 +660,7 @@ function leavePortal(message = '') {
 }
 $('#loginForm').onsubmit = async (e) => {
   e.preventDefault();
-  const submit = e.target.querySelector('button'),
+  const submit = e.target.querySelector('button.primary'),
     error = $('#loginError'),
     label = submit.textContent;
   submit.disabled = true;
@@ -751,18 +753,17 @@ function setSignInMode(mode, reset = false) {
     box = $('.login-box'),
     email = mode === 'email',
     password = $('#password'),
-    toggle = form.querySelector('[data-sign-in-mode]');
+    toggle = form.querySelector('.login-mode-switch');
   passwordReset = email && reset;
   form.dataset.mode = mode;
   password.closest('label').hidden = email;
   password.required = !email;
   form.querySelector('button.primary').textContent = email ? 'Email me a code' : 'Sign in';
-  toggle.dataset.signInMode = email ? 'password' : 'email';
-  toggle.textContent = passwordReset
-    ? 'Back to sign in'
-    : email
-      ? 'Sign in with my password instead'
-      : 'Sign in with an email code instead';
+  toggle.hidden = !passwordReset;
+  $('[data-sign-in-tabs]').hidden = passwordReset;
+  $$('[data-sign-in-tabs] [data-sign-in-mode]').forEach((tab) =>
+    tab.classList.toggle('active', tab.dataset.signInMode === mode),
+  );
   box.querySelector('h2').textContent = passwordReset ? 'Reset your password' : 'Sign in';
   box.querySelector('h2 + .muted').textContent = passwordReset
     ? "Enter your client ID, staff ID or email. We'll email you a code, then you choose a new password."
@@ -794,7 +795,7 @@ document.addEventListener('submit', async (e) => {
     if (form.dataset.flow === 'email' && passwordReset) {
       // Signed in by the code: now the new password (saving it opens the portal).
       closeLoginCode();
-      setSignInMode('password');
+      setSignInMode('email');
       return showSetPassword();
     }
     await continueSignIn();
@@ -820,7 +821,7 @@ document.addEventListener('click', async (e) => {
   } else if (e.target.closest('[data-login-code-cancel]')) {
     await Api.logout();
     closeLoginCode();
-    if (passwordReset) setSignInMode('password');
+    if (passwordReset) setSignInMode('email');
   }
 });
 
@@ -925,7 +926,7 @@ $('#content').addEventListener('click', (e) => {
     .then(async () => {
       await refreshWorkspace();
       toast(`Client ${approved ? 'approved' : 'rejected'} • confirmation email logged`);
-      show('approvals');
+      show('clients');
     })
     .catch((err) => {
       toast(err.message);
@@ -1010,9 +1011,10 @@ $('#content').addEventListener('submit', async (e) => {
     await Api.submitApplication(payload);
     await refreshWorkspace();
     toast('Client submitted • confirmation email logged');
-    show('emails');
+    show('clients');
   } catch (err) {
     toast(err.message);
     button.disabled = false;
   }
 });
+setSignInMode('email');

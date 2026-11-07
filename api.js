@@ -189,6 +189,7 @@
     products: (r.products || []).join(', ') || '—',
     services: (r.services || []).join(', ') || '—',
     pdfPath: r.pdf_path,
+    raw: r,
     netWorth: r.net_worth || '—',
     accounts: r.broker_accounts || [],
     quoted: r.quoted_annual == null ? '' : rupee(r.quoted_annual),
