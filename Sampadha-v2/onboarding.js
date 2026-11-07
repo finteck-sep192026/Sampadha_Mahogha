@@ -259,7 +259,8 @@ enterPortal = async function (profile) {
   await onboardingOriginalEnterPortal(profile);
   if (
     state.role === 'client' &&
-    (onboardingPending() || brokerRowFor(state.user.uid)?.status === 'Pending')
+    (onboardingPending() ||
+      (brokerRowFor(state.user.uid) && !brokerAutoEmailActive(state.user.uid)))
   )
     show('brokerEmail');
 };
