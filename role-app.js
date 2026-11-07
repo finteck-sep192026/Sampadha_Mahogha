@@ -14,7 +14,6 @@ const roles = {
 const nav = {
   admin: [
     ['dashboard', '⌂', 'Overview'],
-    ['workflowMap', '◆', 'Workflow chart'],
     ['users', '♙', 'Users & access'],
     ['clients', '◎', 'Clients'],
     ['emails', '✉', 'Email delivery'],
@@ -128,6 +127,47 @@ const users = () =>
         `<tr><td><b>${esc(p.full_name)}</b><small>${esc(p.email)}</small></td><td>${roles[p.role].name}</td><td class="stamp">${esc(p.login_id)}</td><td>${roles[p.role].desc}</td><td><span class="status ${p.is_active ? 'green' : 'red'}">${p.is_active ? 'Active' : 'Disabled'}</span></td></tr>`,
     )
     .join('')}</tbody></table></div></article>`;
+// The details from Add client, as columns on both Clients tables.
+const CLIENT_FACT_HEADS = [
+  'PAN number',
+  'Date of birth',
+  'Email address',
+  'Mobile number',
+  'Occupation',
+  'Annual income',
+  'Net worth',
+  'Tax residency',
+  'City',
+  'Mutual fund experience',
+  'Stocks experience',
+  'F&O experience',
+  'Proposed investment amount',
+  'Market segments',
+];
+const clientFactHeads = () => CLIENT_FACT_HEADS.map((x) => `<th>${esc(x)}</th>`).join('');
+const clientFactDate = (iso) => (iso ? String(iso).split('-').reverse().join('-') : '');
+const clientFactCells = (app, fallback = {}) => {
+  const raw = app?.raw || {},
+    missing = (v) => (v == null || v === '' ? '—' : v);
+  return [
+    app?.pan || fallback.pan,
+    clientFactDate(raw.dob),
+    app?.email || fallback.email,
+    app?.mobile || fallback.mobile,
+    raw.occupation,
+    raw.income_band,
+    raw.net_worth,
+    raw.tax_residency,
+    raw.city,
+    raw.mf_experience,
+    raw.stock_experience,
+    raw.fo_experience,
+    app?.amount,
+    app?.segments,
+  ]
+    .map((v) => `<td>${esc(missing(v))}</td>`)
+    .join('');
+};
 // Who the client's onboarding is waiting for, by login ID or, before a login exists, application.
 const pendingCell = (key) => {
   const row = (state.ws?.clientPending || []).find((p) => p.login_id === key || p.app_ref === key);
@@ -135,7 +175,7 @@ const pendingCell = (key) => {
   return `<span class="status ${row.pending === 'Complete' ? 'green' : /^Rejected/.test(row.pending) ? 'red' : 'gold'}">${esc(row.pending)}</span>`;
 };
 const clientTable = (showAdd = true) =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div>${showAdd ? '<button class="btn primary" data-go="addClient">＋ Add client</button>' : ''}</div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>KYC</th><th>Plan</th><th>Mobile</th><th>Auto email</th><th>Pending with</th></tr></thead><tbody>${clients.map((x) => `<tr><td><b>${esc(x[0])}</b><small>${esc(x[1])} • ${esc(x[5])}</small></td><td>${esc(x[2])}</td><td><span class="status ${/verified/i.test(x[3]) ? 'green' : /review/i.test(x[3]) ? 'gold' : 'red'}">${esc(x[3])}</span></td><td>${esc(x[4])}</td><td class="stamp">${esc(x[6])}</td><td>${brokerAutoEmailCell(x[1])}</td><td>${pendingCell(x[1])}</td></tr>`).join('')}${state.submissions.filter((x) => !x.clientId).map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.id)} • ${esc(x.email)}</small></td><td>${esc(x.risk)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td class="stamp">${esc(x.mobile || '—')}</td><td>—</td><td>${pendingCell(x.id)}</td></tr>`).join('')}</tbody></table></div></article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div>${showAdd ? '<button class="btn primary" data-go="addClient">＋ Add client</button>' : ''}</div><div class="table-wrap"><table class="table"><thead><tr><th>Full legal name</th><th>Pending with</th>${clientFactHeads()}<th>Risk profile</th><th>KYC</th><th>Plan</th><th>Auto email</th></tr></thead><tbody>${clients.map((x) => `<tr><td><b>${esc(x[0])}</b><small>${esc(x[1])}</small></td><td>${pendingCell(x[1])}</td>${clientFactCells(state.submissions.find((a) => a.email === x[5]), { email: x[5], mobile: x[6] })}<td>${esc(x[2])}</td><td><span class="status ${/verified/i.test(x[3]) ? 'green' : /review/i.test(x[3]) ? 'gold' : 'red'}">${esc(x[3])}</span></td><td>${esc(x[4])}</td><td>${brokerAutoEmailCell(x[1])}</td></tr>`).join('')}${state.submissions.filter((x) => !x.clientId).map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.id)}</small></td><td>${pendingCell(x.id)}</td>${clientFactCells(x)}<td>${esc(x.risk)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td>—</td></tr>`).join('')}</tbody></table></div></article>`;
 const MARKET_SEGMENTS = ['Cash', 'MTF', 'Equity derivatives', 'Commodity derivatives'];
 const CLIENT_CASH_PRODUCTS = ['LC', 'MC', 'SC', 'FC'];
 const CLIENT_MULTI_PRODUCTS = ['Bronze', 'Silver', 'Palladium', 'Platinum', 'Gold', 'Rhodium'];
@@ -291,28 +331,6 @@ const notifications = () =>
     .join(
       '',
     )}</section><div class="notification-toolbar">${['All', 'Email', 'WhatsApp', 'In-app'].map((x, i) => `<button class="filter-chip ${i === 0 ? 'active' : ''}" data-channel="${x}">${x}</button>`).join('')}</div><div id="notificationResults">${alertRows(clientAlerts)}</div></article>`;
-const workflowMap = () =>
-  `<section class="flow-summary"><div><p class="overline">End-to-end operating model</p><h3>Sampadha platform workflow</h3><p>Role-based journey from client acquisition to approved research delivery.</p></div><div class="flow-legend"><span><i class="sales-dot"></i>Sales</span><span><i class="admin-dot"></i>Admin</span><span><i class="ra-dot"></i>Research Analyst</span><span><i class="client-dot"></i>Client</span></div></section><section class="workflow-board card"><div class="flow-start"><span>01</span><div><b>Secure role login</b><small>System identifies Admin, RA, Sales or Client access.</small></div></div><div class="flow-split">${[
-    [
-      'sales',
-      '02',
-      'Sales acquisition',
-      'Create profile • collect KYC • Demat, broker and suitability details',
-    ],
-    [
-      'ra',
-      '02',
-      'Research creation',
-      'Build strategies • cover stocks • generate timestampVtbl reports',
-    ],
-  ]
-    .map(
-      (x) =>
-        `<article class="lane ${x[0]}"><div class="lane-title">${x[0] === 'sales' ? 'Sales lane' : 'Research lane'}</div><div class="flow-node"><span>${x[1]}</span><div><b>${x[2]}</b><small>${x[3]}</small></div></div>${x[0] === 'sales' ? `<div class="flow-arrow">↓</div><div class="flow-node"><span>03</span><div><b>Submit client application</b><small>Status: Pending Admin Approval</small></div></div><div class="flow-arrow mail-arrow">↓ <em>Automatic email</em></div><div class="flow-node email-node"><span>✉</span><div><b>Application received</b><small>Client receives reference and IST timestamp.</small></div></div>` : `<div class="flow-arrow">↓</div><div class="flow-node"><span>03</span><div><b>Publish research</b><small>Single/batch reports • Cash, Multi and All products</small></div></div>`}</article>`,
-    )
-    .join(
-      '',
-    )}</div><div class="flow-arrow central">↓</div><article class="admin-gate"><div class="lane-title">Admin control gate</div><div class="flow-node admin"><span>04</span><div><b>Review client and research records</b><small>Approve or reject onboarding • manage access • preserve audit trail</small></div></div><div class="decision"><div><b>Approved</b><small>Activate profile and selected plan</small></div><span>OR</span><div><b>Changes required</b><small>Return application for correction</small></div></div></article><div class="flow-arrow mail-arrow central">↓ <em>Decision email</em></div><div class="flow-end-grid"><article class="flow-node client"><span>05</span><div><b>Client confirmation</b><small>Approval or correction-required email with reference and timestamp.</small></div></article><article class="flow-node client"><span>06</span><div><b>View-only client portal</b><small>Profile • subscribed products • payments • filtered recommendations</small></div></article><article class="flow-node audit"><span>07</span><div><b>Ongoing audit and review</b><small>Admin oversight • quarterly/annual payments • report history</small></div></article></div></section>`;
 // What Client Communication filters on. A client's code, PAN and mobile come from their profile,
 // or from the application while they have no login yet.
 const commDetails = (x) => {
@@ -383,7 +401,6 @@ const pages = {
   addClient,
   approvals,
   emails,
-  workflowMap,
   plans,
   profile,
   products,
@@ -402,7 +419,6 @@ const titles = {
   addClient: 'Add share-market client',
   approvals: 'Client approvals',
   emails: 'Email delivery',
-  workflowMap: 'Workflow chart',
   plans: 'Subscription plans',
   profile: 'Profile',
   products: 'Subscribed products',
@@ -428,7 +444,6 @@ const NAV_GROUP_OF = {
   products: 'Billing',
   payments: 'Billing',
   users: 'Administration',
-  workflowMap: 'Administration',
   audit: 'Administration',
 };
 function renderNav() {
