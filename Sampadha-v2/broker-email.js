@@ -169,10 +169,14 @@ function brokerConsentBanner(row) {
   return '';
 }
 
+// Gmail can file a client's first orders as spam at the desk, and only the desk can stop that.
+const brokerDeskNote = () =>
+  `<div class="notice"><b>Ask your broker's dealing desk to mark your email address as safe.</b> Without this, your order emails may land in their spam folder. "Accepted by Gmail" means Gmail took the email, not that it reached their inbox, so please confirm with your broker that your orders are arriving.</div>`;
+
 function brokerClientPage() {
   const row = brokerRowFor(state.user.uid),
     mails = state.emails.filter((m) => m.clientId === state.user.uid && /^Broker/.test(m.type));
-  return `${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerForm(row, { client: true })}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
+  return `${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${brokerForm(row, { client: true })}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
 }
 
 // r is the row from list_broker_email_clients. A client without one has no Gmail facts here.
