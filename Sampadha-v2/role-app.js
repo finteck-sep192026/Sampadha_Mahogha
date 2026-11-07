@@ -131,22 +131,60 @@ const users = () =>
     )
     .join('')}</tbody></table></div></article>`;
 const clientTable = (showAdd = true) =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div>${showAdd ? '<button class="btn primary" data-go="addClient">＋ Add client</button>' : ''}</div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>KYC</th><th>Plan</th><th>Mobile</th></tr></thead><tbody>${clients.map((x) => `<tr><td><b>${esc(x[0])}</b><small>${esc(x[1])} • ${esc(x[5])}</small></td><td>${esc(x[2])}</td><td><span class="status ${/verified/i.test(x[3]) ? 'green' : /review/i.test(x[3]) ? 'gold' : 'red'}">${esc(x[3])}</span></td><td>${esc(x[4])}</td><td class="stamp">${esc(x[6])}</td></tr>`).join('')}${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.id)} • ${esc(x.email)}</small></td><td>${esc(x.risk)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td class="stamp">${esc(x.mobile || '—')}</td></tr>`).join('')}</tbody></table></div></article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div>${showAdd ? '<button class="btn primary" data-go="addClient">＋ Add client</button>' : ''}</div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>KYC</th><th>Plan</th><th>Mobile</th><th>Auto email</th></tr></thead><tbody>${clients.map((x) => `<tr><td><b>${esc(x[0])}</b><small>${esc(x[1])} • ${esc(x[5])}</small></td><td>${esc(x[2])}</td><td><span class="status ${/verified/i.test(x[3]) ? 'green' : /review/i.test(x[3]) ? 'gold' : 'red'}">${esc(x[3])}</span></td><td>${esc(x[4])}</td><td class="stamp">${esc(x[6])}</td><td>${brokerAutoEmailCell(x[1])}</td></tr>`).join('')}${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.id)} • ${esc(x.email)}</small></td><td>${esc(x.risk)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td class="stamp">${esc(x.mobile || '—')}</td><td>—</td></tr>`).join('')}</tbody></table></div></article>`;
+const BROKER_SEGMENTS = ['Cash', 'MTF', 'Equity derivatives', 'Commodity derivatives'];
+const CLIENT_SERVICES = [
+  'Prop Trading',
+  'Single Stock Management',
+  'Custom Research Report',
+  'Custom Research Recommendation',
+];
+const brokerDeskNames = () => (state.ws?.brokerDesks || []).map((d) => d.name);
+const productCheck = (product) => {
+  const price = (state.ws?.productPrices || []).find((p) => p.product === product)?.price_annual;
+  return `<label><input type="checkbox" name="products" value="${product}" data-price="${price ?? ''}"> ${product}${price == null ? '' : ` <small>${Api.fmt.rupee(price)} / year</small>`}</label>`;
+};
+// One block per market segment, because a client can use a different broker for each.
+const brokerBlock = (segment, i) =>
+  `<fieldset data-broker-block="${esc(segment)}" hidden disabled><legend>${esc(segment)} broker</legend><div class="form-grid three"><label class="field">Broker name *<select name="broker_${i}" required>${[...brokerDeskNames(), 'Others'].map((n) => `<option>${esc(n)}</option>`).join('')}</select></label><label class="field" data-other-broker hidden>Other broker name *<input name="brokerOther_${i}" maxlength="80" placeholder="Broker name"></label><label class="field">Depository *<select name="depository_${i}"><option>CDSL</option><option>NSDL</option></select></label><label class="field">Demat / BO ID *<input name="demat_${i}" required placeholder="16-digit beneficiary ID"></label><label class="field">Trading client ID *<input name="tradingId_${i}" required placeholder="Broker client code"></label><label class="field">Primary bank *<input name="bank_${i}" required placeholder="Bank name"></label><label class="field">Mutual fund investment experience<select name="mfExperience_${i}">${experienceOptions()}</select></label><label class="field">Stocks investment experience<select name="stockExperience_${i}">${experienceOptions()}</select></label><label class="field">F &amp; O trading experience<select name="foExperience_${i}">${experienceOptions()}</select></label><label class="field">Proposed investment amount *<input name="amount_${i}" type="number" min="10000" value="500000" required></label></div></fieldset>`;
+function syncAddClient() {
+  const form = $('#addClientForm');
+  if (!form) return;
+  const ticked = [...form.querySelectorAll('[name=segments]:checked')].map((x) => x.value);
+  form.querySelectorAll('[data-broker-block]').forEach((block) => {
+    const on = ticked.includes(block.dataset.brokerBlock),
+      other = block.querySelector('[data-other-broker]'),
+      input = other.querySelector('input'),
+      isOther = block.querySelector('select').value === 'Others';
+    block.hidden = !on;
+    block.disabled = !on;
+    other.hidden = !isOther;
+    input.required = isOther;
+  });
+  const prices = [...form.querySelectorAll('[name=products]:checked')].map((x) => x.dataset.price),
+    total = prices.reduce((sum, p) => sum + Number(p || 0), 0),
+    missing = prices.filter((p) => p === '').length;
+  $('#productTotal').textContent = prices.length
+    ? `Total for the ticked products: ${Api.fmt.rupee(total)} / year${missing ? ` (${missing} without a price yet)` : ''}`
+    : '';
+}
 const experienceOptions = () =>
   '<option>New / No experience</option><option>Under 1 year</option><option>1–3 years</option><option>3–5 years</option><option>More than 5 years</option>';
 const addClient = () =>
-  `<form id="addClientForm"><section class="form-section card panel"><div class="panel-head"><div><h3>Personal and KYC details</h3><p>Fields marked required must be completed before submission.</p></div><span class="badge">Step 1 of 3</span></div><div class="form-grid three"><label class="field">Full legal name *<input name="name" required placeholder="As per PAN"></label><label class="field">PAN number *<input name="pan" required pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" placeholder="ABCDE1234F"></label><label class="field">Date of birth *<input name="dob" type="date" required></label><label class="field">Email address *<input name="email" type="email" required></label><label class="field">Mobile number *<input name="mobile" required placeholder="+91 98765 43210"></label><label class="field">Occupation *<select name="occupation" required><option value="">Select</option><option>Salaried</option><option>Business</option><option>Professional</option><option>Retired</option></select></label><label class="field">Annual income *<select name="income" required><option>₹5–10 lakh</option><option>₹10–25 lakh</option><option>₹25–50 lakh</option><option>Above ₹50 lakh</option></select></label><label class="field">Tax residency *<select name="residency"><option>Resident Indian</option><option>NRI</option></select></label><label class="field">City *<input name="city" required value="Mumbai"></label></div></section><section class="form-section card panel"><div class="panel-head"><div><h3>Trading and investment experience</h3><p>Broker, demat, segment and experience information.</p></div><span class="badge">Step 2 of 3</span></div><div class="form-grid three"><label class="field">Broker name *<select name="broker" required><option>Motilal Oswal</option><option>Bajaj Broking</option><option>Northeast Broking</option><option>Others</option></select></label><label class="field">Depository *<select name="depository"><option>CDSL</option><option>NSDL</option></select></label><label class="field">Demat / BO ID *<input name="demat" required placeholder="16-digit beneficiary ID"></label><label class="field">Trading client ID *<input name="tradingId" required placeholder="Broker client code"></label><label class="field">Primary bank *<input name="bank" required placeholder="Bank name"></label><label class="field">Mutual fund investment experience<select name="mfExperience">${experienceOptions()}</select></label><label class="field">Stocks investment experience<select name="stockExperience">${experienceOptions()}</select></label><label class="field">F &amp; O trading experience<select name="foExperience">${experienceOptions()}</select></label></div><fieldset><legend>Required market segments *</legend><div class="checks"><label><input type="checkbox" name="segments" value="Cash" checked> Cash</label><label><input type="checkbox" name="segments" value="MTF"> MTF</label><label><input type="checkbox" name="segments" value="Equity derivatives"> Equity derivatives</label><label><input type="checkbox" name="segments" value="Commodity derivatives"> Commodity derivatives</label></div></fieldset><fieldset><legend>Interested products</legend><h4>Cash segment</h4><div class="checks"><label><input type="checkbox" name="products" value="LC"> LC</label><label><input type="checkbox" name="products" value="MC"> MC</label><label><input type="checkbox" name="products" value="SC"> SC</label><label><input type="checkbox" name="products" value="FC"> FC</label></div><h4>Multi segment</h4><div class="checks"><label><input type="checkbox" name="products" value="Bronze"> Bronze</label><label><input type="checkbox" name="products" value="Silver"> Silver</label><label><input type="checkbox" name="products" value="Palladium"> Palladium</label><label><input type="checkbox" name="products" value="Platinum"> Platinum</label><label><input type="checkbox" name="products" value="Gold"> Gold</label><label><input type="checkbox" name="products" value="Rhodium"> Rhodium</label></div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Suitability and consent</h3><p>Investment capacity, objective and communication consent.</p></div><span class="badge">Step 3 of 3</span></div><div class="form-grid three"><label class="field">Holding horizon *<select name="horizon"><option>Under 1 year</option><option>1–3 years</option><option>3–5 years</option><option>More than 5 years</option></select></label><label class="field">Investment objective *<select name="objective"><option>Monthly cash flows</option><option>Quarterly cash flows</option><option>Quarterly cash flows + Capital appreciation</option><option>Capital appreciation</option></select></label><label class="field">Proposed investment amount *<input name="amount" type="number" min="10000" value="500000" required></label><label class="field">Maximum loss tolerance *<select name="loss"><option>Up to 20%</option><option>Up to 35%</option><option>Up to 50%</option><option>Up to 70%</option></select></label></div><label class="consent"><input name="consent" type="checkbox" required><span><b>Send above details to client mail *</b><small>Send the completed onboarding details to the client for review and confirmation.</small></span></label><div class="notice">Submitting creates a pending record. Only an Admin login can approve or reject the client.</div><div class="actions"><button type="reset" class="btn secondary">Clear form</button><button class="btn primary">Submit for Admin approval →</button></div></section></form>`;
+  `<form id="addClientForm"><section class="form-section card panel"><div class="panel-head"><div><h3>Personal and KYC details</h3><p>Fields marked required must be completed before submission.</p></div><span class="badge">Step 1 of 3</span></div><div class="form-grid three"><label class="field">Full legal name *<input name="name" required placeholder="As per PAN"></label><label class="field">PAN number *<input name="pan" required pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" placeholder="ABCDE1234F"></label><label class="field">Date of birth *<input name="dob" type="date" required></label><label class="field">Email address *<input name="email" type="email" required></label><label class="field">Mobile number *<input name="mobile" required placeholder="+91 98765 43210"></label><label class="field">Occupation *<select name="occupation" required><option value="">Select</option><option>Salaried</option><option>Business</option><option>Professional</option><option>Retired</option></select></label><label class="field">Annual income *<select name="income" required><option>₹5–10 lakh</option><option>₹10–25 lakh</option><option>₹25–50 lakh</option><option>Above ₹50 lakh</option></select></label><label class="field">Tax residency *<select name="residency"><option>Resident Indian</option><option>NRI</option></select></label><label class="field">City *<input name="city" required value="Mumbai"></label></div><fieldset><legend>Required market segments *</legend><div class="checks">${BROKER_SEGMENTS.map((x) => `<label><input type="checkbox" name="segments" value="${x}"${x === 'Cash' ? ' checked' : ''}> ${x}</label>`).join('')}</div></fieldset><fieldset><legend>Services</legend><div class="checks">${CLIENT_SERVICES.map((x) => `<label><input type="checkbox" name="services" value="${x}"> ${x}</label>`).join('')}</div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Trading and investment experience</h3><p>Broker, demat, segment and experience information.</p></div><span class="badge">Step 2 of 3</span></div>${BROKER_SEGMENTS.map(brokerBlock).join('')}<fieldset><legend>Interested products</legend><h4>Cash segment</h4><div class="checks">${['LC', 'MC', 'SC', 'FC'].map(productCheck).join('')}</div><h4>Multi segment</h4><div class="checks">${['Bronze', 'Silver', 'Palladium', 'Platinum', 'Gold', 'Rhodium'].map(productCheck).join('')}</div><p id="productTotal" class="research-notice"></p></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Suitability and consent</h3><p>Investment capacity, objective and communication consent.</p></div><span class="badge">Step 3 of 3</span></div><div class="form-grid three"><label class="field">Holding horizon *<select name="horizon"><option>Under 1 year</option><option>1–3 years</option><option>3–5 years</option><option>More than 5 years</option></select></label><label class="field">Investment objective *<select name="objective"><option>Monthly cash flows</option><option>Quarterly cash flows</option><option>Quarterly cash flows + Capital appreciation</option><option>Capital appreciation</option></select></label><label class="field">Maximum loss tolerance *<select name="loss"><option>Up to 20%</option><option>Up to 35%</option><option>Up to 50%</option><option>Up to 70%</option></select></label></div><label class="consent"><input name="consent" type="checkbox" required><span><b>Send above details to client mail *</b><small>Send the completed onboarding details to the client for review and confirmation.</small></span></label><div class="notice">Submitting creates a pending record. Only an Admin login can approve or reject the client.</div><div class="actions"><button type="reset" class="btn secondary">Clear form</button><button class="btn primary">Submit for Admin approval →</button></div></section></form>`;
 const salesClientsPage = () =>
   `<article class="card panel"><div class="panel-head"><div><p class="overline">Client relationships</p><h3>Clients</h3><p>View existing clients or add a new share-market client for Admin approval.</p></div><button id="salesAddClientToggle" class="btn primary" aria-expanded="false">＋ Add client</button></div></article><section id="salesAddClientPanel" hidden>${addClient()}</section>${clientTable(false)}`;
 const approvals = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Client approval queue</h3><p>Only Admin can approve or reject submitted onboarding records.</p></div><span class="badge">${state.submissions.filter((x) => x.status === 'Pending').length} pending</span></div><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Applicant</th><th>Market account</th><th>Segments</th><th>Risk / Amount</th><th>Submitted</th><th>Status</th><th>Admin action</th></tr></thead><tbody>${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.pan)} • ${esc(x.mobile)}<br>${esc(x.email)}</small></td><td>${esc(x.broker)}<small>${esc(x.demat)}</small></td><td>${esc(x.segments)}<small>${esc(x.products)}</small></td><td>${esc(x.risk)}<small>${esc(x.amount)}</small><small>${esc(x.horizon)} • ${esc(x.objective)}</small><small>MF ${esc(x.mfExperience)} • Stocks ${esc(x.stockExperience)} • F&amp;O ${esc(x.foExperience)}</small></td><td class="stamp">${esc(x.submitted)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status}</span></td><td>${x.status === 'Pending' ? `<div class="approval-actions"><button class="btn primary approve" data-app="${esc(x.id)}">Approve</button><button class="btn secondary reject" data-app="${esc(x.id)}">Reject</button></div>` : typeof approvalAccountCell === 'function' ? approvalAccountCell(x) : '<small>Decision recorded</small>'}</td></tr>`).join('')}</tbody></table></div></article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Client approval queue</h3><p>Only Admin can approve or reject submitted onboarding records.</p></div><span class="badge">${state.submissions.filter((x) => x.status === 'Pending').length} pending</span></div><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Applicant</th><th>Market account</th><th>Segments</th><th>Risk / Amount</th><th>Submitted</th><th>Status</th><th>Admin action</th></tr></thead><tbody>${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.pan)} • ${esc(x.mobile)}<br>${esc(x.email)}</small></td><td>${x.accounts.length ? x.accounts.map((a) => `${esc(a.segment)}: ${esc(a.broker)}<small>${esc(a.demat)} • ${esc(a.tradingId)} • ₹${esc(a.amount)}</small>`).join('') : `${esc(x.broker)}<small>${esc(x.demat)}</small>`}</td><td>${esc(x.segments)}<small>${esc(x.services)}</small><small>${esc(x.products)}${x.quoted ? ' • ' + esc(x.quoted) + ' / year' : ''}</small></td><td>${esc(x.risk)}<small>${esc(x.amount)}</small><small>${esc(x.horizon)} • ${esc(x.objective)}</small><small>MF ${esc(x.mfExperience)} • Stocks ${esc(x.stockExperience)} • F&amp;O ${esc(x.foExperience)}</small></td><td class="stamp">${esc(x.submitted)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status}</span></td><td>${x.status === 'Pending' ? `<div class="approval-actions"><button class="btn primary approve" data-app="${esc(x.id)}">Approve</button><button class="btn secondary reject" data-app="${esc(x.id)}">Reject</button></div>` : typeof approvalAccountCell === 'function' ? approvalAccountCell(x) : '<small>Decision recorded</small>'}</td></tr>`).join('')}</tbody></table></div></article>`;
 const plans = () =>
   `<section class="plan-grid">${(state.ws?.plans || [])
     .map(
       (p, i, all) =>
         `<article class="card plan ${i === all.length - 1 ? 'featured' : ''}"><span class="badge">${i === all.length - 1 ? 'Most complete' : 'Subscription'}</span><h3>${esc(p.name)}</h3><div class="price">${Api.fmt.rupee(p.price_annual)}<small>/ annum</small></div><p class="muted">${esc(p.summary)}</p><ul><li>Advisor research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul></article>`,
     )
-    .join('')}</section>`;
+    .join('')}</section>${state.role === 'admin' ? productPricesCard() : ''}`;
+const productPricesCard = () =>
+  `<article class="card panel"><div class="panel-head"><div><h3>Product prices</h3><p>Annual price for each product, shown beside it on the Add client form. Leave blank until a price is set.</p></div></div><form id="productPricesForm"><div class="form-grid three">${(state.ws?.productPrices || []).map((p) => `<label class="field">${esc(p.product)}<small>${esc(p.segment)}</small><input name="${esc(p.product)}" type="number" min="0" step="1" value="${p.price_annual ?? ''}" placeholder="₹ per year"></label>`).join('')}</div><div class="actions"><button class="btn primary">Save prices</button></div></form></article>`;
 const profile = () =>
   `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${esc(state.user.initials)}</div><h3>${esc(state.user.person)}</h3><p class="muted">${roles[state.role].name} account</p><span class="status green">Verified</span></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div></div><div class="detail-grid">${[
     ['Email', esc(state.user.email)],
@@ -287,7 +325,7 @@ const commDetails = (x) => {
   };
 };
 const commFilters = () =>
-  `<form id="commFilters" class="separate-table-filters"><label>Sent / added by<select id="commSender"><option value="">All senders</option><option>Admin</option><option>RA</option><option>Sales</option></select></label><label>Product<select id="commProduct"><option value="">Cash &amp; Multi</option><option>Cash</option><option>Multi</option></select></label><label>Search client<input id="commSearch" type="search" placeholder="Client code, name, PAN or mobile"></label></form>`;
+  `<form id="commFilters" class="separate-table-filters"><label>Sent / added by<select id="commSender"><option value="">All senders</option><option>Admin</option><option>RA</option><option>Sales</option></select></label><label>Product<select id="commProduct"><option value="">Cash &amp; Multi</option><option>Cash</option><option>Multi</option></select></label><label>Search client<input id="commSearch" type="search" list="commClients" placeholder="Choose or type a client"><datalist id="commClients">${(state.ws?.directory || []).filter((p) => p.role === 'client').map((p) => `<option value="${esc(p.login_id)}">${esc(p.full_name)}</option>`).join('')}</datalist></label></form>`;
 function applyCommFilters() {
   const sender = $('#commSender').value,
     product = $('#commProduct').value,
@@ -422,6 +460,7 @@ function show(page) {
   updateAlertBadge();
   bind();
   bindSeparateRecommendationFilters();
+  syncAddClient();
   $('.sidebar').classList.remove('open');
 }
 function bind() {
@@ -887,9 +926,28 @@ $('#content').addEventListener('click', (e) => {
 for (const type of ['input', 'change'])
   $('#content').addEventListener(type, (e) => {
     if (e.target.closest('#commFilters')) applyCommFilters();
+    if (e.target.closest('#addClientForm')) syncAddClient();
   });
+$('#content').addEventListener('reset', () => setTimeout(syncAddClient));
 $('#content').addEventListener('submit', async (e) => {
   if (e.target.id === 'commFilters') return e.preventDefault();
+  if (e.target.id === 'productPricesForm') {
+    e.preventDefault();
+    const button = e.target.querySelector('button');
+    button.disabled = true;
+    try {
+      await Api.saveProductPrices(
+        Object.fromEntries([...e.target.elements].filter((x) => x.name).map((x) => [x.name, x.value])),
+      );
+      await refreshWorkspace();
+      show('plans');
+      toast('Prices saved');
+    } catch (err) {
+      toast(err.message);
+      button.disabled = false;
+    }
+    return;
+  }
   if (e.target.id !== 'addClientForm') return;
   e.preventDefault();
   const d = new FormData(e.target),
@@ -905,21 +963,32 @@ $('#content').addEventListener('submit', async (e) => {
         'income',
         'residency',
         'city',
-        'broker',
-        'depository',
-        'demat',
-        'tradingId',
-        'bank',
-        'mfExperience',
-        'stockExperience',
-        'foExperience',
         'horizon',
         'objective',
-        'amount',
         'loss',
       ].map((k) => [k, d.get(k)]),
     );
   payload.segments = d.getAll('segments');
+  payload.services = d.getAll('services');
+  payload.accounts = BROKER_SEGMENTS.flatMap((segment, i) =>
+    payload.segments.includes(segment)
+      ? [
+          {
+            segment,
+            broker: d.get('broker_' + i) === 'Others' ? d.get('brokerOther_' + i).trim() : d.get('broker_' + i),
+            depository: d.get('depository_' + i),
+            demat: d.get('demat_' + i).trim(),
+            tradingId: d.get('tradingId_' + i).trim(),
+            bank: d.get('bank_' + i).trim(),
+            mfExperience: d.get('mfExperience_' + i),
+            stockExperience: d.get('stockExperience_' + i),
+            foExperience: d.get('foExperience_' + i),
+            amount: d.get('amount_' + i),
+          },
+        ]
+      : [],
+  );
+  if (!payload.segments.length) return toast('Tick at least one market segment.');
   payload.products = d.getAll('products');
   payload.consent = d.get('consent') === 'on';
   button.disabled = true;

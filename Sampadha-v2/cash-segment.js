@@ -289,7 +289,7 @@ const cashReports = () =>
 const cashFindReport = (id) => cashReports().find((r) => r.id === id) || null;
 const cashClients = () => state.ws?.cashClients || [];
 // The PDF itself is stored ('upload', 'pack'); 'portfolio' reports build theirs from their rows.
-const cashHasStoredPdf = (report) => report.cashKind !== 'portfolio';
+const cashHasStoredPdf = (report) => report.cashKind !== 'portfolio' || report.pdfVersion > 1;
 const CASH_PDF_LIMIT = 10 * 1024 * 1024; // what the esign function accepts
 // Checks an uploaded report and returns its fingerprint. Aadhaar eSign signs PDFs only.
 async function cashCheckPdf(file) {
@@ -621,6 +621,7 @@ function cashStrategyPage() {
       '<div class="cash-form-actions"><button type="button" class="btn secondary" data-cash-back>Back to Cash reports</button></div><section id="cashPreviewRegion" class="cash-preview-region">' +
       cashPdfPanel(report) +
       cashSignPanel(report) +
+      reportDeliveryCard(report) +
       '</section>'
     );
   return (
