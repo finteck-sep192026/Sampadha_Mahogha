@@ -360,7 +360,6 @@
       alerts,
       apps,
       mails,
-      strategies,
       directory,
       subs,
       payments,
@@ -392,9 +391,6 @@
         : [],
       ['admin', 'sales', 'client'].includes(role)
         ? ok(q('email_log', (x) => x.order('sent_at', { ascending: false })))
-        : [],
-      ['admin', 'ra'].includes(role)
-        ? ok(q('strategies', (x) => x.order('updated_at', { ascending: false })))
         : [],
       ['admin', 'sales'].includes(role) ? ok(q('profiles', (x) => x.order('login_id'))) : [],
       ['admin', 'sales', 'client'].includes(role) ? ok(q('subscriptions')) : [],
@@ -477,7 +473,6 @@
       alerts: alerts.map(mapAlert),
       applications: apps.map(mapApplication),
       mails: mails.map((m) => mapMail(m, reportRefs)),
-      strategies,
       directory,
       subscriptions: subs,
       payments,
