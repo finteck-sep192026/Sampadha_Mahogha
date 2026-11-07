@@ -96,10 +96,10 @@ const brokerGmailBadge = (status) => {
 // Names come from Admin's list, with the built-in names until it loads.
 const brokerDesks = () => state.ws?.brokerDesks || [];
 const brokerDeskEmail = (name) => brokerDesks().find((d) => d.name === name)?.order_email || '';
-// Sales has already entered the client's brokers on Add client; Multi orders use the derivatives one.
+// Sales has already entered the client's brokers on Add client; Multi orders use a Multi product's.
 function brokerPrefill(person) {
   const accounts = state.submissions.find((a) => a.email === person.email)?.accounts || [],
-    account = accounts.find((a) => a.segment === 'Equity derivatives') || accounts[0];
+    account = accounts.find((a) => CLIENT_MULTI_PRODUCTS.includes(a.product)) || accounts[0];
   return account
     ? { broker: account.broker, broker_client_id: account.tradingId, to_email: brokerDeskEmail(account.broker) }
     : null;
