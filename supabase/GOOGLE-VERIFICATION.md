@@ -12,7 +12,7 @@ Project: `sampadha-portal`. Home page: `https://racrm.fintecindia.com`. Privacy 
 3. Audience: press **Publish app**.
 4. Verification Center: start verification, paste the text below, add the video link, and submit.
 
-Verification Center only opens after Publish app. Google says this review can take up to 10 days.
+Verification Center only opens after Publish app. Our panel says this review takes 4 to 6 weeks, with a first email in 3 to 5 days.
 Until it is approved, real clients see an "unverified app" warning and must press Advanced to
 continue, with a limit of about 100 users.
 

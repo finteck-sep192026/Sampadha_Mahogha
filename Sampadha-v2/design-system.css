@@ -343,6 +343,86 @@ h3,
   margin-top: 18px;
   font-size: 13px;
 }
+/* Public description of the portal, under sign-in. Google's review needs more than a login page. */
+.login-page {
+  grid-template-rows: minmax(100vh, auto) auto;
+}
+.login-about-link {
+  margin: 28px 0 0;
+  font-size: 15px;
+}
+.login-about-link a {
+  color: #ffffff;
+  text-underline-offset: 3px;
+}
+.login-about {
+  grid-column: 1 / -1;
+  padding: clamp(40px, 6vw, 80px) clamp(22px, 6vw, 96px);
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+.login-about-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.login-about h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 500;
+}
+.login-about h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.login-about-lead {
+  max-width: 72ch;
+  margin: 0 0 32px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.login-about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+.login-about-grid p,
+.login-about-grid li {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.login-about-grid p {
+  margin: 0 0 10px;
+}
+.login-about-grid ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.login-about-grid li + li {
+  margin-top: 6px;
+}
+.login-about-foot {
+  margin: 32px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.login-about-foot a {
+  color: var(--blue);
+  text-underline-offset: 3px;
+}
+@media (max-width: 780px) {
+  .login-page {
+    grid-template-rows: auto;
+  }
+  .login-about-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
 /* Sign-in code (second step): six spaced digits, then the two ways out. */
 #loginCodeForm {
   max-width: 400px;
