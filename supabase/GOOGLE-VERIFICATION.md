@@ -12,8 +12,9 @@ Project: `sampadha-portal`. Home page: `https://racrm.fintecindia.com`. Privacy 
 3. Audience: press **Publish app**.
 4. Verification Center: start verification, paste the text below, add the video link, and submit.
 
-Google says this review can take up to 10 days. Until it is approved, real clients see an
-"unverified app" warning, so keep them waiting until approval.
+Verification Center only opens after Publish app. Google says this review can take up to 10 days.
+Until it is approved, real clients see an "unverified app" warning and must press Advanced to
+continue, with a limit of about 100 users.
 
 ## Scope justification
 
@@ -25,8 +26,8 @@ Paste this for `https://www.googleapis.com/auth/gmail.send`:
 > has to be sent from the client's own Gmail account, not from Sampadha's mailbox.
 >
 > The client turns this on once, after reading a consent statement and approving access on Google's
-> screen. The portal then sends each recommendation to the broker addresses the client entered. The
-> client can test it, see each email sent, and disconnect at any time.
+> screen. The portal then sends each recommendation to the broker addresses shown to the client at
+> consent. The client can see each email sent, and withdraw and disconnect at any time.
 >
 > We request only gmail.send because the feature only sends messages. We do not read, search, modify
 > or delete mail. A narrower scope is not available: sending is the one thing the feature does, and
@@ -57,10 +58,11 @@ live dealing desk.
    the address bar so the `client_id` is readable, then show the requested permission, "Send email on
    your behalf". Tick it and continue.
 5. **Connected (10 seconds).** Back in the portal, show Connected and the Gmail address.
-6. **Consent (15 seconds).** Enter the test broker details, tick the consent, and save.
-7. **The scope in use (20 seconds).** Press **Send test email**, send to your own test mailbox, then
-   open that mailbox and show the email arriving from the client's Gmail address.
-8. **Disconnect (15 seconds).** Press **Withdraw**, confirm, and show it disconnected.
+6. **Consent (15 seconds).** Show the broker details, tick the consent, and press **I consent**.
+7. **The scope in use (30 seconds).** Sign in as the Research Analyst in a second window, send a Multi
+   report to the test client, then open the test mailbox and show the order arriving from the
+   client's Gmail address. Set up the test client with a test mailbox as the broker address first.
+8. **Disconnect (15 seconds).** Press **Withdraw consent**, confirm, and show it disconnected.
 
 ## After approval
 
