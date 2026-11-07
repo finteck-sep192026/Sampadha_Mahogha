@@ -47,88 +47,6 @@ const nav = {
   ],
 };
 const clients = []; // [name, id, risk, kyc, plan] — loaded from the database
-const recs = [
-  {
-    product: 'Cash',
-    stock: 'TCS',
-    action: 'BUY',
-    price: '₹3,412',
-    target: '₹3,680',
-    date: '2026-08-12',
-    time: '09:24:18',
-    status: 'Active',
-  },
-  {
-    product: 'Multi',
-    stock: 'KOTAK',
-    action: 'ACCUMULATE',
-    price: '₹1,942',
-    target: '₹2,120',
-    date: '2026-08-18',
-    time: '11:06:42',
-    status: 'Active',
-  },
-  {
-    product: 'Cash',
-    stock: 'INFY',
-    action: 'BUY',
-    price: '₹1,528',
-    target: '₹1,690',
-    date: '2026-08-22',
-    time: '10:18:07',
-    status: 'Active',
-  },
-  {
-    product: 'All',
-    stock: 'SBI',
-    action: 'HOLD',
-    price: '₹812',
-    target: '₹865',
-    date: '2026-08-27',
-    time: '14:32:11',
-    status: 'Review',
-  },
-  {
-    product: 'Multi',
-    stock: 'ICICI',
-    action: 'BUY',
-    price: '₹1,264',
-    target: '₹1,390',
-    date: '2026-09-01',
-    time: '09:48:35',
-    status: 'Active',
-  },
-  {
-    product: 'Cash',
-    stock: 'HERO',
-    action: 'BOOK PROFIT',
-    price: '₹5,224',
-    target: '₹5,100',
-    date: '2026-09-03',
-    time: '15:11:26',
-    status: 'Closed',
-  },
-  {
-    product: 'All',
-    stock: 'JIO',
-    action: 'WATCH',
-    price: '₹1,356',
-    target: '₹1,475',
-    date: '2026-09-05',
-    time: '12:44:50',
-    status: 'Review',
-  },
-  {
-    product: 'Cash',
-    stock: 'LALITHA',
-    action: 'BUY',
-    price: '₹684',
-    target: '₹760',
-    date: '2026-09-08',
-    time: '10:02:14',
-    status: 'Active',
-  },
-];
 const cashRecommendations = [];
 const multiRecommendations = [];
 const clientAlerts = [];
@@ -136,7 +54,6 @@ let state = {
   role: 'admin',
   user: null,
   page: 'dashboard',
-  filtered: recs,
   submissions: [],
   emails: [],
   ws: null,
@@ -193,35 +110,12 @@ const users = () =>
         `<tr><td><b>${esc(p.full_name)}</b><small>${esc(p.email)}</small></td><td>${roles[p.role].name}</td><td class="stamp">${esc(p.login_id)}</td><td>${roles[p.role].desc}</td><td><span class="status ${p.is_active ? 'green' : 'red'}">${p.is_active ? 'Active' : 'Disabled'}</span></td></tr>`,
     )
     .join('')}</tbody></table></div></article>`;
-const strategies = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Research strategies</h3><p>Create, review and publish investment strategies.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Strategy</th><th>Universe</th><th>Risk</th><th>Analyst</th><th>Updated</th><th>Status</th></tr></thead><tbody>${(
-    state.ws?.strategies || []
-  )
-    .map(
-      (x) =>
-        `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.universe)}</td><td>${esc(x.risk)}</td><td>${esc(x.analyst_name)}</td><td class="stamp">${Api.fmt.stamp(x.updated_at)}</td><td><span class="status ${x.status === 'Published' ? 'green' : 'gold'}">${esc(x.status)}</span></td></tr>`,
-    )
-    .join('')}</tbody></table></div></article>`;
-const reportForm = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Generate multiple reports</h3><p>Every generated report receives an immutable date and time stamp.</p></div><span class="badge">IST timestamps</span></div><form id="reportForm"><div class="form-grid"><label class="field">Select stocks<select id="reportStock" multiple size="5">${['TCS', 'KOTAK', 'INFY', 'SBI', 'ICICI', 'HERO', 'JIO', 'LALITHA'].map((x) => `<option>${x}</option>`).join('')}</select></label><label class="field">Product<select><option>Cash</option><option>Multi</option><option>All</option></select></label><label class="field">From date<input type="date" value="2026-09-01"></label><label class="field">To date<input type="date" value="2026-09-09"></label></div><div class="actions"><button type="button" class="btn secondary action">Save draft</button><button class="btn primary">Generate batch →</button></div></form><div id="reportResult"></div></article>`;
 const clientTable = () =>
   `<article class="card panel"><div class="panel-head"><div><h3>Client relationships</h3><p>Profiles, KYC state and current subscription.</p></div><button class="btn primary" data-go="addClient">＋ Add client</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Risk profile</th><th>KYC</th><th>Plan</th><th>Mobile</th></tr></thead><tbody>${clients.map((x) => `<tr><td><b>${esc(x[0])}</b><small>${esc(x[1])} • ${esc(x[5])}</small></td><td>${esc(x[2])}</td><td><span class="status ${/verified/i.test(x[3]) ? 'green' : /review/i.test(x[3]) ? 'gold' : 'red'}">${esc(x[3])}</span></td><td>${esc(x[4])}</td><td class="stamp">${esc(x[6])}</td></tr>`).join('')}${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.id)} • ${esc(x.email)}</small></td><td>${esc(x.risk)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status === 'Approved' ? 'KYC approved' : x.status === 'Rejected' ? 'Rejected' : 'Admin approval pending'}</span></td><td>Not assigned</td><td class="stamp">${esc(x.mobile || '—')}</td></tr>`).join('')}</tbody></table></div></article>`;
 const addClient = () =>
   `<form id="addClientForm"><section class="form-section card panel"><div class="panel-head"><div><h3>Personal and KYC details</h3><p>Fields marked required must be completed before submission.</p></div><span class="badge">Step 1 of 3</span></div><div class="form-grid three"><label class="field">Full legal name *<input name="name" required placeholder="As per PAN"></label><label class="field">PAN number *<input name="pan" required pattern="[A-Z]{5}[0-9]{4}[A-Z]" maxlength="10" placeholder="ABCDE1234F"></label><label class="field">Date of birth *<input name="dob" type="date" required></label><label class="field">Email address *<input name="email" type="email" required></label><label class="field">Mobile number *<input name="mobile" required placeholder="+91 98765 43210"></label><label class="field">Occupation *<select name="occupation" required><option value="">Select</option><option>Salaried</option><option>Business</option><option>Professional</option><option>Retired</option></select></label><label class="field">Annual income *<select name="income" required><option>₹5–10 lakh</option><option>₹10–25 lakh</option><option>₹25–50 lakh</option><option>Above ₹50 lakh</option></select></label><label class="field">Tax residency *<select name="residency"><option>Resident Indian</option><option>NRI</option></select></label><label class="field">City *<input name="city" required value="Mumbai"></label></div></section><section class="form-section card panel"><div class="panel-head"><div><h3>Trading and demat details</h3><p>Share-market account, segment and experience information.</p></div><span class="badge">Step 2 of 3</span></div><div class="form-grid three"><label class="field">Broker name *<select name="broker" required><option>Zerodha</option><option>ICICI Direct</option><option>Kotak Securities</option><option>HDFC Securities</option><option>Other</option></select></label><label class="field">Depository *<select name="depository"><option>CDSL</option><option>NSDL</option></select></label><label class="field">Demat / BO ID *<input name="demat" required placeholder="16-digit beneficiary ID"></label><label class="field">Trading client ID *<input name="tradingId" required placeholder="Broker client code"></label><label class="field">Primary bank *<input name="bank" required placeholder="Bank name"></label><label class="field">Investment experience *<select name="experience"><option>New investor</option><option>1–3 years</option><option>3–5 years</option><option>More than 5 years</option></select></label></div><fieldset><legend>Required market segments *</legend><div class="checks"><label><input type="checkbox" name="segments" value="Cash" checked> Cash equity</label><label><input type="checkbox" name="segments" value="F&O"> Futures & Options</label><label><input type="checkbox" name="segments" value="Currency"> Currency</label><label><input type="checkbox" name="segments" value="Commodity"> Commodity</label></div></fieldset><fieldset><legend>Interested products</legend><div class="checks"><label><input type="checkbox" name="products" value="Cash" checked> Cash</label><label><input type="checkbox" name="products" value="Multi"> Multi</label><label><input type="checkbox" name="products" value="All"> All products</label></div></fieldset></section><section class="form-section card panel"><div class="panel-head"><div><h3>Suitability and consent</h3><p>Investment capacity, objective and declarations.</p></div><span class="badge">Step 3 of 3</span></div><div class="form-grid three"><label class="field">Risk profile *<select name="risk"><option>Conservative</option><option selected>Moderate</option><option>Growth</option><option>Aggressive</option></select></label><label class="field">Investment horizon *<select name="horizon"><option>Under 1 year</option><option>1–3 years</option><option selected>3–5 years</option><option>More than 5 years</option></select></label><label class="field">Investment objective *<select name="objective"><option>Capital preservation</option><option selected>Long-term wealth</option><option>Income</option><option>Trading</option></select></label><label class="field">Proposed investment amount *<input name="amount" type="number" min="10000" value="500000" required></label><label class="field">Maximum loss tolerance *<select name="loss"><option>Up to 5%</option><option selected>Up to 15%</option><option>Up to 25%</option><option>Above 25%</option></select></label><label class="field">Preferred plan<select name="plan"><option>Essential</option><option>Growth</option><option>Premium</option></select></label></div><label class="consent"><input name="consent" type="checkbox" required><span><b>Client consent confirmed *</b><small>The client has reviewed the risk disclosure and authorized collection of these onboarding details.</small></span></label><div class="notice">Submitting creates a pending record. Only an Admin login can approve or reject the client.</div><div class="actions"><button type="button" class="btn secondary" data-go="clients">Cancel</button><button class="btn primary">Submit for Admin approval →</button></div></section></form>`;
 const approvals = () =>
   `<article class="card panel"><div class="panel-head"><div><h3>Client approval queue</h3><p>Only Admin can approve or reject submitted onboarding records.</p></div><span class="badge">${state.submissions.filter((x) => x.status === 'Pending').length} pending</span></div><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Applicant</th><th>Market account</th><th>Segments</th><th>Risk / Amount</th><th>Submitted</th><th>Status</th><th>Admin action</th></tr></thead><tbody>${state.submissions.map((x) => `<tr><td><b>${esc(x.name)}</b><small>${esc(x.pan)} • ${esc(x.mobile)}<br>${esc(x.email)}</small></td><td>${esc(x.broker)}<small>${esc(x.demat)}</small></td><td>${esc(x.segments)}</td><td>${esc(x.risk)}<small>${esc(x.amount)}</small></td><td class="stamp">${esc(x.submitted)}</td><td><span class="status ${x.status === 'Approved' ? 'green' : x.status === 'Rejected' ? 'red' : 'gold'}">${x.status}</span></td><td>${x.status === 'Pending' ? `<div class="approval-actions"><button class="btn primary approve" data-app="${esc(x.id)}">Approve</button><button class="btn secondary reject" data-app="${esc(x.id)}">Reject</button></div>` : typeof approvalAccountCell === 'function' ? approvalAccountCell(x) : '<small>Decision recorded</small>'}</td></tr>`).join('')}</tbody></table></div></article>`;
-const kyc = () =>
-  `<section class="grid-2" style="margin-top:0"><article class="card panel"><div class="panel-head"><div><h3>KYC onboarding</h3><p>Create a client profile and collect required details.</p></div><span class="status gold">Draft</span></div><form id="kycForm"><div class="form-grid"><label class="field">Full name<input value="Nikhil Verma"></label><label class="field">PAN<input value="ABCDE1234F"></label><label class="field">Mobile<input value="+91 98765 43210"></label><label class="field">Email<input value="nikhil.verma@demo.in"></label><label class="field">Risk profile<select><option>Moderate</option><option>Conservative</option><option>Growth</option></select></label><label class="field">Document status<select><option>Received</option><option>Pending</option></select></label></div><div class="actions"><button class="btn primary">Submit for review →</button></div></form></article><article class="card panel"><h3>Onboarding progress</h3><p class="muted">Identity and contact details</p><div class="progress"><span style="width:75%"></span></div><div class="activity">${[
-    ['✓', 'Profile created', 'Completed'],
-    ['✓', 'PAN validated', 'Completed'],
-    ['◷', 'Address verification', 'In progress'],
-    ['○', 'Agreement & consent', 'Pending'],
-  ]
-    .map(
-      (x) =>
-        `<div class="activity-row"><span class="activity-icon">${x[0]}</span><div><b>${x[1]}</b><small>${x[2]}</small></div></div>`,
-    )
-    .join('')}</div></article></section>`;
 const plans = () =>
   `<section class="plan-grid">${(state.ws?.plans || [])
     .map(
@@ -291,8 +185,6 @@ const recommendationResults = () =>
 function recommendationPage() {
   return `<article class="card panel recommendation-filter"><div class="panel-head"><div><h3>All recommendations</h3><p>Cash and Multi have independent filters and separate tables.</p></div><span class="badge">${cashRecommendations.length + multiRecommendations.length} total records</span></div><div class="notice">Research communication only—not an order or guaranteed return. Discuss suitability with your advisor.</div></article><section id="recommendationResults">${recommendationResults()}</section><div id="pdfModal" class="pdf-modal hidden"><div class="pdf-sheet"><div class="pdf-head"><div><small>Sampadha Research</small><h3 id="pdfTitle">Recommendation report</h3></div><button id="closePdf" type="button">×</button></div><div id="pdfBody"></div><div class="pdf-foot"><span>Recommendation summary. The signed report is under Reports received.</span></div></div></div>`;
 }
-const recTable = (data) =>
-  `<div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Stock</th><th>View</th><th>Reference price</th><th>Target</th><th>Published timestamp</th><th>Status</th></tr></thead><tbody>${data.length ? data.map((x) => `<tr><td><span class="badge">${x.product}</span></td><td><b>${x.stock}</b></td><td>${x.action}</td><td>${x.price}</td><td>${x.target}</td><td class="stamp">${x.date} • ${x.time} IST</td><td><span class="status ${x.status === 'Active' ? 'green' : x.status === 'Closed' ? 'red' : 'gold'}">${x.status}</span></td></tr>`).join('') : `<tr><td class="empty" colspan="7">No recommendations match these filters.</td></tr>`}</tbody></table></div>`;
 const alertRows = (data) =>
   `<div class="notification-list">${data.map((x) => `<article class="notification-row ${x.unread ? 'unread' : ''}"><span class="channel-icon">${icon(CHANNEL_ICONS[x.channel] || 'bell')}</span><div><b>${esc(x.title)}</b><small>${esc(x.detail)}</small><small>${esc(x.channel)} • ${esc(x.id)}</small></div><time>${esc(x.time)}</time></article>`).join('') || '<div class="empty">No notifications in this channel.</div>'}</div>`;
 const clientDashboard = () => {
@@ -330,19 +222,6 @@ const notifications = () =>
     .join(
       '',
     )}</section><div class="notification-toolbar">${['All', 'Email', 'WhatsApp', 'In-app'].map((x, i) => `<button class="filter-chip ${i === 0 ? 'active' : ''}" data-channel="${x}">${x}</button>`).join('')}</div><div id="notificationResults">${alertRows(clientAlerts)}</div></article>`;
-const segmentPage = (type) => {
-  const data = recs.filter((x) => x.product === type);
-  return `<article class="card panel"><div class="segment-banner"><div><p class="overline">${type} research</p><h3>${type} segment recommendations</h3><p>${type === 'Cash' ? 'Direct equity calls with entry, target and status.' : 'Model portfolio calls grouped separately from Cash research.'}</p></div><span class="segment-mark">${icon(type === 'Cash' ? 'rupee' : 'layers')}</span></div><div class="notice">Research communication only. Review suitability with your advisor before acting.</div><div class="segment-summary"><div><small>Total records</small><b>${data.length}</b></div><div><small>Active calls</small><b>${data.filter((x) => x.status === 'Active').length}</b></div><div><small>Last updated</small><b>${data.at(-1).date}</b></div></div>${recTable(data)}</article>`;
-};
-const cashSegment = () => segmentPage('Cash');
-const multiSegment = () => segmentPage('Multi');
-const segmentResults = (data) => {
-  const cash = data.filter((x) => x.product === 'Cash'),
-    multi = data.filter((x) => x.product === 'Multi');
-  return `${cash.length ? `<article class="card panel"><div class="segment-banner"><div><p class="overline">Cash research</p><h3>Cash segment recommendations</h3><p>Direct equity calls with entry price, target and publication timestamp.</p></div><span class="segment-mark">${icon('rupee')}</span></div><div class="segment-summary"><div><small>Filtered records</small><b>${cash.length}</b></div><div><small>Active calls</small><b>${cash.filter((x) => x.status === 'Active').length}</b></div><div><small>Display</small><b>Cash</b></div></div>${recTable(cash)}</article>` : ''}${multi.length ? `<article class="card panel"><div class="segment-banner"><div><p class="overline">Multi research</p><h3>Multi segment recommendations</h3><p>Model portfolio calls displayed separately below the Cash table.</p></div><span class="segment-mark">${icon('layers')}</span></div><div class="segment-summary"><div><small>Filtered records</small><b>${multi.length}</b></div><div><small>Active calls</small><b>${multi.filter((x) => x.status === 'Active').length}</b></div><div><small>Display</small><b>Multi</b></div></div>${recTable(multi)}</article>` : ''}${!cash.length && !multi.length ? '<article class="card panel empty">No recommendations match the selected filters.</article>' : ''}`;
-};
-const segments = () =>
-  `<article class="card panel segment-filter-panel"><div class="panel-head"><div><h3>Cash & Multi recommendations</h3><p>Select one segment or view both tables in the same window.</p></div><span id="segmentCount" class="badge">${recs.filter((x) => x.product !== 'All').length} records</span></div><div class="notice">Research communication only. Review suitability with your advisor before acting.</div><form id="segmentFilters" class="filters segment-filters"><label>Segment<select id="sfProduct"><option value="Both">Cash & Multi</option><option value="Cash">Cash only</option><option value="Multi">Multi only</option></select></label><label>Stock<select id="sfStock"><option value="All">All stocks</option>${[...new Set(recs.filter((x) => x.product !== 'All').map((x) => x.stock))].map((x) => `<option>${x}</option>`).join('')}</select></label><label>Status<select id="sfStatus"><option value="All">All statuses</option><option>Active</option><option>Review</option><option>Closed</option></select></label><label>From date<input id="sfFrom" type="date" value="2026-08-01"></label><label>To date<input id="sfTo" type="date" value="2026-09-30"></label><button class="btn primary">Apply filters</button><button id="clearSegmentFilters" type="button" class="btn secondary">Reset</button></form></article><section id="segmentResults" class="segments-stack">${segmentResults(recs.filter((x) => x.product !== 'All'))}</section>`;
 const workflowMap = () =>
   `<section class="flow-summary"><div><p class="overline">End-to-end operating model</p><h3>Sampadha platform workflow</h3><p>Role-based journey from client acquisition to approved research delivery.</p></div><div class="flow-legend"><span><i class="sales-dot"></i>Sales</span><span><i class="admin-dot"></i>Admin</span><span><i class="ra-dot"></i>Research Analyst</span><span><i class="client-dot"></i>Client</span></div></section><section class="workflow-board card"><div class="flow-start"><span>01</span><div><b>Secure role login</b><small>System identifies Admin, RA, Sales or Client access.</small></div></div><div class="flow-split">${[
     [
@@ -390,18 +269,12 @@ const pages = {
   dashboard,
   clientDashboard,
   notifications,
-  segments,
-  cashSegment,
-  multiSegment,
   users,
-  strategies,
-  multiReports: () => reportForm(),
   clients: clientTable,
   addClient,
   approvals,
   emails,
   workflowMap,
-  kyc,
   plans,
   profile,
   products,
@@ -413,18 +286,14 @@ const titles = {
   dashboard: 'Overview',
   clientDashboard: 'Client dashboard',
   notifications: 'Notifications & alerts',
-  segments: 'Cash & Multi segments',
   cashSegment: 'Cash Segment',
-  multiSegment: 'Multi Segment',
   users: 'Users & access',
-  strategies: 'Strategies',
   multiReports: 'Multi Segment',
   clients: 'Clients',
   addClient: 'Add share-market client',
   approvals: 'Client approvals',
   emails: 'Email delivery',
   workflowMap: 'Workflow chart',
-  kyc: 'KYC onboarding',
   plans: 'Subscription plans',
   profile: 'Profile',
   products: 'Subscribed products',
@@ -437,7 +306,6 @@ const NAV_GROUPS = ['Research', 'Clients', 'Communication', 'Billing', 'Administ
 const NAV_GROUP_OF = {
   multiReports: 'Research',
   cashSegment: 'Research',
-  strategies: 'Research',
   recommendations: 'Research',
   researchOrders: 'Research',
   raUploads: 'Research',
@@ -445,7 +313,6 @@ const NAV_GROUP_OF = {
   compliance: 'Clients',
   addClient: 'Clients',
   approvals: 'Clients',
-  kyc: 'Clients',
   emails: 'Communication',
   brokerEmail: 'Communication',
   plans: 'Billing',
@@ -493,40 +360,6 @@ function show(page) {
   $('.sidebar').classList.remove('open');
 }
 function bind() {
-  const rf = $('#reportForm');
-  if (rf)
-    rf.onsubmit = (e) => {
-      e.preventDefault();
-      const now = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-      $('#reportResult').innerHTML =
-        `<div class="notice" style="margin-top:18px"><b>Report generated</b><br><span class="stamp">REPORT-${Date.now().toString().slice(-6)} • ${now} IST</span></div>`;
-    };
-  const k = $('#kycForm');
-  if (k)
-    k.onsubmit = (e) => {
-      e.preventDefault();
-      toast('KYC submitted for review');
-    };
-  const f = $('#filters');
-  if (f)
-    f.onsubmit = (e) => {
-      e.preventDefault();
-      const p = $('#fProduct').value,
-        s = $('#fStock').value,
-        a = $('#fFrom').value,
-        b = $('#fTo').value,
-        st = $('#fStatus').value;
-      state.filtered = recs.filter(
-        (x) =>
-          (p === 'All' || x.product === p) &&
-          (s === 'All' || x.stock === s) &&
-          x.date >= a &&
-          x.date <= b &&
-          (st === 'All' || x.status === st),
-      );
-      $('#recTable').innerHTML = recTable(state.filtered);
-      $('.panel-head .badge').textContent = `${state.filtered.length} records`;
-    };
   const recommendationFilters = $('#recommendationFilters');
   if (recommendationFilters) {
     const productOptions = {
@@ -563,36 +396,6 @@ function bind() {
       applyRecommendations();
     };
     $('#closePdf').onclick = () => $('#pdfModal').classList.add('hidden');
-  }
-  const sf = $('#segmentFilters');
-  if (sf) {
-    const applySegmentFilters = () => {
-      const p = $('#sfProduct').value,
-        s = $('#sfStock').value,
-        st = $('#sfStatus').value,
-        a = $('#sfFrom').value,
-        b = $('#sfTo').value;
-      const data = recs.filter(
-        (x) =>
-          x.product !== 'All' &&
-          (p === 'Both' || x.product === p) &&
-          (s === 'All' || x.stock === s) &&
-          (st === 'All' || x.status === st) &&
-          x.date >= a &&
-          x.date <= b,
-      );
-      $('#segmentResults').innerHTML = segmentResults(data);
-      $('#segmentCount').textContent = `${data.length} records`;
-    };
-    sf.onsubmit = (e) => {
-      e.preventDefault();
-      applySegmentFilters();
-    };
-    $('#sfProduct').onchange = applySegmentFilters;
-    $('#clearSegmentFilters').onclick = () => {
-      sf.reset();
-      applySegmentFilters();
-    };
   }
   $$('[data-channel]').forEach(
     (x) =>

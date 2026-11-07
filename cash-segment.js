@@ -613,7 +613,8 @@ function cashClientSelection(report) {
   );
 }
 function cashStrategyPage() {
-  if (!['ra', 'admin'].includes(state.role)) return segmentPage('Cash');
+  if (!['ra', 'admin'].includes(state.role))
+    return '<article class="card panel">Research workspace access required.</article>';
   const report = cashSelectedId ? cashFindReport(cashSelectedId) : null;
   if (report)
     return (
