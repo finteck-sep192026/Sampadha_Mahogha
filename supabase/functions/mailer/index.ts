@@ -22,6 +22,7 @@
 // see them. Broker orders queued more than 30 minutes ago are marked 'Expired' instead of sent.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { Buffer } from 'node:buffer';
 import {
   buildRawMessage,
   constantTimeEqual,
@@ -129,9 +130,11 @@ type Mail = {
   send_via: string;
   client_id: string | null;
   attempts: number;
+  attachment_path: string | null;
+  attachment_name: string | null;
 };
 const MAIL_COLUMNS =
-  'id, mail_ref, recipient_email, recipient_name, cc_emails, subject, mail_type, body, sent_at, send_via, client_id, attempts';
+  'id, mail_ref, recipient_email, recipient_name, cc_emails, subject, mail_type, body, sent_at, send_via, client_id, attempts, attachment_path, attachment_name';
 
 const escapeHtml = (text: string) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -346,6 +349,10 @@ async function sendOverSmtp(m: Mail, tally: Tally) {
     return;
   }
   try {
+    const file = m.attachment_path
+      ? await admin.storage.from('v2-research').download(m.attachment_path)
+      : null;
+    if (file?.error) throw new Error('Attachment: ' + file.error.message);
     const info = await transport.sendMail({
       from: FROM,
       replyTo: REPLY_TO,
@@ -357,6 +364,15 @@ async function sendOverSmtp(m: Mail, tally: Tally) {
       text: text(m),
       html: html(m),
       headers: { 'X-Sampadha-Ref': m.mail_ref },
+      attachments: file?.data
+        ? [
+            {
+              filename: m.attachment_name || 'document.pdf',
+              content: Buffer.from(await file.data.arrayBuffer()),
+              contentType: 'application/pdf',
+            },
+          ]
+        : undefined,
     });
     await setStatus([m.id], 'Sent', String(info.response ?? '').slice(0, 300) || null);
     tally.sent++;

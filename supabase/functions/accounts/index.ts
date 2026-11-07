@@ -156,7 +156,9 @@ async function sendSetPasswordLink(profile: { id: string; login_id: string; role
   const subject = kind === 'invite' ? 'Your Sampadha portal account' : 'Set a new password for the Sampadha portal';
   const intro =
     kind === 'invite'
-      ? `An account has been created for you on the Sampadha portal.`
+      ? profile.role === 'client'
+        ? `An account has been created for you on the Sampadha portal. This one link sets your password and opens your consent page, where you accept your onboarding details and approve broker auto-email.`
+        : `An account has been created for you on the Sampadha portal.`
       : `A new link to set your Sampadha portal password was requested for you.`;
   const text = `Hello ${profile.full_name},\n\n${intro}\n\nYour login ID: ${profile.login_id}\n\nSet your password here (the link works once and expires in 5 minutes):\n${link}\n\nThen sign in at ${PORTAL_URL} with your login ID or this email address. If the link has expired, choose "Sign in with an email code instead" there, then set a password from Change password.\n\nIf you were not expecting this email, ignore it.\n\nSampadha`;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
