@@ -188,6 +188,7 @@
     clientId: r.client_id,
     products: (r.products || []).join(', ') || '—',
     services: (r.services || []).join(', ') || '—',
+    pdfPath: r.pdf_path,
     netWorth: r.net_worth || '—',
     accounts: r.broker_accounts || [],
     quoted: r.quoted_annual == null ? '' : rupee(r.quoted_annual),
@@ -365,6 +366,8 @@
         }
       };
     const [
+      onboarding,
+      clientPending,
       productPrices,
       brokerDesks,
       mailMeta,
@@ -392,6 +395,8 @@
       clientDocuments,
       gmailLink,
     ] = await Promise.all([
+      role === 'client' ? rpc('my_onboarding').catch(() => null) : null,
+      ['admin', 'sales'].includes(role) ? rpc('client_pending').catch(() => []) : [],
       ['admin', 'sales'].includes(role)
         ? ok(q('product_prices', (x) => x.order('sort_order'))).catch(() => [])
         : [],
@@ -498,6 +503,8 @@
       mailMeta,
       productPrices,
       brokerDesks,
+      onboarding: Array.isArray(onboarding) ? onboarding[0] : onboarding,
+      clientPending,
       directory,
       subscriptions: subs,
       payments,
@@ -727,6 +734,14 @@
     });
   }
 
+  // ───────────── client onboarding ─────────────
+  async function uploadOnboardingPdf(blob) {
+    const path = `applications/${crypto.randomUUID()}.pdf`;
+    must(await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'application/pdf', upsert: false }));
+    return path;
+  }
+  const acceptOnboardingDetails = () => rpc('accept_onboarding_details');
+
   // ───────────── a sent report: delivery status and replacement ─────────────
   const reportDeliveryStatus = (reportId) =>
     rpc('report_delivery_status', { p_report_id: reportId });
@@ -824,6 +839,8 @@
     sendCashReport,
     closeLeg,
     saveBrokerEmail,
+    uploadOnboardingPdf,
+    acceptOnboardingDetails,
     sendBrokerConsent,
     saveBrokerDesks,
     saveProductPrices,

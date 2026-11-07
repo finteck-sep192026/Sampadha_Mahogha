@@ -189,7 +189,7 @@ const brokerDeskNote = () =>
 function brokerClientPage() {
   const row = brokerRowFor(state.user.uid),
     mails = state.emails.filter((m) => m.clientId === state.user.uid && /^Broker/.test(m.type));
-  return `${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${row ? brokerForm(row, { client: true }) : '<div class="notice">Your Sampadha contact will enter your broker details. You will get an email and a portal alert when they are ready for your consent.</div>'}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
+  return `${onboardingClientCard()}${brokerGmailCard()}<article class="card panel"><div class="panel-head"><div><h3>Step 2: Broker details and consent</h3><p>Have each Multi recommendation emailed to your broker as soon as you receive it.</p></div>${brokerStatusBadge(row)}</div>${brokerConsentBanner(row)}${brokerDeskNote()}${row ? brokerForm(row, { client: true }) : '<div class="notice">Your Sampadha contact will enter your broker details. You will get an email and a portal alert when they are ready for your consent.</div>'}</article><article class="card panel"><div class="panel-head"><div><h3>Emails sent to your broker</h3><p>Order emails and test emails for your account.</p></div><span class="badge">${mails.length}</span></div>${brokerMailRows(mails)}</article>`;
 }
 
 // r is the row from list_broker_email_clients. A client without one has no Gmail facts here.
@@ -200,7 +200,8 @@ function brokerGmailCell(r) {
 }
 
 const brokerResendButton = (clientId, loginId) =>
-  brokerRowFor(clientId) && !brokerAutoEmailActive(clientId)
+  (brokerRowFor(clientId) && !brokerAutoEmailActive(clientId)) ||
+  (state.ws?.clientPending || []).some((p) => p.login_id === loginId && p.pending === 'Client: accept details')
     ? `<button class="btn secondary" data-broker-resend="${esc(loginId)}">Resend consent</button>`
     : '';
 // The Auto email column on the Clients page.
