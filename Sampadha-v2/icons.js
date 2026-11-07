@@ -47,7 +47,6 @@ const CHANNEL_ICONS = { Email: 'mail', WhatsApp: 'message', 'In-app': 'bell' };
 const NAV_ICONS = {
   dashboard: 'home',
   clientDashboard: 'home',
-  workflowMap: 'workflow',
   users: 'users',
   clients: 'contacts',
   compliance: 'shield',

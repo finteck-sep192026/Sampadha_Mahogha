@@ -2,6 +2,7 @@
 // and auto-email, with their onboarding details as tables under each row.
 
 let clientHubOpen = '';
+const HUB_COLUMNS = 8 + CLIENT_FACT_HEADS.length;
 
 const hubDash = (value) => esc(value == null || value === '' ? '—' : value);
 
@@ -43,20 +44,6 @@ function hubDetails(app, row, person) {
       ? `<h4>Onboarding details</h4>${app.pdfPath ? `<div class="actions"><button type="button" class="btn secondary" data-onboarding-file="${esc(app.pdfPath)}">View PDF</button></div>` : ''}${hubFacts([
           ['Application', app.id],
           ['Submitted', app.submitted],
-          ['PAN', app.pan],
-          ['Date of birth', raw.dob],
-          ['Email', app.email],
-          ['Mobile', app.mobile],
-          ['Occupation', raw.occupation],
-          ['Annual income', raw.income_band],
-          ['Net worth', app.netWorth],
-          ['Tax residency', raw.tax_residency],
-          ['City', raw.city],
-          ['Proposed investment amount', app.amount],
-          ['Mutual fund experience', app.mfExperience],
-          ['Stocks experience', app.stockExperience],
-          ['F&O experience', app.foExperience],
-          ['Market segments', app.segments],
           ['Services', app.services],
           ['Products', app.products + (app.quoted ? ' (' + app.quoted + ' / year)' : '')],
         ])}<h4>Brokers</h4>${
@@ -96,12 +83,12 @@ function clientHubTable(kycCell) {
         login = row?.login_id || person?.login_id || '',
         key = login || app.id,
         plan = clients.find((c) => c[1] === login)?.[4];
-      return `<tr><td><b>${esc(app?.name || row.full_name)}</b><small>${esc(login || app.id)} • ${esc(app?.email || row?.email || person?.email || '')}</small></td><td>${pendingCell(key)}</td><td>${hubRiskCell(row)}</td><td>${hubAgreementCell(row)}</td><td>${row ? kycCell(row) : '—'}</td><td>${hubDash(plan)}</td><td>${login ? brokerAutoEmailCell(login) : '—'}</td><td>${hubActions(app, key)}</td></tr>${
-        clientHubOpen === key ? `<tr><td colspan="8">${hubDetails(app, row, person)}</td></tr>` : ''
+      return `<tr><td><b>${esc(app?.name || row.full_name)}</b><small>${esc(login || app.id)}</small></td><td>${pendingCell(key)}</td><td>${hubActions(app, key)}</td>${clientFactCells(app, { pan: person?.pan, email: row?.email || person?.email, mobile: person?.mobile })}<td>${hubRiskCell(row)}</td><td>${hubAgreementCell(row)}</td><td>${row ? kycCell(row) : '—'}</td><td>${hubDash(plan)}</td><td>${login ? brokerAutoEmailCell(login) : '—'}</td></tr>${
+        clientHubOpen === key ? `<tr><td colspan="${HUB_COLUMNS}">${hubDetails(app, row, person)}</td></tr>` : ''
       }`;
     })
     .join('');
-  return `<article class="card panel"><div class="panel-head"><div><h3>Clients</h3><p>Approvals, compliance and auto-email for every client in one table.</p></div><button id="salesAddClientToggle" class="btn primary" aria-expanded="false">＋ Add client</button></div></article><section id="salesAddClientPanel" hidden>${addClient()}</section><article class="card panel"><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Client</th><th>Pending with</th><th>Risk profile</th><th>Agreement</th><th>KYC</th><th>Plan</th><th>Auto email</th><th>Actions</th></tr></thead><tbody>${body || '<tr><td colspan="8" class="empty">No clients yet.</td></tr>'}</tbody></table></div></article>`;
+  return `<article class="card panel"><div class="panel-head"><div><h3>Clients</h3><p>Approvals, compliance and auto-email for every client in one table.</p></div><button id="salesAddClientToggle" class="btn primary" aria-expanded="false">＋ Add client</button></div></article><section id="salesAddClientPanel" hidden>${addClient()}</section><article class="card panel"><div class="table-wrap"><table class="table approval-table"><thead><tr><th>Full legal name</th><th>Pending with</th><th>Actions</th>${clientFactHeads()}<th>Risk profile</th><th>Agreement</th><th>KYC</th><th>Plan</th><th>Auto email</th></tr></thead><tbody>${body || '<tr><td colspan="${HUB_COLUMNS}" class="empty">No clients yet.</td></tr>'}</tbody></table></div></article>`;
 }
 
 document.querySelector('#content').addEventListener('click', (event) => {
