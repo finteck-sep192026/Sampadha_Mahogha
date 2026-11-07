@@ -13,6 +13,9 @@ RewriteRule ^gmail-callback$ https://nxtyswlxnmekpvlfuucg.supabase.co/functions/
 # Git deployment leaves a .git folder in the web root; never serve it.
 RedirectMatch 404 /\.git
 
+# The project notes ship with the folder but describe internals, so they are not public.
+RedirectMatch 404 ^/README\.md$
+
 <IfModule mod_headers.c>
   Header always set Strict-Transport-Security "max-age=31536000"
   Header always set X-Content-Type-Options "nosniff"

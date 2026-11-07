@@ -134,24 +134,56 @@ export type GmailMessage = {
   body: string;
 };
 
+const normalBreaks = (text: string) => text.replace(/\r\n|\r/g, '\n');
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Blank lines end a paragraph and single line breaks stay inside one.
+export function plainToHtml(text: string) {
+  return normalBreaks(text)
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${paragraph.split('\n').map(escapeHtml).join('<br>')}</p>`)
+    .join('');
+}
+
+// Base64 has no "-", so no encoded line can read as the boundary line.
+function bodyPart(type: 'plain' | 'html', text: string) {
+  const encoded = toBase64(encoder.encode(text.replace(/\n/g, '\r\n')));
+  return [
+    `Content-Type: text/${type}; charset=UTF-8`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    ...(encoded.match(/.{1,76}/g) ?? []),
+  ];
+}
+
 // RFC 2822 message as base64url, for the `raw` field of messages.send. Throws on a bad address, so
-// nothing can be sent to a recipient that was not meant.
+// nothing can be sent to a recipient that was not meant. The text goes as plain and HTML versions of
+// the same words, like the order emails that reach broker inboxes from Mahogha.
 export function buildRawMessage(message: GmailMessage) {
   const from = mailbox(message.fromName, address(message.fromEmail));
   const to = address(message.to);
   const cc = (message.cc ?? []).map(address);
-  const headers = [
+  const boundary = `0000000000${crypto.randomUUID().replace(/-/g, '')}`;
+  const plain = normalBreaks(message.body);
+  const lines = [
     `From: ${from}`,
     `To: ${to}`,
     ...(cc.length ? [`Cc: ${cc.join(', ')}`] : []),
     `Subject: ${headerText(message.subject)}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: base64',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    ...bodyPart('plain', plain),
+    `--${boundary}`,
+    ...bodyPart('html', plainToHtml(plain)),
+    `--${boundary}--`,
+    '',
   ];
-  const body = toBase64(encoder.encode(message.body.replace(/\r\n|\r|\n/g, '\r\n')));
-  const lines = body.match(/.{1,76}/g) ?? [];
-  return toBase64Url(encoder.encode([...headers, '', ...lines, ''].join('\r\n')));
+  return toBase64Url(encoder.encode(lines.join('\r\n')));
 }
 
 // ───────────────────────── Google sign-in ─────────────────────────
