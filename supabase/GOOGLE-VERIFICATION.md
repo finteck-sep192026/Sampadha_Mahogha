@@ -45,7 +45,7 @@ live dealing desk.
    and say that order emails go from the client's own Gmail and that the portal cannot read mail.
 4. **Consent (10 seconds).** Tick the consent and press **Give consent**.
 5. **Google's screen (25 seconds).** Google shows the unverified app screen: it must appear in the video,
-   so press Advanced and continue. Click into the address bar so the  is readable, then
+   so press Advanced and continue. Click into the address bar so the client_id is readable, then
    show the requested permission, "Send email on your behalf". Tick it and continue.
 6. **Done (10 seconds).** Back in the portal, show Done, the Sends from address and the consent date.
 7. **The scope in use (30 seconds).** Sign in as the Research Analyst in a second window, send a Multi
