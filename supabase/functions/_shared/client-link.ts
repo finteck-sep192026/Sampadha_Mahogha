@@ -38,7 +38,23 @@ export async function sendClientLink(deps: Deps, client: Client, senderId: strin
     created_at: new Date().toISOString(),
     last_opened_at: null,
   });
-  if (error) throw new Error('Could not create the link: ' + error.message);
+  if (error) {
+    // The mail log is the one place staff can see why a link did not go.
+    await v2.from('email_log').insert({
+      mail_ref: 'MAIL-' + crypto.randomUUID().slice(0, 8).toUpperCase(),
+      recipient_id: client.id,
+      client_id: client.id,
+      recipient_email: client.email,
+      recipient_name: client.full_name,
+      subject: 'Please review and approve your Sampadha details',
+      mail_type: 'Consent request',
+      body: 'The personal link could not be created.',
+      status: 'Failed',
+      provider_message: String(error.message).slice(0, 300),
+      created_by: senderId,
+    });
+    throw new Error('Could not create the link: ' + error.message);
+  }
 
   const link = `${portalUrl.replace(/\/$/, '')}/client-access?t=${token}`;
   const { data: app } = await v2

@@ -94,7 +94,10 @@ async function staff(req: Request) {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) return null;
-  const claims = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+  const part = token.split('.')[1] ?? '';
+  const claims = JSON.parse(
+    atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')),
+  );
   const viaEmail = ['otp', 'recovery', 'magiclink', 'invite', 'email/signup'];
   const verified =
     (claims.amr ?? []).some((a: { method?: string }) => viaEmail.includes(a.method ?? '')) ||
