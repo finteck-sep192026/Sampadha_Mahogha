@@ -188,6 +188,7 @@
     clientId: r.client_id,
     products: (r.products || []).join(', ') || '—',
     services: (r.services || []).join(', ') || '—',
+    netWorth: r.net_worth || '—',
     accounts: r.broker_accounts || [],
     quoted: r.quoted_annual == null ? '' : rupee(r.quoted_annual),
     horizon: r.horizon || '—',
