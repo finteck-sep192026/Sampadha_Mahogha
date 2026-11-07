@@ -37,6 +37,13 @@ function hubFacts(facts) {
     )
     .join('')}</tbody></table></div>`;
 }
+const hubBrokerTable = (accounts) =>
+  `<div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Broker</th><th>Depository</th><th>Demat / BO ID</th><th>Trading client ID</th><th>Bank</th><th>IFSC</th><th>Account</th><th>Horizon</th><th>Objective</th><th>Loss tolerance</th></tr></thead><tbody>${accounts
+                .map(
+                  (a) =>
+                    `<tr><td><b>${hubDash(a.product || a.segment)}</b></td><td>${hubDash(a.broker)}</td><td>${hubDash(a.depository)}</td><td>${hubDash(a.demat)}</td><td>${hubDash(a.tradingId)}</td><td>${hubDash(a.bank)}</td><td>${hubDash(a.ifsc)}</td><td>${a.accountNumber ? 'XXXX' + esc(a.accountNumber.slice(-4)) : '—'}</td><td>${hubDash(a.horizon)}</td><td>${hubDash(a.objective)}</td><td>${hubDash(a.loss)}</td></tr>`,
+                )
+                .join('')}</tbody></table></div>`;
 function hubDetails(app, row, person) {
   const raw = app?.raw || {};
   return `${
@@ -49,12 +56,7 @@ function hubDetails(app, row, person) {
           ['Products', app.products + (app.quoted ? ' (' + app.quoted + ' / year)' : '')],
         ])}<h4>Brokers</h4>${
           app.accounts.length
-            ? `<div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Broker</th><th>Depository</th><th>Demat / BO ID</th><th>Trading client ID</th><th>Bank</th><th>IFSC</th><th>Account</th><th>Horizon</th><th>Objective</th><th>Loss tolerance</th></tr></thead><tbody>${app.accounts
-                .map(
-                  (a) =>
-                    `<tr><td><b>${hubDash(a.product || a.segment)}</b></td><td>${hubDash(a.broker)}</td><td>${hubDash(a.depository)}</td><td>${hubDash(a.demat)}</td><td>${hubDash(a.tradingId)}</td><td>${hubDash(a.bank)}</td><td>${hubDash(a.ifsc)}</td><td>${a.accountNumber ? 'XXXX' + esc(a.accountNumber.slice(-4)) : '—'}</td><td>${hubDash(a.horizon)}</td><td>${hubDash(a.objective)}</td><td>${hubDash(a.loss)}</td></tr>`,
-                )
-                .join('')}</tbody></table></div>`
+            ? hubBrokerTable(app.accounts)
             : `<p class="muted">${esc(app.broker)} · ${esc(app.demat)}</p>`
         }`
       : `<h4>Client</h4>${hubFacts([
