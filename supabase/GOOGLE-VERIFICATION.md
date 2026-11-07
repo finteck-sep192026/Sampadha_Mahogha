@@ -18,21 +18,10 @@ continue, with a limit of about 100 users.
 
 ## Scope justification
 
-Paste this for `https://www.googleapis.com/auth/gmail.send`:
+Paste this for . Data Access allows 1000 characters and
+will not save it until the video link is filled in too.
 
-> Sampadha Portal is used by clients of Sampadha, a SEBI-registered Research Analyst. A client can
-> choose to have the research recommendations they receive emailed to their stockbroker's dealing
-> desk. Brokers accept order instructions from the email address registered with them, so the email
-> has to be sent from the client's own Gmail account, not from Sampadha's mailbox.
->
-> The client turns this on once, after reading a consent statement and approving access on Google's
-> screen. The portal then sends each recommendation to the broker addresses shown to the client at
-> consent. The client can see each email sent, and withdraw and disconnect at any time.
->
-> We request only gmail.send because the feature only sends messages. We do not read, search, modify
-> or delete mail. A narrower scope is not available: sending is the one thing the feature does, and
-> gmail.compose or gmail.modify would grant more access than we need. Refresh tokens are encrypted
-> at rest and deleted when the client disconnects.
+> Sampadha Portal is used by clients of Sampadha, a SEBI-registered Research Analyst. A client can choose to have the research recommendations they receive emailed to their stockbroker's dealing desk. Brokers accept order instructions from the email address registered with them, so the email has to be sent from the client's own Gmail account, not from Sampadha's mailbox. The client turns this on once, after reading a consent statement and approving access on Google's screen. The portal then sends each recommendation to the broker addresses shown at consent. The client can see each email sent, and withdraw and disconnect at any time. We request only gmail.send because the feature only sends messages. We do not read, search, modify or delete mail. gmail.compose and gmail.modify would grant more access than we need. Refresh tokens are encrypted at rest and deleted when the client disconnects.
 
 ## How the app uses Google data
 
@@ -54,7 +43,8 @@ live dealing desk.
 2. **Sign in as a test client (10 seconds).** Open **Broker auto-email**.
 3. **Explain the feature (10 seconds).** Show the Connect your Gmail card, and say that order emails
    go from the client's own Gmail and that the portal cannot read mail.
-4. **Consent screen (25 seconds).** Press **Connect your Gmail**. Pause on Google's screen. Click into
+4. **Consent screen (25 seconds).** Press **Connect your Gmail**. Google shows the unverified app
+   screen: it must appear in the video, so press Advanced and continue. Pause on Google's screen. Click into
    the address bar so the `client_id` is readable, then show the requested permission, "Send email on
    your behalf". Tick it and continue.
 5. **Connected (10 seconds).** Back in the portal, show Connected and the Gmail address.
