@@ -112,13 +112,13 @@ function brokerPrefill(person) {
 }
 function brokerForm(row, { client, loginId }) {
   const value = (v) => esc(v || ''),
-    readOnly = client ? ' readonly' : '',
+    readOnly = client ? ' disabled' : '',
     names = brokerDesks().length ? brokerDesks().map((d) => d.name) : BROKER_NAMES,
     gmailStatus = client ? brokerGmailOf(state.user.uid).status : '',
     locked = client && gmailStatus !== 'Connected' ? ' disabled' : '';
   return `<form id="brokerEmailForm" data-login="${esc(loginId || '')}"><datalist id="brokerNames">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist><div class="form-grid"><label class="field">Broker *<input name="broker"${client ? '' : ' list="brokerNames"'} required maxlength="80" value="${value(row?.broker)}" placeholder="e.g. Kotak Securities"${readOnly}></label><label class="field">Broker client ID *<input name="brokerClientId" required maxlength="30" value="${value(row?.broker_client_id)}" placeholder="Client code at the broker"${readOnly}></label><label class="field">Broker order email (TO) *<input name="toEmail" type="email" required value="${value(row?.to_email)}" placeholder="Dealing desk address"${readOnly}></label><label class="field">CC emails<input name="ccEmails" value="${value((row?.cc_emails || []).join('; '))}" placeholder="Separate with ;  e.g. you and your advisor"${readOnly}></label></div>${
     client
-      ? `<label class="consent broker-consent"><input name="consent" type="checkbox" required${locked}><span><b>My consent *</b>${onboardingPending() ? '<small><b>I accept my onboarding details in the PDF above as correct.</b></small>' : ''}<small>${esc(BROKER_CONSENT_TEXT)}</small><small>Wording ${BROKER_CONSENT_VERSION}</small></span></label>${locked ? `<p class="muted broker-gmail-needed">${gmailStatus === 'Reconnect needed' ? 'Reconnect' : 'Connect'} your Gmail in step 1 before giving consent.</p>` : ''}`
+      ? `<label class="consent broker-consent"><input name="consent" type="checkbox" required${locked}><span><b>My consent *</b>${onboardingPending() ? '<small><b>I accept my onboarding details above as correct.</b></small>' : ''}<small>${esc(BROKER_CONSENT_TEXT)}</small><small>Wording ${BROKER_CONSENT_VERSION}</small></span></label>${locked ? `<p class="muted broker-gmail-needed">${gmailStatus === 'Reconnect needed' ? 'Reconnect' : 'Connect'} your Gmail in step 1 before giving consent.</p>` : ''}`
       : '<div class="notice">Saving emails the client a consent request and shows it in their portal. Only the client can connect Gmail and give consent, and no order email goes until they do.</div>'
   }<div class="actions"><button class="btn primary"${locked}>${client ? (row?.status === 'Active' && !onboardingPending() ? 'Save and confirm consent' : 'I consent') : 'Save and send consent request'}</button>${row?.status && row.status !== 'Revoked' ? '<button type="button" class="btn secondary" data-broker-revoke>Withdraw</button>' : ''}</div></form>${client ? brokerTestForm(row) : ''}<p id="brokerEmailMessage" class="research-message" role="status"></p>`;
 }

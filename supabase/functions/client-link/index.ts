@@ -55,7 +55,7 @@ async function hasSomethingToAccept(clientId: string) {
     v2.from('broker_email_consents').select('status').eq('client_id', clientId).maybeSingle(),
     v2.from('client_gmail_links').select('status').eq('client_id', clientId).maybeSingle(),
   ]);
-  if (app?.pdf_path && !app.details_accepted_at) return true;
+  if (app && !app.details_accepted_at) return true;
   return Boolean(consent && (consent.status !== 'Active' || gmail?.status !== 'Connected'));
 }
 

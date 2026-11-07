@@ -183,20 +183,41 @@ async function onboardingPdfBlob(p) {
 
 const onboardingPending = () => {
   const own = state.ws?.onboarding;
-  return Boolean(own?.pdf_path && !own.details_accepted_at);
+  return Boolean(own && !own.details_accepted_at);
 };
 // The top of the client's Broker auto-email page.
+// Shown until the client has accepted. After that the page holds only broker auto-email.
 function onboardingClientCard() {
-  const own = state.ws?.onboarding;
-  if (!own?.pdf_path) return '';
-  const uid = state.user.uid,
-    together = brokerRowFor(uid) && brokerGmailConnected(uid);
-  return `<article class="card panel"><div class="panel-head"><div><h3>Your onboarding details</h3><p>Check the details your Sampadha contact entered for you.</p></div><span class="status ${own.details_accepted_at ? 'green' : 'gold'}">${own.details_accepted_at ? 'Accepted' : 'Waiting for you'}</span></div><div class="actions"><button type="button" class="btn secondary" data-onboarding-file="${esc(own.pdf_path)}">View PDF</button></div>${
-    own.details_accepted_at
-      ? `<p class="muted">Accepted on ${esc(Api.fmt.stamp(own.details_accepted_at))} IST.</p>`
-      : together
-        ? '<p class="muted">Your consent below also accepts these details.</p>'
-        : '<form id="onboardingAcceptForm"><label class="consent"><input name="accept" type="checkbox" required><span><b>I accept these details *</b><small>The details in this PDF are correct. If anything is wrong, ask your Sampadha contact to change it before accepting.</small></span></label><div class="actions"><button class="btn primary">Accept details</button></div></form>'
+  if (!onboardingPending()) return '';
+  const own = state.ws.onboarding,
+    d = own.details || {},
+    uid = state.user.uid,
+    together = brokerRowFor(uid) && brokerGmailConnected(uid),
+    auto = d.auto_email,
+    date = d.dob ? String(d.dob).split('-').reverse().join('-') : '';
+  return `<article class="card panel"><div class="panel-head"><div><h3>Your onboarding details</h3><p>Check the details your Sampadha contact entered for you.</p></div><span class="status gold">Waiting for you</span></div>${own.pdf_path ? `<div class="actions"><button type="button" class="btn secondary" data-onboarding-file="${esc(own.pdf_path)}">View PDF</button></div>` : ''}${hubFacts([
+    ['Full legal name', d.full_name],
+    ['PAN number', d.pan],
+    ['Date of birth', date],
+    ['Email address', d.email],
+    ['Mobile number', d.mobile],
+    ['Occupation', d.occupation],
+    ['Annual income', d.income_band],
+    ['Net worth', d.net_worth],
+    ['Tax residency', d.tax_residency],
+    ['City', d.city],
+    ['Mutual fund experience', d.mf_experience],
+    ['Stocks experience', d.stock_experience],
+    ['F&O experience', d.fo_experience],
+    ['Proposed investment amount', d.proposed_amount],
+    ['Market segments', (d.segments || []).join(', ')],
+    ['Services', (d.services || []).join(', ')],
+    ['Products', (d.products || []).join(', ')],
+    ['Broker auto-email', auto?.wanted ? auto.broker + ' → ' + auto.to : auto ? 'Not requested' : ''],
+  ])}${d.broker_accounts?.length ? '<h4>Brokers</h4>' + hubBrokerTable(d.broker_accounts) : ''}${
+    together
+      ? '<p class="muted">Your consent below also accepts these details.</p>'
+      : '<form id="onboardingAcceptForm"><label class="consent"><input name="accept" type="checkbox" required><span><b>I accept these details *</b><small>These details are correct. If anything is wrong, ask your Sampadha contact to change it before accepting.</small></span></label><div class="actions"><button class="btn primary">Accept details</button></div></form>'
   }</article>`;
 }
 
