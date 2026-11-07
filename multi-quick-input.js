@@ -427,7 +427,7 @@ function quickUploadsPage() {
   if (!reportAllowed())
     return '<article class="card panel">Research workspace access required.</article>';
   return (
-    '<article class="card panel"><div class="panel-head"><div><p class="overline">Multi Segment</p><h3>Weekly contract master</h3><p>Upload the weekly Multisegment master (CSV, XLS or XLSX, up to 10 MB). Quick input uses the latest upload for lot sizes, exchange and instrument codes. Standard columns: MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol.</p></div></div><form id="quickMasterForm"><label class="field">Weekly master file<input name="master" type="file" accept=".csv,.xls,.xlsx" required></label><button class="btn primary">Upload master</button><p id="quickMasterMessage" class="research-message" role="status"></p></form></article><article class="card panel research-section"><h3>Uploaded masters</h3><div id="quickMasterList"><p class="muted">Loading…</p></div></article>'
+    '<article class="card panel"><div class="panel-head"><div><p class="overline">Uploads</p><h3>Upload weekly master or document</h3><p>CSV, XLS or XLSX, up to 10 MB. Quick input uses the latest Multi weekly master for lot sizes, exchange and instrument codes. Standard columns: MainExch, SubExch, FinInstrmTp, TckrSymb, XpryDt, NewBrdLotQty, MOFSLExchCode, BajajExch, BajajInst, Symbol. Cash working files are saved for you to download later.</p></div></div><form id="quickMasterForm"><label class="field">Select segment<select name="segment"><option value="Multi">Multi weekly master</option><option value="Cash">Cash working file</option></select></label><label class="field">Choose CSV/XLS/XLSX file<input name="master" type="file" accept=".csv,.xls,.xlsx" required></label><button class="btn primary">Save upload</button><p id="quickMasterMessage" class="research-message" role="status"></p></form></article><article class="card panel research-section"><h3>Uploaded masters</h3><div id="quickMasterList"><p class="muted">Loading…</p></div></article><article class="card panel research-section"><h3>Cash working files</h3><div id="quickCashList"><p class="muted">Loading…</p></div></article>'
   );
 }
 async function quickRenderMasterList() {
@@ -436,7 +436,7 @@ async function quickRenderMasterList() {
   try {
     quickMastersList = await Api.listSymbolMasters(10);
     target.innerHTML = quickMastersList.length
-      ? '<div class="table-wrap"><table class="table"><thead><tr><th>File</th><th>Uploaded</th><th>Symbols</th><th>Contracts</th><th>Format</th></tr></thead><tbody>' +
+      ? '<div class="table-wrap"><table class="table"><thead><tr><th>File</th><th>Uploaded</th><th>Symbols</th><th>Contracts</th><th>Format</th><th></th></tr></thead><tbody>' +
         quickMastersList
           .map(
             (m, index) =>
@@ -451,11 +451,48 @@ async function quickRenderMasterList() {
               m.contracts +
               '</td><td>' +
               reportEscape(m.format) +
-              '</td></tr>',
+              '</td><td><button type="button" class="btn secondary" data-upload-download="' +
+              reportEscape(m.storage_path) +
+              '" data-upload-name="' +
+              reportEscape(m.file_name) +
+              '">Download</button></td></tr>',
           )
           .join('') +
         '</tbody></table></div>'
       : '<p class="muted">No weekly master uploaded yet.</p>';
+  } catch (error) {
+    target.textContent = error.message;
+  }
+}
+
+let quickCashFiles = [];
+async function quickRenderCashList() {
+  const target = document.querySelector('#quickCashList');
+  if (!target) return;
+  try {
+    quickCashFiles = await Api.listCashFiles();
+    target.innerHTML = quickCashFiles.length
+      ? '<div class="table-wrap"><table class="table"><thead><tr><th>File</th><th>Uploaded</th><th>Size</th><th></th></tr></thead><tbody>' +
+        quickCashFiles
+          .map(
+            (f) =>
+              '<tr><td>' +
+              reportEscape(f.file_name) +
+              '</td><td>' +
+              reportEscape(Api.fmt.stamp(f.uploaded_at)) +
+              '</td><td>' +
+              Math.max(1, Math.round(f.size_bytes / 1024)) +
+              ' KB</td><td><button type="button" class="btn secondary" data-upload-download="' +
+              reportEscape(f.storage_path) +
+              '" data-upload-name="' +
+              reportEscape(f.file_name) +
+              '">Download</button> <button type="button" class="btn secondary" data-cash-delete="' +
+              f.id +
+              '">Delete</button></td></tr>',
+          )
+          .join('') +
+        '</tbody></table></div>'
+      : '<p class="muted">No Cash working files saved yet.</p>';
   } catch (error) {
     target.textContent = error.message;
   }
@@ -467,7 +504,10 @@ for (const role of ['ra', 'admin']) nav[role].push(['raUploads', '⇪', 'Uploads
 const quickOriginalShow = show;
 show = function (page) {
   quickOriginalShow(page);
-  if (page === 'raUploads') quickRenderMasterList();
+  if (page === 'raUploads') {
+    quickRenderMasterList();
+    quickRenderCashList();
+  }
   if (page === 'multiReports' && document.querySelector('#quickBasketMaster'))
     Api.listSymbolMasters(1)
       .then(([latest]) => {
@@ -489,7 +529,18 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
       file = form.elements.master.files[0];
     button.disabled = true;
     try {
-      if (!file) throw new Error('Choose the weekly master file.');
+      if (!file) throw new Error('Choose the file.');
+      if (form.elements.segment.value === 'Cash') {
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (!QUICK_MASTER_TYPES[extension]) throw new Error('Choose a CSV, XLS or XLSX file.');
+        if (file.size > 10 * 1024 * 1024) throw new Error('The file must be 10 MB or smaller.');
+        message.textContent = 'Uploading…';
+        await Api.uploadCashFile(file, extension, QUICK_MASTER_TYPES[extension]);
+        message.textContent = file.name + ' saved.';
+        form.reset();
+        await quickRenderCashList();
+        return;
+      }
       message.textContent = 'Reading ' + file.name + '…';
       const parsed = await quickParseMaster(file);
       message.textContent = 'Uploading…';
@@ -503,6 +554,33 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
       message.textContent = error.message;
     } finally {
       button.disabled = false;
+    }
+  }
+});
+document.querySelector('#content').addEventListener('click', async (event) => {
+  const download = event.target.closest('[data-upload-download]'),
+    remove = event.target.closest('[data-cash-delete]');
+  if (download) {
+    try {
+      const url = URL.createObjectURL(await Api.downloadFile(download.dataset.uploadDownload)),
+        link = document.createElement('a');
+      link.href = url;
+      link.download = download.dataset.uploadName;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      toast(error.message);
+    }
+    return;
+  }
+  if (remove) {
+    const row = quickCashFiles.find((f) => f.id === remove.dataset.cashDelete);
+    if (!row || !confirm('Delete ' + row.file_name + '? This cannot be undone.')) return;
+    try {
+      await Api.deleteCashFile(row);
+      await quickRenderCashList();
+    } catch (error) {
+      toast(error.message);
     }
   }
 });
