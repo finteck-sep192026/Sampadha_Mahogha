@@ -186,6 +186,12 @@
     submitted: stamp(r.submitted_at) + ' IST',
     status: r.status,
     clientId: r.client_id,
+    products: (r.products || []).join(', ') || '—',
+    horizon: r.horizon || '—',
+    objective: r.objective || '—',
+    mfExperience: r.mf_experience || '—',
+    stockExperience: r.stock_experience || '—',
+    foExperience: r.fo_experience || '—',
   });
   const mapMail = (r, reportRefs) => ({
     id: r.mail_ref,
@@ -354,6 +360,7 @@
         }
       };
     const [
+      mailMeta,
       cash,
       multi,
       plans,
@@ -378,6 +385,8 @@
       clientDocuments,
       gmailLink,
     ] = await Promise.all([
+      // Sender and segment for Client Communication; without it the filters show less, nothing breaks.
+      ['admin', 'sales'].includes(role) ? rpc('mail_meta').catch(() => []) : [],
       // "All recommendations" is built from delivered reports below; the old sample tables
       // (cash_recommendations, multi_recommendations) are no longer read.
       [],
@@ -473,6 +482,7 @@
       alerts: alerts.map(mapAlert),
       applications: apps.map(mapApplication),
       mails: mails.map((m) => mapMail(m, reportRefs)),
+      mailMeta,
       directory,
       subscriptions: subs,
       payments,
@@ -686,6 +696,29 @@
     });
   }
 
+  // ───────────── Cash working files (Uploads page) ─────────────
+  const listCashFiles = async () =>
+    must(
+      await sb
+        .from('cash_files')
+        .select('id, file_name, storage_path, size_bytes, uploaded_at')
+        .order('uploaded_at', { ascending: false })
+        .limit(50),
+    );
+  async function uploadCashFile(file, extension, contentType) {
+    const path = `cash-files/${crypto.randomUUID()}.${extension}`;
+    must(await sb.storage.from(BUCKET).upload(path, file, { contentType, upsert: false }));
+    must(
+      await sb
+        .from('cash_files')
+        .insert({ file_name: file.name, storage_path: path, size_bytes: file.size }),
+    );
+  }
+  async function deleteCashFile(row) {
+    must(await sb.storage.from(BUCKET).remove([row.storage_path]));
+    must(await sb.from('cash_files').delete().eq('id', row.id));
+  }
+
   // ───────────── Aadhaar eSign (the esign Edge Function holds the gateway API key) ─────────────
   async function esign(action, body) {
     const { data, error } = await sb.functions.invoke('esign', {
@@ -768,6 +801,9 @@
     downloadFile,
     listSymbolMasters,
     uploadSymbolMaster,
+    listCashFiles,
+    uploadCashFile,
+    deleteCashFile,
     esignStart,
     esignVerify,
     parrvaSubmit,

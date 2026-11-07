@@ -1857,7 +1857,6 @@ titles.researchOrders = 'Positions';
 titles.receivedReports = 'Reports received';
 delete titles.reports;
 for (const role of ['ra', 'admin']) nav[role].push(['researchOrders', '▦', 'Positions']);
-nav.client.push(['receivedReports', '▤', 'Reports received']);
 const originalResearchShowPage = show;
 show = function (page) {
   researchReleasePdfPreview();
