@@ -21,8 +21,8 @@ declare(strict_types=1);
 
 // Relay route → the only PDC URL it may forward to.
 const PDC_URLS = [
-    '/pdc/strategies' => 'https://pdc.nseindia.com/advice/rainput/strategy',
-    '/pdc/portfolios' => 'https://pdc.nseindia.com/advice/rainput/portfolio',
+    '/pdc/strategies' => 'https://pdc.nseasl.com/advice/rainput/strategy',
+    '/pdc/portfolios' => 'https://pdc.nseasl.com/advice/rainput/portfolio',
 ];
 const RELAY_KEY_SHA256 = '91bd0e17f2b452f588823e2f026f4ad73bf35c9d4ca7a0f85b707e69bf48275b';
 const USER_AGENT = 'Sampadha-RA-Portal/1.0 (+https://racrm.fintecindia.com)';

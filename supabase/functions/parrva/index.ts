@@ -27,9 +27,9 @@ const RELAY_URL = (
   Deno.env.get('PDC_RELAY_URL') ?? 'https://racrm.fintecindia.com/relay/v1'
 ).replace(/\/+$/, '');
 const STRATEGY_URL = RELAY_KEY
-  ? 'https://pdc.nseindia.com/advice/rainput/strategy'
-  : (Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseindia.com/advice/rainput/strategy');
-const PORTFOLIO_URL = 'https://pdc.nseindia.com/advice/rainput/portfolio';
+  ? 'https://pdc.nseasl.com/advice/rainput/strategy'
+  : (Deno.env.get('PARRVA_STRATEGY_URL') ?? 'https://pdc.nseasl.com/advice/rainput/strategy');
+const PORTFOLIO_URL = 'https://pdc.nseasl.com/advice/rainput/portfolio';
 // Each PDC API: its direct URL and its route on the relay.
 const PDC = {
   strategy: { url: STRATEGY_URL, relayRoute: '/pdc/strategies' },
