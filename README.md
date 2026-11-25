@@ -51,10 +51,17 @@ project but **separate tables**: v1 uses schema `public`, v2 uses schema `v2`.
    to whitelist at NSE), `POST /relay/v1/pdc/strategies` and `POST /relay/v1/pdc/portfolios` (header `X-Relay-Key`, PaRRVA token in
    `X-PDC-Authorization`), max 30 calls a minute; its own errors carry `X-Relay-Error`. To change the
    key, put a new SHA-256 in `RELAY_KEY_SHA256` and the new value in the secret.
-6. **Email** — deploy `supabase/functions/mailer/index.ts` as `mailer`, then add secrets `SMTP_HOST`
-   (e.g. `smtp.hostinger.com`), `SMTP_USERNAME`, `SMTP_PASSWORD`, and optional `SMTP_PORT` (default 465;
-   Supabase blocks 25 and 587), `MAIL_FROM` (e.g. `Sampadha Research <research@sampadha.com>`) and
-   `MAIL_REPLY_TO`. Admin → *Broker auto-email* shows whether sending is on.
+6. **Email** — two senders (`supabase/functions/_shared/smtp.ts`). Client onboarding and account mail
+   (sign-in codes, client links, set-password, application received, approval or decision, documents
+   to sign, consent requests) goes from **kyc@sampadha.com**; research reports, order alerts and test
+   emails go from **research@sampadha.com**. Deploy `mailer`, `login-code`, `accounts` and
+   `client-link`, then add secrets `SMTP_HOST` (`smtp.gmail.com`), `SMTP_PORT` (465; Supabase blocks
+   25 and 587), `SMTP_KYC_USERNAME`, `SMTP_KYC_PASSWORD`, `MAIL_FROM_KYC` (e.g.
+   `Sampadha KYC <kyc@sampadha.com>`), `SMTP_RESEARCH_USERNAME`, `SMTP_RESEARCH_PASSWORD`,
+   `MAIL_FROM_RESEARCH` (e.g. `Sampadha Research <research@sampadha.com>`) and optional
+   `MAIL_REPLY_TO`. Each password is a Google app password of that mailbox. The older
+   `SMTP_USERNAME` / `SMTP_PASSWORD` / `MAIL_FROM` are used for a sender whose own secrets are not set.
+   Admin → *Broker auto-email* shows whether sending is on and both From addresses.
 7. **Accounts** — `20261028000000_v2_accounts.sql`, deploy `supabase/functions/accounts/index.ts` as
    `accounts` (uses the SMTP secrets), and in Authentication → URL configuration set the Site URL to
    https://racrm.fintecindia.com and allow `https://racrm.fintecindia.com/**` as a redirect URL.
