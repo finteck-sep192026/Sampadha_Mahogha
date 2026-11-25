@@ -12,16 +12,15 @@
 //                                raises any order alert still missing.
 //
 // Secrets (Edge Functions → Secrets):
-//   SMTP_HOST (e.g. smtp.hostinger.com), SMTP_USERNAME, SMTP_PASSWORD,
-//   optional SMTP_PORT (465 = implicit TLS, the default; Supabase blocks outgoing 25 and 587),
-//   optional MAIL_FROM (default SMTP_USERNAME), e.g. "Sampadha Research <research@sampadha.com>",
+//   SMTP senders: see _shared/smtp.ts. Onboarding mail (application received, approval or decision,
+//   documents to sign, consent requests) goes from the KYC mailbox; research reports, order alerts
+//   and test emails from the research mailbox.
 //   optional MAIL_REPLY_TO,
 //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GMAIL_TOKEN_KEY, MAILER_CRON_SECRET.
-// While SMTP is not set up, queued smtp rows are marked 'Simulated' (logged only), so nothing is sent
-// late once it is. Broker rows are never simulated, and Order alerts stay 'Failed' where people can
-// see them. Broker orders queued more than 30 minutes ago are marked 'Expired' instead of sent.
+// While a row's sender is not set up, queued smtp rows are marked 'Simulated' (logged only), so nothing
+// is sent late once it is. Broker rows are never simulated, and Order alerts stay 'Failed' where people
+// can see them. Broker orders queued more than 30 minutes ago are marked 'Expired' instead of sent.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import nodemailer from 'npm:nodemailer@6.9.16';
 import { Buffer } from 'node:buffer';
 import {
   buildRawMessage,
@@ -31,14 +30,12 @@ import {
   sameAddress,
   sendGmail,
 } from '../_shared/gmail.ts';
+import { sender, senderFor, senderKindFor, smtpHost, smtpPort } from '../_shared/smtp.ts';
 
-const HOST = Deno.env.get('SMTP_HOST')?.trim();
-const PORT = Number(Deno.env.get('SMTP_PORT') ?? 465);
-const USERNAME = Deno.env.get('SMTP_USERNAME')?.trim();
-const PASSWORD = Deno.env.get('SMTP_PASSWORD');
-const FROM = Deno.env.get('MAIL_FROM')?.trim() || USERNAME;
 const REPLY_TO = Deno.env.get('MAIL_REPLY_TO')?.trim() || undefined;
-const CONFIGURED = Boolean(HOST && USERNAME && PASSWORD);
+const KYC = sender('kyc');
+const RESEARCH = sender('research');
+const CONFIGURED = Boolean(KYC && RESEARCH);
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')?.trim();
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')?.trim();
 const GMAIL_TOKEN_KEY = Deno.env.get('GMAIL_TOKEN_KEY')?.trim();
@@ -91,18 +88,6 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 const v2 = admin.schema('v2');
-
-const transport = CONFIGURED
-  ? nodemailer.createTransport({
-      host: HOST,
-      port: PORT,
-      secure: PORT === 465,
-      auth: { user: USERNAME, pass: PASSWORD },
-      connectionTimeout: 15000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000,
-    })
-  : null;
 
 async function caller(req: Request) {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
@@ -338,13 +323,15 @@ async function settle(m: Mail, outcome: Outcome, tally: Tally) {
 }
 
 async function sendOverSmtp(m: Mail, tally: Tally) {
-  if (!transport) {
+  const smtp = senderFor(m.mail_type);
+  if (!smtp) {
+    const missing = `Mail sending is not set up (SMTP secrets for the ${senderKindFor(m.mail_type)} sender).`;
     if (isOrderAlert(m)) {
-      await setStatus([m.id], 'Failed', 'Not sent: mail sending is not set up (SMTP secrets).');
+      await setStatus([m.id], 'Failed', 'Not sent: ' + missing);
       tally.failed++;
       return;
     }
-    await setStatus([m.id], 'Simulated', 'Mail sending is not set up (SMTP secrets).');
+    await setStatus([m.id], 'Simulated', missing);
     tally.simulated++;
     return;
   }
@@ -353,8 +340,8 @@ async function sendOverSmtp(m: Mail, tally: Tally) {
       ? await admin.storage.from('v2-research').download(m.attachment_path)
       : null;
     if (file?.error) throw new Error('Attachment: ' + file.error.message);
-    const info = await transport.sendMail({
-      from: FROM,
+    const info = await smtp.transport.sendMail({
+      from: smtp.from,
       replyTo: REPLY_TO,
       to: m.recipient_name && !isBroker(m)
         ? { name: m.recipient_name, address: m.recipient_email }
@@ -521,7 +508,7 @@ async function settleStale() {
 // An Order alert that failed on SMTP tries again on each scheduled run, ORDER_ALERT_TRIES in all, then
 // stays Failed. Without SMTP there is nothing to try with, so it stays Failed until there is.
 async function retryOrderAlerts() {
-  if (!transport) return;
+  if (!sender(senderKindFor('Order alert'))) return;
   const { error } = await v2
     .from('email_log')
     .update({ status: 'Queued', provider_message: null })
@@ -581,9 +568,12 @@ async function mailerStatus() {
   if (waiting.error) console.error('mailer status', waiting.error.message);
   return {
     configured: CONFIGURED,
-    host: HOST ?? null,
-    port: PORT,
-    from: FROM ?? null,
+    host: smtpHost(),
+    port: smtpPort(),
+    // Shown as one line in Admin → Email delivery.
+    from: `${KYC?.from ?? 'not set'} (onboarding) and ${RESEARCH?.from ?? 'not set'} (research)`,
+    kycFrom: KYC?.from ?? null,
+    researchFrom: RESEARCH?.from ?? null,
     gmailConfigured: GMAIL_CONFIGURED,
     cronSecretConfigured: Boolean(CRON_SECRET),
     lastCronAt: heartbeat.data?.last_cron_at ?? null,
