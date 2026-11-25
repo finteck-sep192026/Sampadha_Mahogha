@@ -8,15 +8,13 @@
 //   POST { action: 'send', loginId }  (Admin or Sales)
 //        → emails the client a new link, replacing any earlier one.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import nodemailer from 'npm:nodemailer@6.9.16';
+import { sender } from '../_shared/smtp.ts';
 import { sendClientLink, sha256 } from '../_shared/client-link.ts';
 
 const PORTAL_URL = Deno.env.get('PORTAL_URL') ?? 'https://racrm.fintecindia.com/';
-const HOST = Deno.env.get('SMTP_HOST')?.trim();
-const PORT = Number(Deno.env.get('SMTP_PORT') ?? 465);
-const USERNAME = Deno.env.get('SMTP_USERNAME')?.trim();
-const PASSWORD = Deno.env.get('SMTP_PASSWORD');
-const FROM = Deno.env.get('MAIL_FROM')?.trim() || USERNAME;
+// Client onboarding and account mail goes from the KYC mailbox (_shared/smtp.ts).
+const KYC = sender('kyc');
+const FROM = KYC?.from;
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -37,17 +35,7 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 const v2 = admin.schema('v2');
-const transport =
-  HOST && USERNAME && PASSWORD
-    ? nodemailer.createTransport({
-        host: HOST,
-        port: PORT,
-        secure: PORT === 465,
-        auth: { user: USERNAME, pass: PASSWORD },
-        connectionTimeout: 15000,
-        socketTimeout: 20000,
-      })
-    : null;
+const transport = KYC?.transport ?? null;
 
 async function hasSomethingToAccept(clientId: string) {
   const [{ data: app }, { data: consent }, { data: gmail }] = await Promise.all([

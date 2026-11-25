@@ -10,18 +10,16 @@
 //          'send' and 'verify' check the person's JWT themselves.
 //
 // For 'send' and 'verify' the caller has just signed in with their password (their JWT). The code is
-// sent by SMTP with the mailer's secrets (SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD,
-// MAIL_FROM) and stored only as an HMAC; it lasts 10 minutes and allows 5 tries. Enforcement is in
+// sent by SMTP from the KYC mailbox (_shared/smtp.ts: SMTP_HOST, SMTP_KYC_USERNAME, SMTP_KYC_PASSWORD,
+// MAIL_FROM_KYC) and stored only as an HMAC; it lasts 10 minutes and allows 5 tries. Enforcement is in
 // the database (migration 20261028010000_v2_login_code.sql): until verify succeeds, every v2 API
 // request and file in v2-research is refused for this session.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import nodemailer from 'npm:nodemailer@6.9.16';
+import { sender } from '../_shared/smtp.ts';
 
-const HOST = Deno.env.get('SMTP_HOST')?.trim();
-const PORT = Number(Deno.env.get('SMTP_PORT') ?? 465);
-const USERNAME = Deno.env.get('SMTP_USERNAME')?.trim();
-const PASSWORD = Deno.env.get('SMTP_PASSWORD');
-const FROM = Deno.env.get('MAIL_FROM')?.trim() || USERNAME;
+// Client onboarding and account mail goes from the KYC mailbox (_shared/smtp.ts).
+const KYC = sender('kyc');
+const FROM = KYC?.from;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const cors = {
@@ -47,17 +45,7 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const v2 = admin.schema('v2');
-const transport =
-  HOST && USERNAME && PASSWORD
-    ? nodemailer.createTransport({
-        host: HOST,
-        port: PORT,
-        secure: PORT === 465,
-        auth: { user: USERNAME, pass: PASSWORD },
-        connectionTimeout: 15000,
-        socketTimeout: 20000,
-      })
-    : null;
+const transport = KYC?.transport ?? null;
 
 // The JWT was already checked by auth.getUser; this only reads its session_id claim.
 function sessionId(token: string) {
