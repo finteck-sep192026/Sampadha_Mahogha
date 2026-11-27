@@ -210,8 +210,11 @@ async function invite(who: Caller, body: Record<string, unknown>) {
     if ((products.includes('Multi') || products.includes('All')) && !TIERS.includes(tier ?? ''))
       throw new HttpError(400, 'Choose the Multi tier.');
     const start = new Date();
+    // The first period matches the billing chosen: three months for Quarterly, a year for Annual.
     const end = new Date(start);
-    end.setFullYear(end.getFullYear() + 1);
+    if (body.billing === 'Annual') end.setFullYear(end.getFullYear() + 1);
+    else end.setMonth(end.getMonth() + 3);
+    end.setDate(end.getDate() - 1);
     subscription = {
       plan_code: plan,
       products,

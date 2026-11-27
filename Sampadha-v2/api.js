@@ -551,6 +551,23 @@
     rpc('decide_client_application', { p_app_ref: appRef, p_approve: approve }),
   );
   const markNotificationsRead = () => rpc('mark_notifications_read');
+  // Subscriptions (Admin). Each tells the client by email, so the mail queue is flushed after.
+  const renewSubscription = withMail((loginId, r) =>
+    rpc('renew_subscription', {
+      p_login_id: loginId,
+      p_billing: r.billing,
+      p_amount: r.amount,
+      p_paid_on: r.paidOn || null,
+      p_mode: r.mode || null,
+      p_reference: r.reference || null,
+      p_gst_rate: r.gstRate,
+    }),
+  );
+  const cancelSubscription = withMail((loginId, reason) =>
+    rpc('cancel_subscription', { p_login_id: loginId, p_reason: reason }),
+  );
+  const setSubscriptionEnd = (loginId, endsOn, reason) =>
+    rpc('set_subscription_end', { p_login_id: loginId, p_ends_on: endsOn, p_reason: reason });
   const createDraft = (title, sections, legs) =>
     rpc('create_research_draft', { p_title: title, p_sections: sections, p_legs: legs });
   const sendReport = withMail((reportId, clientIds, types) =>
@@ -836,6 +853,9 @@
     submitApplication,
     decideApplication,
     markNotificationsRead,
+    renewSubscription,
+    cancelSubscription,
+    setSubscriptionEnd,
     createDraft,
     sendReport,
     createCashUploadDraft,

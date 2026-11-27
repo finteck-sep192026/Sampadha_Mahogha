@@ -32,6 +32,7 @@ const KYC_MAIL_TYPES = new Set([
   'Decision notification',
   'Document to sign',
   'Consent request',
+  'Subscription',
 ]);
 
 const cache = new Map<SenderKind, Sender | null>();

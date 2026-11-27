@@ -8,6 +8,10 @@
 
 const OVERVIEW_MONTHS = 6;
 const AUDIT_LABELS = {
+  'subscription.renewed': 'Subscription renewed',
+  'subscription.cancelled': 'Subscription cancelled',
+  'subscription.expired': 'Subscription ended',
+  'subscription.end_changed': 'Subscription end date corrected',
   'login.code_verified': 'Passed the sign-in code after the password',
   'login.email_code_sent': 'Asked for an email code to sign in without a password',
   'cash.stock_list_saved': 'Saved the monthly research pack stock list',
