@@ -313,12 +313,20 @@
     signerName: r.signer_name || '',
     signedPdfPath: r.signed_pdf_path,
     pdfVersion: r.pdf_version || 1,
+    // Withdrawn (voided) by the analyst, with the reason clients were given; and the withdrawn
+    // report this one replaces, if any.
+    voided: !!r.voided_at,
+    voidedAt: r.voided_at ? stamp(r.voided_at, true) + ' IST' : '',
+    voidReason: r.void_reason || '',
+    supersedes: r.supersedes || null,
     // Cash: 'upload' (a finished PDF) or 'portfolio' (the older 12-column CSV reports).
     cashKind: r.cash_kind || 'portfolio',
     rows: legs
       .filter((l) => l.report_id === r.id)
       .sort((a, b) => a.position - b.position)
-      .map((l) => mapLeg(l, exitsByLeg.get(l.id), r.signed_at)),
+      .map((l) => mapLeg(l, exitsByLeg.get(l.id), r.signed_at))
+      // Legs of a withdrawn report are no longer positions: they drop out of every Positions view.
+      .map((l) => (r.voided_at ? { ...l, status: 'Withdrawn' } : l)),
     attachments: attachments
       .filter((a) => a.report_id === r.id)
       .sort((a, b) => a.slot - b.slot)
@@ -467,7 +475,7 @@
             qty: c.quantity,
             published: publishedOf(r),
             delivered: stamp(r.sentAt),
-            status: c.action === 'HOLD' ? 'Hold' : 'Active',
+            status: r.voided ? 'Withdrawn' : c.action === 'HOLD' ? 'Hold' : 'Active',
           })),
         ),
       multi: sentReports
@@ -493,7 +501,13 @@
               ? l.closedLots + ' of ' + l.lots + (l.lots === 1 ? ' lot' : ' lots') + ' at ' + rupee(l.closingPrice, 2)
               : '',
             lastExit: l.lastExit,
-            status: l.status === 'Closed' ? 'Closed' : l.closedLots ? 'Partly closed' : 'Active',
+            status: r.voided
+              ? 'Withdrawn'
+              : l.status === 'Closed'
+                ? 'Closed'
+                : l.closedLots
+                  ? 'Partly closed'
+                  : 'Active',
           })),
         ),
       plans,
@@ -571,6 +585,12 @@
   const cancelSubscription = withMail((loginId, reason) =>
     rpc('cancel_subscription', { p_login_id: loginId, p_reason: reason }),
   );
+  // Withdraw a report (clients who received it are emailed), and link a corrected report to it.
+  const voidReport = withMail((reportId, reason) =>
+    rpc('void_research_report', { p_report_id: reportId, p_reason: reason }),
+  );
+  const setReportSupersedes = (reportId, oldReportId) =>
+    rpc('set_report_supersedes', { p_report_id: reportId, p_old_report_id: oldReportId || null });
   const setSubscriptionEnd = (loginId, endsOn, reason) =>
     rpc('set_subscription_end', { p_login_id: loginId, p_ends_on: endsOn, p_reason: reason });
   const createDraft = (title, sections, legs) =>
@@ -861,6 +881,8 @@
     renewSubscription,
     cancelSubscription,
     setSubscriptionEnd,
+    voidReport,
+    setReportSupersedes,
     createDraft,
     sendReport,
     createCashUploadDraft,

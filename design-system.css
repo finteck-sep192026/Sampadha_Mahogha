@@ -1968,3 +1968,15 @@ dialog.send-summary::backdrop {
 .send-summary .actions {
   justify-content: flex-end;
 }
+/* Withdrawn reports and the "replaces" link. */
+.report-withdrawn {
+  display: block;
+  margin-top: 4px;
+}
+.report-supersedes {
+  margin-bottom: 16px;
+  max-width: 560px;
+}
+.send-summary .field textarea {
+  width: 100%;
+}
