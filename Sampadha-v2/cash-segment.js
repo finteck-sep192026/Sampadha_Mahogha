@@ -462,6 +462,47 @@ function cashSignLabel() {
       ? 'Sign with Aadhaar & send'
       : 'Sign with Aadhaar eSign';
 }
+// The summary shown before a Cash report goes out: resolves true when the analyst confirms.
+// signing: the send follows the Aadhaar eSign that is about to start.
+function cashSendSummary(report, plan, signing) {
+  const clients = cashClients().filter((c) => plan.ids.includes(c.login_id)),
+    warnings = [];
+  if (signing)
+    warnings.push(
+      'You sign first. As soon as the signature is confirmed, this goes out without asking again.',
+    );
+  if (plan.toParrva)
+    warnings.push(
+      'It is filed with CARE PaRRVA first and cannot be withdrawn there. Clients receive it only once PaRRVA accepts it.',
+    );
+  const parts = [
+    plan.toParrva ? 'CARE PaRRVA' : '',
+    clients.length ? clients.length + (clients.length === 1 ? ' client' : ' clients') : '',
+  ].filter(Boolean);
+  return sendSummary({
+    title: (signing ? 'Sign and send ' : 'Send ') + report.ref + '?',
+    rows: [
+      ['Report', cashEscape(report.title)],
+      ['Product', cashEscape(report.product || '')],
+      ['Signature', signing ? 'You are about to sign' : 'Signed with Aadhaar eSign'],
+      [
+        'CARE PaRRVA',
+        plan.toParrva
+          ? 'Will be filed now'
+          : report.parrvaStatus === 'Submitted'
+            ? 'Accepted'
+            : 'Not filed, and not part of this send',
+      ],
+    ],
+    clients: clients.map((c) => ({
+      name: c.full_name,
+      id: c.login_id,
+      warn: sendSummaryGaps(c.id, 'Cash'),
+    })),
+    warnings,
+    confirm: (signing ? 'Sign and send to ' : 'Send to ') + parts.join(' and '),
+  });
+}
 // Sends a signed Cash report as planned: CARE PaRRVA first, clients only once PaRRVA has accepted
 // it. On failure the error message also says what had already gone out.
 async function cashDispatch(report, plan) {
@@ -740,10 +781,13 @@ async function cashStartSign(report, form) {
     status.textContent = 'Tick the confirmation to continue.';
     return;
   }
+  // Sign & send goes out the moment the signature is confirmed, so it is confirmed before signing.
+  const choices = document.querySelector('#cashSendForm'),
+    sendPlan = choices ? cashSendChoices(choices) : null;
+  if (sendPlanHasWork(sendPlan) && !(await cashSendSummary(report, sendPlan, true))) return;
   buttons.forEach((b) => (b.disabled = true));
   try {
-    const choices = document.querySelector('#cashSendForm');
-    sendPlanSave(report.id, choices ? cashSendChoices(choices) : null);
+    sendPlanSave(report.id, sendPlan);
     status.textContent = 'Preparing the PDF for signing...';
     // An uploaded PDF is already the file to sign.
     if (!cashHasStoredPdf(report))
@@ -910,6 +954,7 @@ document.querySelector('#content').addEventListener('submit', async (event) => {
       status.textContent = 'Choose CARE PaRRVA, at least one client, or both.';
       return;
     }
+    if (!(await cashSendSummary(report, plan, false))) return;
     button.disabled = true;
     await cashDispatch(report, plan).catch((error) => {
       const after = document.querySelector('#cashSendStatus');
