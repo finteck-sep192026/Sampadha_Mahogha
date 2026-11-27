@@ -6,7 +6,7 @@
     <title>Sampadha · Research portal</title>
     <meta
       name="description"
-      content="Sampadha research portal: signed research, client onboarding and compliance for analysts, advisers and clients."
+      content="Sampadha research portal: signed research, client onboarding and compliance for research analysts and their clients."
     />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#f3f5f8" />
@@ -31,8 +31,8 @@
         <div class="hero-logo"><img src="assets/sampadha-logo.png" alt="Sampadha" /></div>
         <h1>Research, signed and on record.</h1>
         <p>
-          Sampadha's research desk, client onboarding and compliance in one place, for analysts,
-          advisers and the clients they serve.
+          Sampadha's research desk, client onboarding and compliance in one place, for research
+          analysts and the clients they serve.
         </p>
         <ul class="trust-list">
           <li>Reports are Aadhaar eSigned, with a record of every step.</li>
@@ -86,7 +86,7 @@
               <ul>
                 <li>Delivers signed Cash and Multi research reports to subscribed clients.</li>
                 <li>Keeps client onboarding, risk profile, agreement and KYC records.</li>
-                <li>Shows each client their recommendations, positions and notifications.</li>
+                <li>Shows each client their reports, recommendations and notifications.</li>
                 <li>With the client's consent, emails their Multi recommendations to their broker.</li>
               </ul>
             </div>
@@ -106,6 +106,7 @@
               </ul>
             </div>
           </div>
+          <p class="login-about-risk" data-firm-disclosure></p>
           <p class="login-about-foot">
             <a href="privacy.html">Privacy Policy</a> · Contact
             <a href="mailto:reach@sampadha.com">reach@sampadha.com</a>
@@ -117,7 +118,7 @@
       <aside class="sidebar">
         <div class="brand">
           <div class="sidebar-logo"><img src="assets/sampadha-logo.png" alt="Sampadha logo" /></div>
-          <div><b>Sampadha</b><small>Wealth Portal</small></div>
+          <div><b>Sampadha</b><small>Research Portal</small></div>
         </div>
         <div id="roleBadge" class="role-badge"></div>
         <nav id="nav"></nav>
@@ -144,6 +145,13 @@
           </div>
         </header>
         <div id="content" class="content"></div>
+        <footer class="portal-disclosure">
+          <p data-firm-disclosure></p>
+          <p>
+            <button type="button" class="portal-disclosure-link" data-go="help">Help &amp; grievances</button>
+            · <a href="privacy.html">Privacy Policy</a>
+          </p>
+        </footer>
       </section>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -163,5 +171,6 @@
     <script src="report-delivery.js"></script>
     <script src="onboarding.js"></script>
     <script src="client-hub.js"></script>
+    <script src="help.js"></script>
   </body>
 </html>

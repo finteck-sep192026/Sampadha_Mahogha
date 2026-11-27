@@ -317,8 +317,15 @@ async function createResearchPdfBlob(report) {
   });
 
   // ── closing note and the signature box on the last page ──
-  const note =
-    'This report is research communication from Sampadha Research for its subscribed clients. It is not an order, an offer or a guarantee of returns; prices are indicative. Read it with your risk profile.';
+  // The firm's registration and the standard warnings come from config.js (SAMPADHA_CONFIG.firm).
+  const firm = window.SAMPADHA_CONFIG.firm || {};
+  const note = [
+    `This report is research communication from Sampadha Research${firm.registration ? ' (' + firm.registration + ')' : ''} for its subscribed clients. It is not an order, an offer or a guarantee of returns; prices are indicative. Read it with your risk profile.`,
+    firm.riskWarning,
+    firm.sebiNote,
+  ]
+    .filter(Boolean)
+    .join(' ');
   const noteLines = wrap(note, 980, font(15));
   // The note sits beside the signature box at the foot of the last page. When the content
   // leaves no room there, the signature gets a page of its own with the note at the top.
@@ -340,7 +347,13 @@ async function createResearchPdfBlob(report) {
   pages.forEach((canvas, index) => {
     ctx = canvas.getContext('2d');
     rule(left, 1186, width);
-    text('Sampadha Research  ·  Research communication for subscribed clients', left, 1214, font(15), muted);
+    text(
+      'Sampadha Research  ·  SEBI Research Analyst INH000031107  ·  Research communication for subscribed clients',
+      left,
+      1214,
+      font(15),
+      muted,
+    );
     text(`${report.ref}  ·  Page ${index + 1} of ${pages.length}`, right, 1214, font(15, 500), muted, 'right');
     images.push(
       Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]), (c) => c.charCodeAt(0)),
@@ -1249,6 +1262,15 @@ function researchParrvaRow(r) {
       '',
     );
   const failed = r.parrvaStatus === 'Failed';
+  // 'Submitting' lasts only while another click or tab is sending it; the server refuses a second
+  // one, so there is no button until it finishes (or is given up after five minutes).
+  if (r.parrvaStatus === 'Submitting')
+    return researchRow(
+      'CARE PaRRVA',
+      '<span class="status gold">Sending</span><small>' + researchLegCount(r) + '</small>',
+      '',
+      '<p class="research-message">Being sent to CARE PaRRVA now. Open the report again in a minute to see the result.</p>',
+    );
   return researchRow(
     'CARE PaRRVA',
     (failed ? '<span class="status red">Failed</span>' : '<span class="status gray">Not sent</span>') +
