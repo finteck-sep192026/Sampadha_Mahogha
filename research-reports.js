@@ -1561,6 +1561,59 @@ async function researchSendReport(r, selected, types) {
   await refreshWorkspace();
   return result.delivered;
 }
+// The summary shown before a Multi report is sent: resolves true when the analyst confirms.
+function researchSendSummary(r, plan) {
+  const clients = researchClientRows().filter((c) => plan.ids.includes(c.id)),
+    already = new Set(r.recipients || []),
+    products = [...new Set(r.rows.map((row) => row.product).filter(Boolean))],
+    broker = clients.filter(
+      (c) => typeof brokerAutoEmailActive === 'function' && brokerAutoEmailActive(c.uid),
+    ),
+    offTier = clients.filter((c) => products.length && !products.includes(c.tier)),
+    signed = r.esignStatus === 'Signed',
+    warnings = [];
+  if (!signed)
+    warnings.push(
+      'Not signed yet: clients receive the unsigned PDF now, and the signed copy replaces it once you sign.',
+    );
+  if (r.parrvaStatus !== 'Submitted')
+    warnings.push('Not yet accepted by CARE PaRRVA: the legs stay out of Positions until it is.');
+  if (broker.length)
+    warnings.push(
+      broker.length +
+        (broker.length === 1 ? ' client has' : ' clients have') +
+        ' broker auto-email: an order email goes to their broker from their own Gmail as soon as you send.',
+    );
+  if (offTier.length)
+    warnings.push(
+      'This report is for ' +
+        products.join(', ') +
+        ', but ' +
+        offTier.map((c) => c.id + ' (' + c.tier + ')').join(', ') +
+        (offTier.length === 1 ? ' is' : ' are') +
+        ' on another tier.',
+    );
+  return sendSummary({
+    title: 'Send ' + r.ref + ' to clients?',
+    rows: [
+      ['Report', reportEscape(r.title)],
+      ['Contents', reportEscape(researchLegCount(r)) + (products.length ? ' · ' + reportEscape(products.join(', ')) : '')],
+      ['Signature', signed ? 'Signed with Aadhaar eSign' : 'Not signed'],
+      ['CARE PaRRVA', r.parrvaStatus === 'Submitted' ? 'Accepted' : r.parrvaStatus === 'Failed' ? 'Failed' : 'Not sent'],
+    ],
+    clients: clients.map((c) => ({
+      name: c.person,
+      id: c.id,
+      note:
+        c.tier +
+        (broker.includes(c) ? ' · broker auto-email' : '') +
+        (already.has(c.uid) ? ' · already received, will be skipped' : ''),
+      warn: sendSummaryGaps(c.uid, 'Multi'),
+    })),
+    warnings,
+    confirm: 'Send to ' + clients.length + (clients.length === 1 ? ' client' : ' clients'),
+  });
+}
 // What the send form asks for: { plan: { toParrva, ids, types } } or { error }.
 function researchSendChoices(form) {
   const d = new FormData(form),
@@ -2030,13 +2083,7 @@ $('#content').addEventListener('submit', async (e) => {
       message.textContent = 'Choose at least one client.';
       return;
     }
-    if (
-      r.esignStatus !== 'Signed' &&
-      !confirm(
-        'This report is not signed yet. Clients will receive the unsigned PDF now, and any client with broker auto-email will send this order to their broker now. Send anyway?',
-      )
-    )
-      return;
+    if (!(await researchSendSummary(r, plan))) return;
     button.disabled = true;
     try {
       await researchDispatch(r, plan);

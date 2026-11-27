@@ -1887,3 +1887,84 @@ a.btn {
   border-color: color-mix(in srgb, var(--red, #b3261e) 45%, var(--line));
   background: color-mix(in srgb, var(--red, #b3261e) 7%, var(--surface));
 }
+/* Summary before a report is sent. */
+dialog.send-summary {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--ink);
+  overflow: auto;
+}
+dialog.send-summary::backdrop {
+  background: rgb(8 16 30 / 55%);
+}
+.send-summary h3 {
+  margin: 0 0 16px;
+}
+.send-summary-rows {
+  margin: 0 0 16px;
+  display: grid;
+  gap: 8px;
+}
+.send-summary-rows div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 12px;
+  font-size: 14px;
+}
+.send-summary-rows dt {
+  color: var(--muted);
+}
+.send-summary-rows dd {
+  margin: 0;
+}
+.send-summary-label {
+  margin: 0 0 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.send-summary-clients {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+}
+.send-summary-clients li {
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.send-summary-clients li + li {
+  border-top: 1px solid var(--line);
+}
+.send-summary-clients span {
+  color: var(--muted);
+}
+.send-summary-clients small {
+  display: block;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.send-summary-clients small.warn,
+.send-summary-warnings {
+  color: var(--red);
+}
+.send-summary-warnings {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.send-summary-final {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.send-summary .actions {
+  justify-content: flex-end;
+}
