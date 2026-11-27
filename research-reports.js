@@ -1027,7 +1027,9 @@ function researchHistory() {
             : r.rows.length + (r.rows.length === 1 ? ' recommendation' : ' recommendations')) +
           ' · ' +
           reportEscape(r.ref) +
-          '</small></td><td>' +
+          '</small>' +
+          (typeof reportWithdrawNote === 'function' ? reportWithdrawNote(r) : '') +
+          '</td><td>' +
           reportEscape(r.created) +
           '</td><td>' +
           (r.recipients.length
@@ -1050,7 +1052,9 @@ function researchHistory() {
           (state.role !== 'client' && r.recipients.length ? 'Clients, view and replace' : 'View PDF') +
           '</button> <button type="button" class="btn secondary" data-research-pdf="' +
           r.id +
-          '">Download PDF</button></td></tr>',
+          '">Download PDF</button>' +
+          (typeof reportWithdrawButton === 'function' ? reportWithdrawButton(r) : '') +
+          '</td></tr>',
       )
       .join('') +
     (!list.length ? '<tr><td colspan="4">No reports yet.</td></tr>' : '') +
@@ -1474,12 +1478,12 @@ function researchShow(ids) {
   if (!r) return;
   researchReleasePdfPreview();
   $('#researchPreview').innerHTML =
-    researchPdfPanel(r) + (researchOwner(r) ? researchSignPanel(r) : '');
+    researchPdfPanel(r) + (researchOwner(r) && !r.voided ? researchSignPanel(r) : '');
   researchRefreshPdfFrame(r).catch((error) => {
     if ($('#researchPdfStatus'))
       $('#researchPdfStatus').textContent = 'PDF preview could not be generated: ' + error.message;
   });
-  if (researchOwner(r)) researchOpenClients(r);
+  if (researchOwner(r) && !r.voided) researchOpenClients(r);
 }
 function researchClientSection(r) {
   return (
@@ -1487,7 +1491,9 @@ function researchClientSection(r) {
     (r.esignStatus === 'Signed'
       ? 'Clients receive the signed PDF.'
       : 'Not signed yet: clients receive the unsigned PDF, and the signed copy replaces it once you sign.') +
-    '</p><form id="researchSend" data-report="' +
+    '</p>' +
+    (typeof reportSupersedesField === 'function' ? reportSupersedesField(r) : '') +
+    '<form id="researchSend" data-report="' +
     r.id +
     '"><p class="research-notice">Clients: select product types to show their subscribed clients.</p><div class="research-filter-bar"><button type="button" class="btn secondary" id="researchSelectAll">Select visible clients</button><button type="button" class="btn secondary" id="researchClearAll">Clear checkboxes</button>' +
     MULTI_TYPES.map(

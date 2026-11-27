@@ -318,7 +318,10 @@ function cashReportCell(frequency, product) {
   const reports = cashReports()
     .filter(
       (report) =>
-        report.cashKind !== 'pack' && report.frequency === frequency && report.product === product,
+        !report.voided &&
+        report.cashKind !== 'pack' &&
+        report.frequency === frequency &&
+        report.product === product,
     )
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
     .slice(0, 2);
@@ -338,7 +341,9 @@ function cashReportCell(frequency, product) {
           cashEscape(cashStatusLabel(report)) +
           '</small></div><div class="cash-report-actions"><button type="button" class="btn secondary" data-cash-view="' +
           report.id +
-          '">View PDF</button></div></article>',
+          '">View PDF</button>' +
+          (typeof reportWithdrawButton === 'function' ? reportWithdrawButton(report) : '') +
+          '</div></article>',
       )
       .join('') +
     '</div>'
@@ -624,7 +629,9 @@ function cashClientSelection(report) {
             ? 'Report signed. Choose CARE PaRRVA, clients whose plan includes Cash, or both.'
             : 'Choose CARE PaRRVA, clients whose plan includes Cash, or both. It is sent automatically as soon as your Aadhaar signature is confirmed.') +
           ' When both are chosen, CARE PaRRVA is sent first and clients receive the report only if it is accepted.') +
-    '</p><form id="cashSendForm" data-report="' +
+    '</p>' +
+    (typeof reportSupersedesField === 'function' ? reportSupersedesField(report) : '') +
+    '<form id="cashSendForm" data-report="' +
     report.id +
     '">' +
     cashParrvaChoice(report) +
