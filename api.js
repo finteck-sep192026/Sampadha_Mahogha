@@ -89,28 +89,22 @@
   const CHANNEL_ICON = { Email: '✉', WhatsApp: '◉', 'In-app': '🔔' };
 
   // ───────────── session ─────────────
-  // A login ID (CL-1001, RA-024) or email → the account's email; unknown input is treated as an email.
-  async function loginEmail(identifier) {
-    const id = String(identifier || '').trim();
-    try {
-      return (await sb.rpc('resolve_login', { identifier: id })).data || id;
-    } catch {
-      return id;
-    }
+  // A login ID (CL-1001, RA-024) or email is turned into the account's email on the server (the
+  // login-code function), which answers with the session only: the browser never learns the email
+  // behind an ID.
+  async function openSession(action, body) {
+    const { session } = (await loginCode(action, body)) || {};
+    const { error } = session ? await sb.auth.setSession(session) : { error: true };
+    if (error) throw new Error('Could not sign in. Please try again.');
   }
-  async function login(identifier, password) {
-    const email = await loginEmail(identifier);
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) throw new Error('Incorrect ID/email or password. Please try again.');
-  }
+  const login = (identifier, password) =>
+    openSession('password', { identifier: String(identifier || '').trim(), password });
   // Sign in with an email code, no password: loginCode('request') emails it, this checks it. The
   // session came from the mailbox, so the database counts it as through the sign-in code too.
   async function loginWithEmailCode(identifier, code) {
     const token = String(code || '').replace(/\s+/g, '');
     if (!/^\d{6,10}$/.test(token)) throw new Error('Enter the code from the email.');
-    const { error } = await sb.auth.verifyOtp({ email: await loginEmail(identifier), token, type: 'email' });
-    if (error)
-      throw new Error('That code is not right or has expired. Check the latest email, or send a new code.');
+    await openSession('email-code', { identifier: String(identifier || '').trim(), code: token });
   }
   const logout = () => sb.auth.signOut();
   // Sign-in code (login-code Edge Function): after the password, the database refuses this
