@@ -488,7 +488,12 @@
             price: rupee(l.price, 2),
             published: publishedOf(r),
             delivered: stamp(r.sentAt),
-            status: l.status === 'Closed' ? 'Closed' : 'Active',
+            // What has been exited so far: '2 of 4 lots at ₹123.45', or '' while fully open.
+            exited: l.closedLots
+              ? l.closedLots + ' of ' + l.lots + (l.lots === 1 ? ' lot' : ' lots') + ' at ' + rupee(l.closingPrice, 2)
+              : '',
+            lastExit: l.lastExit,
+            status: l.status === 'Closed' ? 'Closed' : l.closedLots ? 'Partly closed' : 'Active',
           })),
         ),
       plans,
