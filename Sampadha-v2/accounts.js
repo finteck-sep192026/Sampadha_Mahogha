@@ -6,7 +6,7 @@
 //   • Admin → Client approvals: "Create login" on an approved application, with the client's plan,
 //     products and Multi tier; the client is emailed their login ID and a set-password link.
 
-const PASSWORD_MIN = 12;
+const PASSWORD_MIN = 9;
 const STAFF_ROLE_OPTIONS = [
   ['ra', 'Research Analyst'],
   ['sales', 'Sales'],
