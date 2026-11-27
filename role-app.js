@@ -36,18 +36,19 @@ const nav = {
   ],
   client: [
     ['clientDashboard', '⌂', 'Dashboard'],
+    ['receivedReports', '▦', 'Reports'],
     ['notifications', '🔔', 'Notifications'],
     ['profile', '♙', 'Profile'],
   ],
 };
-// A client's Notifications and Profile each open as tabs. Every tab stays its own page.
+// A client's Reports and Profile each open as tabs. Every tab stays its own page. Reports are
+// what a client pays for, so they have their own menu entry and are not under Notifications.
 const CLIENT_TABS = [
   {
-    title: 'Notifications, recommendations & reports',
+    title: 'Reports & recommendations',
     tabs: [
-      ['notifications', 'Notifications'],
-      ['recommendations', 'All recommendations'],
       ['receivedReports', 'Reports'],
+      ['recommendations', 'All recommendations'],
     ],
   },
   {
@@ -246,13 +247,13 @@ const plans = () =>
   `<section class="plan-grid">${(state.ws?.plans || [])
     .map(
       (p, i, all) =>
-        `<article class="card plan ${i === all.length - 1 ? 'featured' : ''}"><span class="badge">${i === all.length - 1 ? 'Most complete' : 'Subscription'}</span><h3>${esc(p.name)}</h3><div class="price">${Api.fmt.rupee(p.price_annual)}<small>/ annum</small></div><p class="muted">${esc(p.summary)}</p><ul><li>Advisor research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul></article>`,
+        `<article class="card plan ${i === all.length - 1 ? 'featured' : ''}"><span class="badge">${i === all.length - 1 ? 'Most complete' : 'Subscription'}</span><h3>${esc(p.name)}</h3><div class="price">${Api.fmt.rupee(p.price_annual)}<small>/ annum</small></div><p class="muted">${esc(p.summary)}</p><ul><li>Research access</li><li>Recommendation history</li><li>${i ? 'Quarterly' : 'Annual'} portfolio review</li></ul></article>`,
     )
     .join('')}</section>${state.role === 'admin' ? productPricesCard() : ''}`;
 const productPricesCard = () =>
   `<article class="card panel"><div class="panel-head"><div><h3>Product prices</h3><p>Annual price for each product, shown beside it on the Add client form. Leave blank until a price is set.</p></div></div><form id="productPricesForm"><div class="form-grid three">${(state.ws?.productPrices || []).map((p) => `<label class="field">${esc(p.product)}<small>${esc(p.segment)}</small><input name="${esc(p.product)}" type="number" min="0" step="1" value="${p.price_annual ?? ''}" placeholder="₹ per year"></label>`).join('')}</div><div class="actions"><button class="btn primary">Save prices</button></div></form></article>`;
 const profile = () =>
-  `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${esc(state.user.initials)}</div><h3>${esc(state.user.person)}</h3><p class="muted">${roles[state.role].name} account</p><span class="status green">Verified</span></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div></div><div class="detail-grid">${[
+  `<section class="profile"><article class="card profile-card"><div class="profile-avatar">${esc(state.user.initials)}</div><h3>${esc(state.user.person)}</h3><p class="muted">${roles[state.role].name} account</p></article><article class="card panel"><div class="panel-head"><div><h3>Profile details</h3><p>Account and contact information.</p></div></div><div class="detail-grid">${[
     ['Email', esc(state.user.email)],
     ['Mobile', esc(state.user.mobile)],
     ['Account ID', esc(state.user.id)],
@@ -291,7 +292,7 @@ const products = () => {
 };
 const payments = () => {
   const plan = (code) => state.ws?.plans?.find((p) => p.code === code)?.name || code;
-  return `<article class="card panel"><div class="panel-head"><div><h3>Payment details</h3><p>Quarterly and annual subscription transactions.</p></div><span class="badge">FY 2026–27</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Invoice</th><th>Plan</th><th>Period</th><th>Billing</th><th class="num">Amount</th><th>Paid on</th><th>Status</th></tr></thead><tbody>${
+  return `<article class="card panel"><div class="panel-head"><div><h3>Payment details</h3><p>Subscription payments recorded for this account.</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Invoice</th><th>Plan</th><th>Period</th><th>Billing</th><th class="num">Amount</th><th>Paid on</th><th>Status</th></tr></thead><tbody>${
     (state.ws?.payments || [])
       .map(
         (p) =>
@@ -311,7 +312,7 @@ const recommendationPanel = (segment, data) => {
 const recommendationResults = () =>
   `<div class="recommendation-stack">${recommendationPanel('Cash', cashRecommendations)}${recommendationPanel('Multi', multiRecommendations)}</div>`;
 function recommendationPage() {
-  return `<article class="card panel recommendation-filter"><div class="panel-head"><div><h3>All recommendations</h3><p>Cash and Multi have independent filters and separate tables.</p></div><span class="badge">${cashRecommendations.length + multiRecommendations.length} total records</span></div><div class="notice">Research communication only—not an order or guaranteed return. Discuss suitability with your advisor.</div></article><section id="recommendationResults">${recommendationResults()}</section><div id="pdfModal" class="pdf-modal hidden"><div class="pdf-sheet"><div class="pdf-head"><div><small>Sampadha Research</small><h3 id="pdfTitle">Recommendation report</h3></div><button id="closePdf" type="button">×</button></div><div id="pdfBody"></div><div class="pdf-foot"><span>Recommendation summary. The signed report is under Reports received.</span></div></div></div>`;
+  return `<article class="card panel recommendation-filter"><div class="panel-head"><div><h3>All recommendations</h3><p>Cash and Multi have independent filters and separate tables.</p></div><span class="badge">${cashRecommendations.length + multiRecommendations.length} total records</span></div><div class="notice">Research communication only—not an order or guaranteed return. Read it with your own risk profile.</div></article><section id="recommendationResults">${recommendationResults()}</section><div id="pdfModal" class="pdf-modal hidden"><div class="pdf-sheet"><div class="pdf-head"><div><small>Sampadha Research</small><h3 id="pdfTitle">Recommendation report</h3></div><button id="closePdf" type="button">×</button></div><div id="pdfBody"></div><div class="pdf-foot"><span>Recommendation summary. The signed report is under Reports received.</span></div></div></div>`;
 }
 const alertRows = (data) =>
   `<div class="notification-list">${data.map((x) => `<article class="notification-row ${x.unread ? 'unread' : ''}"><span class="channel-icon">${icon(CHANNEL_ICONS[x.channel] || 'bell')}</span><div><b>${esc(x.title)}</b><small>${esc(x.detail)}</small><small>${esc(x.channel)} • ${esc(x.id)}</small></div><time>${esc(x.time)}</time></article>`).join('') || '<div class="empty">No notifications in this channel.</div>'}</div>`;
@@ -338,18 +339,7 @@ const clientDashboard = () => {
     )}</section><section class="grid-2"><article class="card panel"><div class="panel-head"><div><h3>Latest notifications</h3><p>Most recent communication across all channels.</p></div><button class="btn secondary" data-go="notifications">View all</button></div>${alertRows(clientAlerts.slice(0, 3))}</article><article class="card panel"><div class="panel-head"><div><h3>All recommendations</h3><p>Choose Cash or Multi and view its dedicated table.</p></div></div><div class="activity"><button class="activity-row" data-go="recommendations"><span class="activity-icon">↗</span><div><b>Open recommendations</b><small>Cash equity and Multi derivatives reports</small></div><time>Open →</time></button></div></article></section>`;
 };
 const notifications = () =>
-  `<article class="card panel"><div class="panel-head"><div><h3>Notification centre</h3><p>Every alert sent to you, by channel.</p></div><button id="markRead" class="btn secondary">Mark all as read</button></div><section class="channel-grid">${[
-    [icon('mail'), 'Email', clientAlerts.filter((x) => x.channel === 'Email').length],
-    [icon('message'), 'WhatsApp', clientAlerts.filter((x) => x.channel === 'WhatsApp').length],
-    [icon('bell'), 'In-app', clientAlerts.filter((x) => x.channel === 'In-app').length],
-  ]
-    .map(
-      (x) =>
-        `<article class="card channel-card"><span class="channel-icon">${x[0]}</span><div><b>${x[1]}</b><small>${x[2]} alert${x[2] === 1 ? '' : 's'}</small></div></article>`,
-    )
-    .join(
-      '',
-    )}</section><div class="notification-toolbar">${['All', 'Email', 'WhatsApp', 'In-app'].map((x, i) => `<button class="filter-chip ${i === 0 ? 'active' : ''}" data-channel="${x}">${x}</button>`).join('')}</div><div id="notificationResults">${alertRows(clientAlerts)}</div></article>`;
+  `<article class="card panel"><div class="panel-head"><div><h3>Notifications</h3><p>Every alert shown to you in the portal, newest first. Reports are also emailed to you.</p></div><button id="markRead" class="btn secondary">Mark all as read</button></div><div id="notificationResults">${alertRows(clientAlerts)}</div></article>`;
 // What Client Communication filters on. A client's code, PAN and mobile come from their profile,
 // or from the application while they have no login yet.
 const commDetails = (x) => {

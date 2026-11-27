@@ -281,7 +281,7 @@ async function brokerRenderMailerStatus() {
 
 pages.brokerEmail = () => (state.role === 'client' ? brokerClientPage() : brokerStaffPage());
 titles.brokerEmail = 'Broker auto-email';
-nav.client.splice(3, 0, ['brokerEmail', '⇄', 'Broker auto-email']);
+nav.client.push(['brokerEmail', '⇄', 'Broker auto-email']);
 for (const role of ['admin', 'sales']) {
   const at = nav[role].findIndex((x) => x[0] === 'emails');
   nav[role].splice(at + 1, 0, ['brokerEmail', '⇄', 'Broker auto-email']);
@@ -302,7 +302,7 @@ show = function (page) {
 // only told what to say. "connected" is believed only if the link row agrees. Runs after sign-in,
 // so a client whose session had ended still gets the message once they are back in.
 const BROKER_GMAIL_RETURN = {
-  connected: () => ['Gmail connected', 'Your Gmail is connected. Now check your broker details and give your consent in step 2.'],
+  connected: () => ['Gmail connected', 'Your Gmail is connected. Now check your broker details below and give your consent.'],
   mismatch: () => ['Gmail not connected', `Gmail not connected. You must choose the same Gmail as your portal email, ${state.user.email}. Please try again with that account.`],
   denied: () => ['Gmail not connected', 'Gmail not connected. Google approval was not given, so nothing has changed. To connect, press the button below and allow sending.'],
   failed: () => ['Gmail not connected', 'Gmail not connected. Something went wrong during the Google approval. Please try again. If it keeps failing, contact Sampadha.'],
@@ -444,7 +444,7 @@ document.querySelector('#content').addEventListener('click', async (event) => {
       try {
         await Api.clientGmail('disconnect');
       } catch (error) {
-        await brokerAfterChange('Consent withdrawn', `Consent withdrawn, so no more order emails will be sent, but your Gmail is still linked. ${error.message} Press Disconnect to try again.`);
+        await brokerAfterChange('Consent withdrawn', `Consent withdrawn, so no more order emails will be sent, but your Gmail is still linked. ${error.message} Please contact Sampadha to have the Gmail link removed.`);
         return;
       }
       await brokerAfterChange('Gmail disconnected', 'Gmail disconnected and consent withdrawn. No more order emails will be sent.');
