@@ -31,6 +31,7 @@ import {
   sendGmail,
 } from '../_shared/gmail.ts';
 import { sender, senderFor, senderKindFor, smtpHost, smtpPort } from '../_shared/smtp.ts';
+import { DISCLOSURE_HTML, DISCLOSURE_TEXT } from '../_shared/disclosure.ts';
 
 const REPLY_TO = Deno.env.get('MAIL_REPLY_TO')?.trim() || undefined;
 const KYC = sender('kyc');
@@ -137,8 +138,10 @@ function text(m: Mail) {
   if (isBroker(m)) return m.body;
   return `Hello ${m.recipient_name || 'there'},\n\n${m.body}\n\nSign in: ${PORTAL_URL}\n\nRegards,\nSampadha Client Services\n\nReference: ${m.mail_ref}`;
 }
+// Portal mail carries the regulatory footer; broker mail never does (it is the client's own email).
+const textWithFooter = (m: Mail) => (isBroker(m) ? text(m) : text(m) + '\n\n' + DISCLOSURE_TEXT);
 const html = (m: Mail) =>
-  `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1f2933"><pre style="font-family:inherit;white-space:pre-wrap;margin:0">${escapeHtml(text(m))}</pre></div>`;
+  `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1f2933"><pre style="font-family:inherit;white-space:pre-wrap;margin:0">${escapeHtml(text(m))}</pre>${isBroker(m) ? '' : DISCLOSURE_HTML}</div>`;
 
 async function setStatus(
   ids: string[],
@@ -348,7 +351,7 @@ async function sendOverSmtp(m: Mail, tally: Tally) {
         : m.recipient_email,
       cc: m.cc_emails?.length ? m.cc_emails : undefined,
       subject: m.subject,
-      text: text(m),
+      text: textWithFooter(m),
       html: html(m),
       headers: { 'X-Sampadha-Ref': m.mail_ref },
       attachments: file?.data

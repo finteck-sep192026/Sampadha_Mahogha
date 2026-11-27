@@ -3,6 +3,7 @@
 // each click (client-link function). It goes straight to the client by SMTP and is never stored or
 // logged, so staff cannot open a client's account with it.
 import { Buffer } from 'node:buffer';
+import { DISCLOSURE_HTML, DISCLOSURE_TEXT } from './disclosure.ts';
 
 export const LINK_DAYS = 7;
 
@@ -67,7 +68,7 @@ export async function sendClientLink(deps: Deps, client: Client, senderId: strin
 
   const subject = 'Please review and approve your Sampadha details';
   const intro =
-    'Your Sampadha account is ready. Open the link below to review your onboarding details and give your consent, including broker auto-email if it is set up for you. No password is needed.';
+    'Your account on the Sampadha research portal is ready. Sampadha is a SEBI-registered Research Analyst. Open the link below to review your onboarding details and give your consent, including broker auto-email if it is set up for you. No password is needed.';
   const esc = (s: string) =>
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   const ref = 'MAIL-' + crypto.randomUUID().slice(0, 8).toUpperCase();
@@ -78,8 +79,8 @@ export async function sendClientLink(deps: Deps, client: Client, senderId: strin
       from,
       to: { name: client.full_name, address: client.email },
       subject,
-      text: `Hello ${client.full_name},\n\n${intro}\n\nYour login ID: ${client.login_id}\n\n${link}\n\nThe link works for ${LINK_DAYS} days and is for you alone, so please do not forward it. After that, sign in at ${portalUrl} with an email code.`,
-      html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#13233a"><p>Hello ${esc(client.full_name)},</p><p>${esc(intro)}</p><p>Your login ID: <b>${esc(client.login_id)}</b></p><p><a href="${esc(link)}" style="display:inline-block;padding:10px 18px;background:#0b1f3a;color:#ffffff;border-radius:6px;text-decoration:none">Review and consent</a></p><p>The link works for ${LINK_DAYS} days and is for you alone, so please do not forward it. After that, sign in at ${esc(portalUrl)} with an email code.</p></div>`,
+      text: `Hello ${client.full_name},\n\n${intro}\n\nYour login ID: ${client.login_id}\n\n${link}\n\nThe link works for ${LINK_DAYS} days and is for you alone, so please do not forward it. After that, sign in at ${portalUrl} with an email code.\n\n${DISCLOSURE_TEXT}`,
+      html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#13233a"><p>Hello ${esc(client.full_name)},</p><p>${esc(intro)}</p><p>Your login ID: <b>${esc(client.login_id)}</b></p><p><a href="${esc(link)}" style="display:inline-block;padding:10px 18px;background:#0b1f3a;color:#ffffff;border-radius:6px;text-decoration:none">Review and consent</a></p><p>The link works for ${LINK_DAYS} days and is for you alone, so please do not forward it. After that, sign in at ${esc(portalUrl)} with an email code.</p>${DISCLOSURE_HTML}</div>`,
       headers: { 'X-Sampadha-Ref': ref },
       attachments: file?.data
         ? [

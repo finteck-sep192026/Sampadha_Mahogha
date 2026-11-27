@@ -14,6 +14,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { sender } from '../_shared/smtp.ts';
 import { sendClientLink } from '../_shared/client-link.ts';
+import { DISCLOSURE_HTML, DISCLOSURE_TEXT } from '../_shared/disclosure.ts';
 
 const PORTAL_URL = Deno.env.get('PORTAL_URL') ?? 'https://racrm.fintecindia.com/';
 // Client onboarding and account mail goes from the KYC mailbox (_shared/smtp.ts).
@@ -147,9 +148,9 @@ async function sendSetPasswordLink(profile: { id: string; login_id: string; role
     kind === 'invite'
       ? `An account has been created for you on the Sampadha portal.`
       : `A new link to set your Sampadha portal password was requested for you.`;
-  const text = `Hello ${profile.full_name},\n\n${intro}\n\nYour login ID: ${profile.login_id}\n\nSet your password here (the link works once and expires in 5 minutes):\n${link}\n\nThen sign in at ${PORTAL_URL} with your login ID or this email address. If the link has expired, choose "Sign in with an email code instead" there, then set a password from Change password.\n\nIf you were not expecting this email, ignore it.\n\nSampadha`;
+  const text = `Hello ${profile.full_name},\n\n${intro}\n\nYour login ID: ${profile.login_id}\n\nSet your password here (the link works once and expires in 5 minutes):\n${link}\n\nThen sign in at ${PORTAL_URL} with your login ID or this email address. If the link has expired, choose "Email code" on the sign-in page, then set a password from Change password.\n\nIf you were not expecting this email, ignore it.\n\nSampadha\n\n${DISCLOSURE_TEXT}`;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#13233a"><p>Hello ${esc(profile.full_name)},</p><p>${esc(intro)}</p><p>Your login ID: <b>${esc(profile.login_id)}</b></p><p><a href="${esc(link)}" style="display:inline-block;padding:10px 18px;background:#1556d0;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Set your password</a></p><p style="color:#5b6b80">The link works once and expires in 5 minutes. Then sign in at ${esc(PORTAL_URL)} with your login ID or this email address. If the link has expired, choose “Sign in with an email code instead” there, then set a password from Change password.</p><p style="color:#5b6b80">If you were not expecting this email, ignore it.</p><p>Sampadha</p></div>`;
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#13233a"><p>Hello ${esc(profile.full_name)},</p><p>${esc(intro)}</p><p>Your login ID: <b>${esc(profile.login_id)}</b></p><p><a href="${esc(link)}" style="display:inline-block;padding:10px 18px;background:#1556d0;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Set your password</a></p><p style="color:#5b6b80">The link works once and expires in 5 minutes. Then sign in at ${esc(PORTAL_URL)} with your login ID or this email address. If the link has expired, choose “Email code” on the sign-in page, then set a password from Change password.</p><p style="color:#5b6b80">If you were not expecting this email, ignore it.</p><p>Sampadha</p>${DISCLOSURE_HTML}</div>`;
   const ref = 'MAIL-' + crypto.randomUUID().slice(0, 8).toUpperCase();
   let status = 'Sent',
     note: string | null = null;
