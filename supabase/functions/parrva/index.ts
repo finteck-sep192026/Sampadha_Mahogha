@@ -382,6 +382,16 @@ async function caller(req: Request) {
   return profile;
 }
 
+// A database write that must not be lost: tried up to three times, and logged if it still fails.
+async function saved(what: string, write: () => PromiseLike<{ error: unknown }>) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { error } = await write();
+    if (!error) return true;
+    console.error('parrva: could not save ' + what + ' (attempt ' + attempt + ')', error);
+  }
+  return false;
+}
+
 async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<string, unknown>) {
   const reportId = body.reportId;
   if (typeof reportId !== 'string' || !/^[0-9a-f-]{36}$/.test(reportId))
@@ -404,6 +414,30 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
 
   const { api, payload, counts } =
     report.segment === 'Cash' ? await cashPayload(report.id) : await multiPayload(report.id);
+  // Take the report for this one submission (v2.parrva_claim locks the row), so a double click or a
+  // second tab cannot file it with NSE twice.
+  const { data: claim, error: claimError } = await v2.rpc('parrva_claim', { p_report: report.id });
+  if (claimError) {
+    console.error('parrva: claim failed', claimError);
+    throw new HttpError(500, 'Could not start the CARE PaRRVA submission. Try again.');
+  }
+  if (claim?.result === 'submitted')
+    throw new HttpError(409, 'This report was already submitted to CARE PaRRVA.');
+  if (claim?.result === 'busy')
+    throw new HttpError(
+      409,
+      'This report is being sent to CARE PaRRVA right now. Wait a minute, then open it again to see the result.',
+    );
+  if (claim?.result !== 'ok') throw new HttpError(404, 'Report not found.');
+  const release = () =>
+    saved('the released claim', () =>
+      v2
+        .from('research_reports')
+        .update({ parrva_status: claim.previous === 'Failed' ? 'Failed' : 'Not sent', parrva_claimed_at: null })
+        .eq('id', report.id)
+        .eq('parrva_status', 'Submitting'),
+    );
+
   let httpStatus: number | null = null,
     response: Record<string, unknown> = {},
     ok = false,
@@ -431,35 +465,53 @@ async function submit(profile: Awaited<ReturnType<typeof caller>>, body: Record<
             ? 'NSE PDC did not answer within 20 seconds. Ask CARE PaRRVA to confirm this server can reach the PDC API.'
             : 'Could not reach CARE PaRRVA.';
     response = { error: message };
-    if (error instanceof HttpError && error.status === 503) throw error;
+    if (error instanceof HttpError && error.status === 503) {
+      // Not set up on this server: nothing was sent, so the report goes back to how it was.
+      await release();
+      throw error;
+    }
   }
 
-  await v2.from('parrva_submissions').insert({
-    report_id: report.id,
-    endpoint: RELAY_KEY ? PDC[api].url + ' via ' + RELAY_URL : PDC[api].url,
-    request_payload: payload,
-    http_status: httpStatus,
-    response,
-    ok,
-    submitted_by: profile.id,
-  });
+  // The attempt is recorded first: an accepted attempt on record is what stops a second filing
+  // (v2.parrva_claim), even if the status below cannot be saved.
+  const recorded = await saved('the submission record', () =>
+    v2.from('parrva_submissions').insert({
+      report_id: report.id,
+      endpoint: RELAY_KEY ? PDC[api].url + ' via ' + RELAY_URL : PDC[api].url,
+      request_payload: payload,
+      http_status: httpStatus,
+      response,
+      ok,
+      submitted_by: profile.id,
+    }),
+  );
   const submittedAt = new Date().toISOString();
-  await v2
-    .from('research_reports')
-    .update({
-      parrva_status: ok ? 'Submitted' : 'Failed',
-      parrva_submitted_at: ok ? submittedAt : null,
-      parrva_message: message.slice(0, 500),
-    })
-    .eq('id', report.id);
-  await v2.from('audit_log').insert({
-    actor_id: profile.id,
-    actor_login: profile.login_id,
-    action: ok ? 'report.parrva_submitted' : 'report.parrva_failed',
-    entity: 'research_report',
-    entity_ref: report.report_ref,
-    detail: { api, ...counts, http_status: httpStatus },
-  });
+  const statusSaved = await saved('the report status', () =>
+    v2
+      .from('research_reports')
+      .update({
+        parrva_status: ok ? 'Submitted' : 'Failed',
+        parrva_submitted_at: ok ? submittedAt : null,
+        parrva_message: message.slice(0, 500),
+        parrva_claimed_at: null,
+      })
+      .eq('id', report.id),
+  );
+  await saved('the audit entry', () =>
+    v2.from('audit_log').insert({
+      actor_id: profile.id,
+      actor_login: profile.login_id,
+      action: ok ? 'report.parrva_submitted' : 'report.parrva_failed',
+      entity: 'research_report',
+      entity_ref: report.report_ref,
+      detail: { api, ...counts, http_status: httpStatus },
+    }),
+  );
+  if (ok && !recorded && !statusSaved)
+    throw new HttpError(
+      500,
+      'CARE PaRRVA accepted this report, but the portal could not record it. Do not send it again: tell your administrator.',
+    );
   if (!ok) throw new HttpError(502, message);
   return { status: 'Submitted', submittedAt, api, ...counts };
 }

@@ -8,6 +8,10 @@
 //          verifies it itself (auth.verifyOtp). The answer is the same whether or not an account
 //          matched. This caller has only the publishable key (the gateway lets it through);
 //          'send' and 'verify' check the person's JWT themselves.
+//   POST { action: 'password', identifier, password }   → { session } for a correct password
+//   POST { action: 'email-code', identifier, code }     → { session } for a correct emailed code
+//        → nobody is signed in yet. The account's email is looked up here and never sent to the
+//          browser (v2.resolve_login is service-role only since 20261127010000).
 //
 // For 'send' and 'verify' the caller has just signed in with their password (their JWT). The code is
 // sent by SMTP from the KYC mailbox (_shared/smtp.ts: SMTP_HOST, SMTP_KYC_USERNAME, SMTP_KYC_PASSWORD,
@@ -169,12 +173,73 @@ async function request(body: Record<string, unknown>) {
   return answer;
 }
 
+// ───────────── sign-in by login ID, without telling the browser the email ─────────────
+// Supabase Auth signs in by email. The browser used to ask the database for the email behind a
+// login ID, which let anyone list account emails; now the look-up stays here and the browser gets
+// only the session. An unknown ID is tried against an address that cannot exist, so the answer and
+// the work done are the same as for a wrong password.
+const AUTH_URL = Deno.env.get('SUPABASE_URL')! + '/auth/v1';
+const NOBODY = 'nobody@sign-in.invalid';
+
+async function accountEmail(body: Record<string, unknown>) {
+  const identifier = String(body.identifier ?? '').trim();
+  if (!identifier || identifier.length > 200)
+    throw new HttpError(400, 'Enter your client ID, staff ID or email address.');
+  const { data } = await v2.rpc('resolve_login', { identifier });
+  return typeof data === 'string' && data ? data : NOBODY;
+}
+
+// Asks Supabase Auth for a session with the caller's own publishable key, never the service key.
+async function authSession(req: Request, path: string, payload: Record<string, unknown>) {
+  const apikey = req.headers.get('apikey') || Deno.env.get('SUPABASE_ANON_KEY') || '';
+  let res: Response;
+  try {
+    res = await fetch(AUTH_URL + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey, Authorization: 'Bearer ' + apikey },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    throw new HttpError(503, 'The sign-in service is not reachable. Try again in a moment.');
+  }
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 429) throw new HttpError(429, 'Too many sign-in attempts. Wait a few minutes and try again.');
+  if (res.status >= 500) throw new HttpError(503, 'The sign-in service is not reachable. Try again in a moment.');
+  if (!res.ok || typeof body.access_token !== 'string' || typeof body.refresh_token !== 'string')
+    return null;
+  return { access_token: body.access_token, refresh_token: body.refresh_token };
+}
+
+// Password sign-in. The session still has to pass the emailed sign-in code ('send' / 'verify').
+async function password(req: Request, body: Record<string, unknown>) {
+  const secret = typeof body.password === 'string' ? body.password : '';
+  if (!secret || secret.length > 200) throw new HttpError(400, 'Enter your password.');
+  const email = await accountEmail(body);
+  const session = await authSession(req, '/token?grant_type=password', { email, password: secret });
+  if (!session) throw new HttpError(401, 'Incorrect ID/email or password. Please try again.');
+  return { session };
+}
+
+// The second half of 'request': checks the emailed code and opens the session.
+async function emailCode(req: Request, body: Record<string, unknown>) {
+  const token = String(body.code ?? '').replace(/\s+/g, '');
+  if (!/^\d{6,10}$/.test(token)) throw new HttpError(400, 'Enter the code from the email.');
+  const email = await accountEmail(body);
+  const session = await authSession(req, '/verify', { type: 'email', email, token });
+  if (!session)
+    throw new HttpError(401, 'That code is not right or has expired. Check the latest email, or send a new code.');
+  return { session };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return reply(405, { error: 'Use POST.' });
   try {
     const body = await req.json().catch(() => ({}));
     if (body.action === 'request') return reply(200, await request(body));
+    if (body.action === 'password') return reply(200, await password(req, body));
+    if (body.action === 'email-code') return reply(200, await emailCode(req, body));
     const who = await caller(req);
     if (body.action === 'send') return reply(200, await send(who));
     if (body.action === 'verify') return reply(200, await verify(who, body));

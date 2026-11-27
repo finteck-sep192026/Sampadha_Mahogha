@@ -1249,6 +1249,15 @@ function researchParrvaRow(r) {
       '',
     );
   const failed = r.parrvaStatus === 'Failed';
+  // 'Submitting' lasts only while another click or tab is sending it; the server refuses a second
+  // one, so there is no button until it finishes (or is given up after five minutes).
+  if (r.parrvaStatus === 'Submitting')
+    return researchRow(
+      'CARE PaRRVA',
+      '<span class="status gold">Sending</span><small>' + researchLegCount(r) + '</small>',
+      '',
+      '<p class="research-message">Being sent to CARE PaRRVA now. Open the report again in a minute to see the result.</p>',
+    );
   return researchRow(
     'CARE PaRRVA',
     (failed ? '<span class="status red">Failed</span>' : '<span class="status gray">Not sent</span>') +
